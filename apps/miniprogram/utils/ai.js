@@ -1591,10 +1591,19 @@
 
   /**
    * 待补清单：哪些账单还没记清
+   *
+   * ⚠️ 调整单（多退少补 / 暂估改价）的 amount 恒为 0，属于正常状态，
+   * 绝不能被当成"没记清"——否则结算页会一直提示"还有 N 笔没记清"。
+   * （曾因 JS 运算符优先级把 `A || B || C && D` 写成 `A || B || (C && D)`，
+   *   导致 isAdjustment 过滤对 A、B 两个分支失效，由 #v3demo 核对时抓出。）
    */
   function pendingBills(bills) {
     return (bills || []).filter(function (b) {
-      return b && (b.status === 'draft' || b.needsCompletion || (Number(b.amount) || 0) <= 0 && !b.isAdjustment);
+      if (!b) return false;
+      if (b.isAdjustment) return false;                    // 调整单不是"没记清"
+      if (b.status === 'draft' || b.status === 'placeholder') return true;
+      if (b.needsCompletion) return true;
+      return (Number(b.amount) || 0) <= 0;                 // 缺金额
     });
   }
 

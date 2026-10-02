@@ -364,7 +364,13 @@ function roomTotalCNY(roomId) {
   return roomBills(roomId).reduce(function (s, b) { return s + billCNY(b); }, 0);
 }
 
-/* 统一构造账单：补全多币种快照、来源、时间（统计页按天聚合依赖 createdAt） */
+/* 统一构造账单：补全多币种快照、来源、时间（统计页按天聚合依赖 createdAt）
+   splitType 支持三种：
+     equal  均分（默认，走 allocateEvenly 消除尾差）
+     treat  请客（付款人全额承担）
+     sole   不参与 AA（代购/私人消费，付款人自己承担；语义同 treat 但不计入他人均摊）
+   另有 opts.roundedLoss：把金额抹零后的差额并成一笔「抹零损耗」，
+   保证 splits 合计恒等于账单金额（账恒平）。 */
 function makeBill(room, opts) {
   var amount = Number(opts.amount) || 0;
   var currency = opts.currency || 'CNY';
@@ -373,7 +379,7 @@ function makeBill(room, opts) {
   var splits;
   if (opts.splits) {
     splits = opts.splits;
-  } else if (opts.splitType === 'treat') {
+  } else if (opts.splitType === 'treat' || opts.splitType === 'sole') {
     splits = members.map(function (m) {
       return { memberId: m.id, memberName: m.name, amount: m.id === opts.payer ? amount : 0 };
     });
@@ -383,6 +389,10 @@ function makeBill(room, opts) {
     splits = members.map(function (m, i) {
       return { memberId: m.id, memberName: m.name, amount: parts[i] };
     });
+  }
+  // 抹零：把差额并入分摊（作为独立的「抹零损耗」行），合计仍等于账单金额
+  if (opts.roundedLoss && AI && Math.abs(opts.roundedLoss) > 0.004) {
+    splits = AI.applyRoundingLoss(splits, amount);
   }
   return {
     id: 'bill_' + State.nextBillId++,
@@ -395,8 +405,10 @@ function makeBill(room, opts) {
     cnyAmount: Math.round(amount * rate * 100) / 100,
     description: opts.description || '消费',
     category: opts.category || 'food',
+    splitType: opts.splitType || 'equal',
     splits: splits,
     source: opts.source || 'manual',
+    roundedLoss: opts.roundedLoss || 0,
     timeStr: opts.timeStr || '刚刚',
     createdAt: opts.createdAt || new Date().toISOString()
   };
@@ -644,6 +656,18 @@ function renderAddBill(userId,roomId){
   if(form.currency!=='CNY'){
     html+='<div style="margin-top:10px;font-family:Space Grotesk,sans-serif;font-size:11px;color:var(--g400);">≈ ¥'+money((Number(form.amount)||0)*rateOf(form.currency))+' · 按记账时汇率快照 '+rateOf(form.currency)+' 折算</div>';
   }
+  /* 智能抹零：出境游真实需求（日币 12780 想记成 12800 好算），差额进「抹零损耗」 */
+  var rnd=AI?AI.smartRound(Number(form.amount)||0,form.currency):null;
+  html+='<div style="margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">';
+  if(rnd&&rnd.changed){
+    html+='<button class="btn lt" style="padding:9px 14px;font-size:12px;" onclick="roundAmount(\''+userId+'\')">✨ 抹零到 '+curSym(form.currency)+rnd.rounded+'</button>';
+    html+='<span style="font-family:Space Grotesk,sans-serif;font-size:10.5px;color:var(--g400);">差额 '+(rnd.loss>0?'+':'')+money(rnd.loss)+' 计入「抹零损耗」</span>';
+  }else if(Number(form.amount)>0){
+    html+='<span style="font-family:Space Grotesk,sans-serif;font-size:10.5px;color:var(--grn);">✅ 已是顺手整数，无需抹零</span>';
+  }else{
+    html+='<span style="font-family:Space Grotesk,sans-serif;font-size:10.5px;color:var(--g400);">填入金额后，可一键抹零到'+AI.roundStepOf(form.currency)+'的整数倍</span>';
+  }
+  html+='</div>';
   html+='<div class="fl" style="margin-top:16px;">币种 / CURRENCY</div><div class="pm">';
   CURRENCIES.forEach(function(c){
     html+='<div class="pi '+(form.currency===c.code?'act':'')+'" onclick="selectCurrency(\''+userId+'\',\''+c.code+'\')">'+c.label+'</div>';
@@ -661,11 +685,28 @@ function renderAddBill(userId,roomId){
     html+='<div class="pi '+(form.payer===m.id?'act':'')+'" onclick="updateForm(\''+userId+'\',\'payer\',\''+m.id+'\');renderApp(USERS.find(function(u){return u.id==\''+userId+'\'}))">'+esc(m.name)+'</div>';
   });
   html+='</div></div><div class="fg"><div class="fl">分摊方式</div><div class="pm">';
-  [['equal','⚖️ 均分'],['treat','🎁 请客']].forEach(function(c){
+  [['equal','⚖️ 均分'],['treat','🎁 请客'],['sole','🙋 不参与AA']].forEach(function(c){
     html+='<div class="pi '+(form.splitType===c[0]?'act':'')+'" onclick="updateForm(\''+userId+'\',\'splitType\',\''+c[0]+'\');renderApp(USERS.find(function(u){return u.id==\''+userId+'\'}))">'+c[1]+'</div>';
   });
-  html+='</div></div>';
+  html+='</div>';
+  if(form.splitType==='sole'){
+    html+='<div style="margin-top:8px;font-size:10.5px;color:var(--g400);line-height:1.6;">代购 / 私人消费：这笔由付款人自己承担，<b style="color:var(--g500);">不计入其他人的 AA 分摊</b>。</div>';
+  }
+  html+='</div>';
   return html;
+}
+
+/* 智能抹零：把金额凑到该币种的顺手整数，差额交给「抹零损耗」 */
+function roundAmount(userId){
+  var u=USERS.find(function(x){return x.id===userId});if(!u||!u._form||!AI)return;
+  var form=u._form;
+  var r=AI.smartRound(Number(form.amount)||0,form.currency||'CNY');
+  if(!r.changed){showToast(userId,'已经是顺手整数了');return}
+  form.amount=String(r.rounded);
+  form.rounded=true;                       // 提交时据此把差额并入分摊
+  form.lossAmount=r.loss;
+  renderApp(u);
+  showToast(userId,'✨ 已抹零到 '+curSym(form.currency)+r.rounded+'，差额 '+money(r.loss)+' 计入损耗');
 }
 
 /* ---- AI 记账交互 ---- */
@@ -1009,6 +1050,43 @@ function renderSettle(userId,roomId){
   });
   if(settlement.transfers.length>0)html+='<div style="margin-top:18px;display:flex;gap:8px;"><button class="btn lt" style="flex:1;" onclick="copySettle(\''+userId+'\',\''+roomId+'\')">📋 复制方案</button><button class="btn dk" style="flex:1;" onclick="copyReport(\''+userId+'\',\''+roomId+'\')">📄 旅行报告</button></div>';
 
+  /* ---- 结算前置校验：还有几笔没记清（口头占位/缺金额） ---- */
+  if(AI&&AI.settlementReadiness){
+    var ready=AI.settlementReadiness(bills);
+    if(!ready.ready){
+      html+='<div class="os" style="margin-top:14px;border-color:var(--amb);color:var(--amb);">⚠️ '+esc(ready.message)+'</div>';
+    }else if(ready.adjustmentCount>0){
+      html+='<div class="os" style="margin-top:14px;">🧾 含 '+ready.adjustmentCount+' 笔调整单（多退少补 / 暂估改价），已按调整后份额结算</div>';
+    }
+  }
+
+  /* ---- 结清卡片（可复制的分享文案） ---- */
+  if(AI&&AI.shareCardData){
+    html+='<div class="sh" style="margin-top:20px;"><div class="st">结清卡片</div><div class="sc">SHARE CARD</div></div>';
+    var card=AI.shareCardData({room:room,bills:bills,members:room.members});
+    html+='<div class="mbi" style="background:#18181b;color:#fff;border:none;">';
+    html+='<div style="font-family:Space Grotesk,sans-serif;font-size:15px;font-weight:700;">✈️ '+esc(card.headline)+'</div>';
+    html+='<div style="margin-top:10px;display:flex;gap:18px;">';
+    html+='<div><div style="font-size:9px;letter-spacing:1.6px;color:rgba(255,255,255,.45);">总消费</div><div style="font-family:Space Grotesk,sans-serif;font-size:19px;font-weight:700;">¥'+money(card.total)+'</div></div>';
+    html+='<div><div style="font-size:9px;letter-spacing:1.6px;color:rgba(255,255,255,.45);">人均</div><div style="font-family:Space Grotesk,sans-serif;font-size:19px;font-weight:700;">¥'+money(card.perPerson)+'</div></div>';
+    html+='<div><div style="font-size:9px;letter-spacing:1.6px;color:rgba(255,255,255,.45);">账单</div><div style="font-family:Space Grotesk,sans-serif;font-size:19px;font-weight:700;">'+card.billCount+'</div></div>';
+    html+='</div>';
+    if(card.topCategories.length){
+      html+='<div style="margin-top:12px;font-size:11px;color:rgba(255,255,255,.7);line-height:1.7;">';
+      card.topCategories.forEach(function(c){html+='· '+c.icon+' '+esc(c.name)+' ¥'+money(c.amount)+'（'+c.percent+'%）<br>';});
+      html+='</div>';
+    }
+    html+='</div>';
+    html+='<button class="btn lt" style="width:100%;margin-top:10px;" onclick="copyShareCard(\''+userId+'\',\''+roomId+'\')">📤 复制结清卡片</button>';
+  }
+
+  /* ---- 礼貌催账话术 ---- */
+  if(AI&&AI.politeReminder&&settlement.transfers.length>0){
+    var t0=settlement.transfers[0];
+    html+='<div style="margin-top:10px;font-size:10.5px;color:var(--g400);line-height:1.6;">💬 不敢开口催账？一键生成不尴尬的说法</div>';
+    html+='<button class="btn lt" style="width:100%;margin-top:6px;" onclick="copyReminder(\''+userId+'\',\''+roomId+'\')">💬 生成礼貌催账话术</button>';
+  }
+
   /* ---- AI 旅行小作文（内核模板保底，离线可生成） ---- */
   var u=USERS.find(function(x){return x.id===userId});
   html+='<div class="sh" style="margin-top:20px;"><div class="st">AI 旅行小作文</div><div class="sc">NARRATIVE</div></div>';
@@ -1042,6 +1120,24 @@ function copyReport(userId,roomId){
   var text=AI.generateTripReport(room,bills,room.members);
   if(navigator.clipboard)navigator.clipboard.writeText(text);
   showToast(userId,'📄 旅行报告已复制');
+}
+/* 结清卡片：纯文本版，可直接粘到微信/群里 */
+function copyShareCard(userId,roomId){
+  var room=State.rooms.find(function(r){return r.id===roomId});if(!room||!AI)return;
+  var bills=State.bills.filter(function(b){return b.roomId===roomId});
+  var text=AI.shareCardText({room:room,bills:bills,members:room.members});
+  if(navigator.clipboard)navigator.clipboard.writeText(text);
+  showToast(userId,'📤 结清卡片已复制，去群里发一条吧');
+}
+/* 礼貌催账：把"你欠我钱"说成不尴尬的话 */
+function copyReminder(userId,roomId){
+  var room=State.rooms.find(function(r){return r.id===roomId});if(!room||!AI)return;
+  var bills=State.bills.filter(function(b){return b.roomId===roomId});
+  var settlement=calcSettlement(room,bills);
+  var t=settlement.transfers[0];if(!t){showToast(userId,'当前没有需要催的账');return}
+  var text=AI.politeReminder({fromName:t.fromName,toName:t.toName,amount:t.amount,roomName:room.name},{style:'friendly'});
+  if(navigator.clipboard)navigator.clipboard.writeText(text);
+  showToast(userId,'💬 话术已复制：'+text.slice(0,18)+'…');
 }
 
 function calcSettlement(room,bills){
@@ -1147,11 +1243,14 @@ function submitBill(userId,roomId){
     description:form.desc||'消费',
     category:form.category,
     splitType:form.splitType,
+    roundedLoss:form.rounded?form.lossAmount:0,
     source:fromAI?'ai':'manual'
   });
   State.bills.push(bill);
   user._form=null;user._ai=null;user._aiText='';user._page='room';
   var extra=bill.currency!=='CNY'?('（'+bill.currency+' ≈ ¥'+money(bill.cnyAmount)+'）'):'';
+  if(form.splitType==='sole')extra+=' · 已标记不参与AA';
+  if(bill.roundedLoss)extra+=' · 抹零损耗 '+money(bill.roundedLoss);
   showToast(userId,'✅ 记账成功 '+extra);
   syncAll();
 }
@@ -1843,6 +1942,80 @@ renderPhones();
 probeEngine();
 
 /* ============================================================
+   V3 旅行专属记账语义 · 一键演示（#v3demo）
+   把"小而美"的差异点集中到一屏：
+     ① 抹零（日币 12780 → 12800，差额进「抹零损耗」）
+     ② 不参与AA（代购/私人消费）
+     ③ 多退少补 / 暂估改价（零和调整单，历史留痕）
+     ④ 结清卡片 + 礼貌催账话术
+   ============================================================ */
+function startV3Demo() {
+  if (!AI) { showToast('u1', '内核未加载'); return; }
+  resetAll();
+  State.phoneCount = Math.max(3, State.phoneCount);
+  var lbl = document.getElementById('phoneCountLabel'); if (lbl) lbl.textContent = State.phoneCount;
+  renderPhones();
+
+  /* 建房间：3 人（小明 / 小红 / 小李） */
+  var room = { id: 'room_' + State.nextRoomId++, name: '北海道滑雪行', destination: '北海道',
+    code: '666888', creator: 'u1', members: [], totalExpense: 0,
+    budgetPerPerson: 8000, startDate: '2024-12-20', endDate: '2024-12-25' };
+  State.rooms.push(room);
+  USERS.slice(0, 3).forEach(function (u) { room.members.push({ id: u.id, name: u.name }); });
+  USERS.slice(0, 3).forEach(function (u) { u._roomId = room.id; u._page = 'room'; });
+
+  function addBill(o) { State.bills.push(makeBill(room, o)); }
+
+  /* ① 抹零：日币 12780 → 12800 */
+  var jpy = AI.smartRound(12780, 'JPY');
+  addBill({ payer: 'u1', payerName: '小明', amount: jpy.rounded, currency: 'JPY',
+    description: '札幌居酒屋晚餐', category: 'food', source: 'ai',
+    roundedLoss: jpy.loss, createdAt: '2024-12-20T19:00:00.000Z' });
+
+  /* ② 代购不摊：小红帮朋友带的药妆 */
+  addBill({ payer: 'u2', payerName: '小红', amount: 1280, description: '帮朋友代购药妆（不参与AA）',
+    category: 'shopping', splitType: 'sole', source: 'manual',
+    createdAt: '2024-12-21T11:00:00.000Z' });
+
+  /* ③ 暂估改价：酒店先记 24000，退房实际 24800 */
+  var hotel = makeBill(room, { payer: 'u1', payerName: '小明', amount: 24000, currency: 'JPY',
+    description: '滑雪度假村 4 晚（暂估）', category: 'hotel', source: 'manual',
+    createdAt: '2024-12-20T15:00:00.000Z' });
+  State.bills.push(hotel);
+  State.bills.push(makeBill(room, Object.assign(
+    AI.buildAdjustmentForReestimate(hotel, 24800, room.members, { ts: '2024-12-25T10:00:00.000Z' }),
+    { roomId: room.id, payer: 'u1', payerName: '小明', timeStr: '退房' }
+  )));
+
+  /* ③' 多退少补：小李提前离队，退出缆车票分摊 */
+  var lift = makeBill(room, { payer: 'u3', payerName: '小李', amount: 9600, currency: 'JPY',
+    description: '缆车票 3 张', category: 'ticket', source: 'manual',
+    createdAt: '2024-12-22T09:00:00.000Z' });
+  State.bills.push(lift);
+  State.bills.push(makeBill(room, Object.assign(
+    AI.buildAdjustmentForExclusion(lift, ['u3'], { ts: '2024-12-23T09:00:00.000Z' }),
+    { roomId: room.id, payer: 'u3', payerName: '小李', timeStr: '改签' }
+  )));
+
+  /* ④ 口头占位：还有一笔没记清 */
+  var ph = AI.buildPlaceholder({ description: '（待补：雪场租装备谁付的忘了）' });
+  State.bills.push(Object.assign(makeBill(room, { payer: 'u1', payerName: '小明', amount: 0,
+    description: ph.description, category: 'other', source: 'manual' }),
+    { status: 'draft', needsCompletion: true, amount: 0 }));
+
+  var u1 = USERS[0];
+  u1._page = 'add';
+  u1._form = { amount: '12780', desc: '札幌居酒屋晚餐', category: 'food',
+    payer: 'u1', splitType: 'equal', currency: 'JPY' };
+  u1._aiText = ''; u1._ai = null; u1._narr = null;
+
+  var sub = document.getElementById('hdrSub');
+  if (sub) sub.textContent = 'V3 一键演示 · 抹零 / 代购不摊 / 多退少补 / 暂估改价 / 结清卡片 —— 点 ▶ 自动演示 或自己点手机';
+  syncAll();
+  showToast('u1', '✨ V3 演示已就绪：看「抹零」按钮，再切到结算页看结清卡片');
+}
+
+/* ============================================================
    演示起点：默认 1 台手机，但第一眼要能看出这是"多人"产品
    ------------------------------------------------------------
    - ?n=3 或 #n=3 可直接以 N 台手机开场（如 index.html?n=4#selftest 同时生效）
@@ -1864,6 +2037,7 @@ probeEngine();
   }
 })();
 
+if (location.hash.indexOf('#v3demo') === 0) setTimeout(startV3Demo, 350);
 if (location.hash.indexOf('#selftest') === 0) setTimeout(runSelfTest, 300);
 if (location.hash.indexOf('#tourtest') === 0) setTimeout(runTourTest, 400);
 if (location.hash.indexOf('#uitest') === 0) setTimeout(runUITest, 400);

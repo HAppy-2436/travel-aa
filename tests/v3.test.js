@@ -346,6 +346,23 @@ function mb(bills) { return AI.netBalances(bills, MEMBERS); }
     ok('金额为 0 的普通账单不可结算', AI.isSettleable({ payer: 'u1', amount: 0, splits: [] }) === false);
     ok('调整单即使金额为 0 也可结算', AI.isSettleable({ isAdjustment: true, amount: 0, splits: [] }) === true);
     ok('voided 账单不可结算', AI.isSettleable({ payer: 'u1', amount: 100, voided: true }) === false);
+
+    // ★ 回归：调整单（amount=0）绝不能被当成"没记清"
+    //   曾因运算符优先级写成 `A || B || C && D`，让 isAdjustment 过滤失效
+    const mixed = [
+      AI.buildPlaceholder({ description: '真的没记清' }),
+      { isAdjustment: true, id: 'adj1', amount: 0, zeroSum: true, splits: [{ memberId: 'u1', amount: 0 }] },
+      { isAdjustment: true, id: 'adj2', amount: 0, zeroSum: false, delta: 360, splits: [] },
+    ];
+    ok('★ pendingBills 只挑出 1 笔真占位（不含 2 张调整单）', AI.pendingBills(mixed).length === 1,
+      String(AI.pendingBills(mixed).length));
+    const rMixed = AI.settlementReadiness(mixed);
+    ok('★ 结算校验提示"还有 1 笔"而不是 3 笔', /还有 1 笔没记清/.test(rMixed.message), rMixed.message);
+    ok('结算校验能报出调整单数量', rMixed.adjustmentCount === 2, String(rMixed.adjustmentCount));
+
+    const onlyAdj = [{ isAdjustment: true, id: 'a', amount: 0, zeroSum: true, splits: [] }];
+    ok('只有调整单时 ready=true（不该拦结算）', AI.settlementReadiness(onlyAdj).ready === true,
+      AI.settlementReadiness(onlyAdj).message);
   })();
 
   /* ---------- A7 effectiveShares ---------- */
