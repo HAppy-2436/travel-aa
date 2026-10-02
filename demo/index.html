@@ -339,10 +339,13 @@ function money(n, dec) {
   return (Number(n) || 0).toFixed(dec === undefined ? 2 : dec);
 }
 
-/* 当前币种 → 人民币汇率（由内核提供，记账时快照） */
+/* 当前币种 → 人民币汇率（由内核提供，记账时快照）
+   必须用 AI.getRate()（不取整），不能用 AI.toCNY(1,code)：
+   toCNY 会 round2 到两位小数，日元 0.048 会变成 0.05，
+   导致账单汇率快照与结算口径不一致、账不平。 */
 function rateOf(code) {
   if (!code || code === 'CNY' || !AI) return 1;
-  return AI.toCNY(1, code);
+  return AI.getRate ? AI.getRate(code) : (AI.toCNY(1, code));
 }
 
 /* 账单人民币金额（快照优先） */
@@ -1053,10 +1056,12 @@ function renderSettle(userId,roomId){
   /* ---- 结算前置校验：还有几笔没记清（口头占位/缺金额） ---- */
   if(AI&&AI.settlementReadiness){
     var ready=AI.settlementReadiness(bills);
+    var adjCount=bills.filter(function(b){return b.isAdjustment}).length;
+    var adjNote=adjCount?('含 '+adjCount+' 笔调整单（多退少补 / 暂估改价），已按调整后份额结算'):'';
     if(!ready.ready){
-      html+='<div class="os" style="margin-top:14px;border-color:var(--amb);color:var(--amb);">⚠️ '+esc(ready.message)+'</div>';
-    }else if(ready.adjustmentCount>0){
-      html+='<div class="os" style="margin-top:14px;">🧾 含 '+ready.adjustmentCount+' 笔调整单（多退少补 / 暂估改价），已按调整后份额结算</div>';
+      html+='<div class="os" style="margin-top:14px;border-color:var(--amb);color:var(--amb);">⚠️ '+esc(ready.message)+(adjNote?' · '+adjNote:'')+'</div>';
+    }else if(adjCount){
+      html+='<div class="os" style="margin-top:14px;">🧾 '+adjNote+'</div>';
     }
   }
 
@@ -1977,25 +1982,30 @@ function startV3Demo() {
     category: 'shopping', splitType: 'sole', source: 'manual',
     createdAt: '2024-12-21T11:00:00.000Z' });
 
-  /* ③ 暂估改价：酒店先记 24000，退房实际 24800 */
+  /* ③ 暂估改价：酒店先记 24000，退房实际 24800
+       调整单是内核产物（含 isAdjustment / zeroSum / splits / delta），
+       必须**先展开调整单再补账单字段**，且不能走 makeBill()
+       —— makeBill 是白名单构造，会把 isAdjustment/splits 丢掉 */
   var hotel = makeBill(room, { payer: 'u1', payerName: '小明', amount: 24000, currency: 'JPY',
     description: '滑雪度假村 4 晚（暂估）', category: 'hotel', source: 'manual',
     createdAt: '2024-12-20T15:00:00.000Z' });
   State.bills.push(hotel);
-  State.bills.push(makeBill(room, Object.assign(
+  State.bills.push(Object.assign(
     AI.buildAdjustmentForReestimate(hotel, 24800, room.members, { ts: '2024-12-25T10:00:00.000Z' }),
-    { roomId: room.id, payer: 'u1', payerName: '小明', timeStr: '退房' }
-  )));
+    { id: 'bill_' + State.nextBillId++, roomId: room.id, payer: 'u1', payerName: '小明',
+      timeStr: '退房', createdAt: '2024-12-25T10:00:00.000Z' }
+  ));
 
   /* ③' 多退少补：小李提前离队，退出缆车票分摊 */
   var lift = makeBill(room, { payer: 'u3', payerName: '小李', amount: 9600, currency: 'JPY',
     description: '缆车票 3 张', category: 'ticket', source: 'manual',
     createdAt: '2024-12-22T09:00:00.000Z' });
   State.bills.push(lift);
-  State.bills.push(makeBill(room, Object.assign(
+  State.bills.push(Object.assign(
     AI.buildAdjustmentForExclusion(lift, ['u3'], { ts: '2024-12-23T09:00:00.000Z' }),
-    { roomId: room.id, payer: 'u3', payerName: '小李', timeStr: '改签' }
-  )));
+    { id: 'bill_' + State.nextBillId++, roomId: room.id, payer: 'u3', payerName: '小李',
+      timeStr: '改签', createdAt: '2024-12-23T09:00:00.000Z' }
+  ));
 
   /* ④ 口头占位：还有一笔没记清 */
   var ph = AI.buildPlaceholder({ description: '（待补：雪场租装备谁付的忘了）' });

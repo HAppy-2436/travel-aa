@@ -94,6 +94,19 @@ function mb(bills) { return AI.netBalances(bills, MEMBERS); }
     ok('未知币种台阶兜底为 1', AI.roundStepOf('XYZ') === 1);
     ok('小写币种也能识别', AI.roundStepOf('jpy') === 100);
 
+    /* ★ 汇率精度回归：getRate 不取整，toCNY 才取整
+       若用 toCNY(1,'JPY') 当汇率，round2(0.048) = 0.05，偏差 4%，
+       会让"账单汇率快照"与结算口径不一致、破坏账恒平。 */
+    ok('★ getRate(JPY) 保留 0.048（不取整）', AI.getRate('JPY') === 0.048, String(AI.getRate('JPY')));
+    ok('getRate(KRW) 保留 0.0053', AI.getRate('KRW') === 0.0053, String(AI.getRate('KRW')));
+    ok('getRate(CNY) = 1', AI.getRate('CNY') === 1);
+    ok('getRate 空值兜底为 1', AI.getRate(null) === 1 && AI.getRate('') === 1);
+    ok('getRate 未知币种兜底为 1', AI.getRate('ZZZ') === 1);
+    ok('getRate 大小写不敏感', AI.getRate('jpy') === 0.048);
+    ok('getRate 支持传入覆盖表', AI.getRate('JPY', { JPY: 0.05 }) === 0.05);
+    ok('★ toCNY 仍按两位小数取整（金额折算用）', AI.toCNY(1, 'JPY') === 0.05, String(AI.toCNY(1, 'JPY')));
+    ok('★ toCNY(12000,JPY) = 576（金额折算不受影响）', AI.toCNY(12000, 'JPY') === 576, String(AI.toCNY(12000, 'JPY')));
+
     ok('amount=0 不崩', AI.smartRound(0, 'JPY').rounded === 0);
     ok('undefined 不崩', AI.smartRound(undefined, 'JPY').rounded === 0);
     ok('负数也能处理（退款场景）', AI.smartRound(-12780, 'JPY').rounded === -12800, String(AI.smartRound(-12780, 'JPY').rounded));
@@ -107,30 +120,38 @@ function mb(bills) { return AI.netBalances(bills, MEMBERS); }
 
     const withLoss = AI.applyRoundingLoss(base, 12800);
     ok('抹零后合计严格 = 12800（账单金额）', sum(withLoss.map((x) => x.amount)) === 12800, String(sum(withLoss.map((x) => x.amount))));
-    const lossRow = withLoss.find((x) => x.memberId === AI.LOSS_MEMBER_ID);
-    ok('差额单独成行且标记 isLoss', !!lossRow && lossRow.isLoss === true, lossRow && String(lossRow.amount));
-    ok('损耗行金额 = 20（凑多了）', !!lossRow && lossRow.amount === 20, lossRow && String(lossRow.amount));
-    ok('原成员金额未被改动（不摊到人头上）', withLoss.filter((x) => x.memberId !== AI.LOSS_MEMBER_ID).map((x) => x.amount).join(',') === base.map((x) => x.amount).join(','));
+    ok('★ 分摊里只剩真实成员（不含虚拟损耗行）',
+      withLoss.length === base.length && withLoss.every((x) => x.memberId !== AI.LOSS_MEMBER_ID),
+      withLoss.map((x) => x.memberId).join(','));
+    ok('★ 差额信息在 _lossRow 里供展示（amount=20）',
+      !!withLoss._lossRow && withLoss._lossRow.amount === 20, JSON.stringify(withLoss._lossRow));
+    ok('差额已按比例摊回真实成员（3195 + 5 = 3200 每人）',
+      JSON.stringify(withLoss.map((x) => x.amount)) === JSON.stringify([3200, 3200, 3200, 3200]),
+      JSON.stringify(withLoss.map((x) => x.amount)));
+    ok('★ 每人都是真实成员且合计 = 12800', sum(withLoss.map((x) => x.amount)) === 12800);
 
-    // 抹零到正好，无差额 → 不应产生损耗行，但合计仍须相等
+    // 抹零到正好，无差额 → 金额不变，且 _lossRow.amount = 0
     const exact = AI.applyRoundingLoss(equalSplits(12800, MEMBERS), 12800);
-    ok('无差额时不产生损耗行', !exact.some((x) => x.isLoss), JSON.stringify(exact.map((x) => x.amount)));
+    ok('无差额时金额不变', JSON.stringify(exact.map((x) => x.amount)) === JSON.stringify(equalSplits(12800, MEMBERS).map((x) => x.amount)));
+    ok('无差额时 _lossRow.amount = 0', !exact._lossRow || exact._lossRow.amount === 0);
 
     // 尾差修补：传入的分摊合计与目标差 1 分
     const messy = [{ memberId: 'u1', amount: 33.33 }, { memberId: 'u2', amount: 33.33 }];
     const fixed = AI.applyRoundingLoss(messy, 66.67);
     ok('0.01 级尾差被补到合计相等', sum(fixed.map((x) => x.amount)) === 66.67, String(sum(fixed.map((x) => x.amount))));
+    ok('★ 0.01 尾差也落在真实成员身上（无虚拟行）', fixed.every((x) => x.memberId !== AI.LOSS_MEMBER_ID));
 
     ok('空分摊不崩', AI.applyRoundingLoss([], 100).length === 0);
 
-    // 损耗行参与结算后，账仍恒平
-    const bill = mkBill({ payer: 'u1', amount: 12800, currency: 'JPY', rate: 0.048, splits: withLoss });
+    // ★ 抹零后结算必须严格账恒平（旧设计把差额挂虚拟成员，会残留非零尾巴）
+    const bill = mkBill({ id: 'b_round', payer: 'u1', amount: 12800, currency: 'JPY', rate: 0.048, splits: withLoss });
     const bal = netBalances([bill]);
-    // 损耗行不是真实成员，会出现在余额表里；把它剔除后真人账应为 0
-    const real = Object.keys(bal).filter((k) => k !== AI.LOSS_MEMBER_ID);
-    const realSum = Math.round(real.reduce((s, k) => s + bal[k], 0) * 100) / 100;
-    ok('（含损耗行时）真人净余额合计 ≠ 0 —— 差额确由损耗承担', realSum !== 0 || bal[AI.LOSS_MEMBER_ID] !== undefined,
-      '真人合计 ' + realSum + ' · 损耗 ' + bal[AI.LOSS_MEMBER_ID]);
+    const balSum = sum(Object.values(bal));
+    ok('★ 抹零账单结算账恒平（净余额合计 = 0）', Math.abs(balSum) < 0.01, JSON.stringify(bal));
+    ok('★ 余额表里没有虚拟损耗成员', !(AI.LOSS_MEMBER_ID in bal), JSON.stringify(Object.keys(bal)));
+    ok('★ 各人应收应付清晰（4 人均分：u1 垫付 ¥614.4 → 其余 3 人各欠 153.6）',
+      Math.abs(bal.u1 - 460.8) < 0.02 && Math.abs(bal.u2 + 153.6) < 0.02 && Math.abs(bal.u3 + 153.6) < 0.02,
+      JSON.stringify(bal));
   })();
 
   /* ---------- A3 代购不摊 ---------- */
@@ -448,6 +469,50 @@ function mb(bills) { return AI.netBalances(bills, MEMBERS); }
 
     ok('空数据不崩', typeof AI.shareCardText({ room: {}, bills: [], members: [] }) === 'string');
     ok('0 人时人均不出现 NaN', !/NaN/.test(AI.shareCardText({ room: {}, bills: [], members: [] })));
+  })();
+
+  /* ---------- A8 外币账单 + 调整单（口径回归） ---------- */
+  section('A8 外币账单叠加调整单（汇率口径回归）');
+  (function () {
+    // 回归背景：调整单的 splits 记在**原币**，与基础账单同口径；
+    // 而结算必须统一折人民币。曾出现两个 bug：
+    //   ① 调整单 rate 写成 1 → 800 日元被当 800 元，账歪近 20 倍
+    //   ② netBalances 对调整单硬编码乘 1 → shares 与 paid 不同步，账不平
+    const hotel = {
+      id: 'bh', payer: 'u1', payerName: '小明', amount: 24000, currency: 'JPY',
+      rate: AI.getRate('JPY'), cnyAmount: AI.toCNY(24000, 'JPY'), category: 'hotel',
+      splits: MEMBERS.slice(0, 3).map((m) => ({ memberId: m.id, memberName: m.name, amount: 8000 }))
+    };
+    ok('基础账单：24000 JPY → ¥1152', hotel.cnyAmount === 1152, String(hotel.cnyAmount));
+
+    const adj = AI.buildAdjustmentForReestimate(hotel, 24800, MEMBERS);
+    ok('调整单沿用基础账单汇率（不是 1）', Math.abs(adj.rate - AI.getRate('JPY')) < 1e-9, String(adj.rate));
+    ok('调整单与原账单同币种', adj.currency === 'JPY');
+    ok('调整单 Δ = 800（日元口径）', adj.delta === 800, String(adj.delta));
+    ok('调整单 Σsplits = 800（原币口径，与基础账单一致）',
+      Math.abs(sum(adj.splits.map((x) => x.amount)) - 800) < 0.01, String(sum(adj.splits.map((x) => x.amount))));
+    ok('调整单合计恰为 delta（不是零和，因为总额变了）', Math.abs(sum(adj.splits.map((x) => x.amount)) - adj.delta) < 0.01);
+
+    const nb = AI.netBalances([hotel, adj], MEMBERS.slice(0, 3));
+    const paidSum = sum(Object.values(nb.paid));
+    const shareSum = sum(Object.values(nb.shares));
+    ok('★ Σ实付 = Σ有效份额（账恒平的充分条件）', Math.abs(paidSum - shareSum) < 0.02,
+      paidSum + ' vs ' + shareSum);
+    ok('★ 结算账恒平（净余额合计 0）', nb.balanced === true, JSON.stringify(nb.balances));
+    ok('每人有效份额 = (8000+266.67)×0.048 ≈ 396.80',
+      nb.balances.every((b) => b.memberId === 'u1' || Math.abs(b.amount + 396.8) < 0.02),
+      JSON.stringify(nb.balances.map((b) => b.memberName + ':' + b.amount)));
+    ok('垫付人应收 = 24000+800 折算 − 自己份额 = 793.6',
+      Math.abs(nb.balances.filter((b) => b.memberId === 'u1')[0].amount - 793.6) < 0.02,
+      JSON.stringify(nb.balances.map((b) => b.memberName + ':' + b.amount)));
+
+    // 降价方向同样要平
+    const down = AI.buildAdjustmentForReestimate(hotel, 20000, MEMBERS);
+    const nb2 = AI.netBalances([hotel, down], MEMBERS.slice(0, 3));
+    ok('降价（24000→20000）也账恒平', nb2.balanced === true, JSON.stringify(nb2.balances));
+    ok('降价时垫付人应收减少（实付随之退回）',
+      nb2.balances.filter((b) => b.memberId === 'u1')[0].amount <
+      nb.balances.filter((b) => b.memberId === 'u1')[0].amount);
   })();
 
   /* ---------- Z 账恒平总闸 ---------- */

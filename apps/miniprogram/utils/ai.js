@@ -708,11 +708,24 @@
   }
 
   /**
+   * 取某币种的汇率（**不四舍五入**）
+   *
+   * ⚠️ 不要用 `toCNY(1, code)` 代替本函数：toCNY 会把结果 round2 到两位小数，
+   * 对日元(0.048)、韩元(0.0053) 这类小汇率会失真（0.048 → 0.05，偏差 4%），
+   * 进而使"汇率快照"与 getRates() 不一致，破坏结算账恒平。
+   * 快照进账单的 rate 必须用本函数。
+   */
+  function getRate(currency, rates) {
+    if (!currency) return 1;
+    if (String(currency).toUpperCase() === 'CNY') return 1;
+    return getRates(rates)[String(currency).toUpperCase()] || 1;
+  }
+
+  /**
    * 折算人民币：toCNY(12000, 'JPY') → 576
    */
   function toCNY(amount, currency, rates) {
-    var rate = getRates(rates)[currency] || 1;
-    return round2((Number(amount) || 0) * rate);
+    return round2((Number(amount) || 0) * getRate(currency, rates));
   }
 
   /**
@@ -1060,42 +1073,76 @@
   }
 
   /**
-   * 把"抹零差额"并入分摊明细，保证合计仍等于账单金额。
+   * 把"抹零差额"并入分摊，保证合计恒等于账单金额（账恒平）。
    *
-   * 做法：对传入的 splits 做整体缩放，使合计等于 targetAmount；
-   * 差额单独落在 LOSS_MEMBER_ID 上，让用户能看见"这笔差额去哪了"。
+   * 设计要点（踩过坑）：
+   *   - 返回的每一行都是**真实成员**，合计严格等于 targetAmount；
+   *   - 差额**按原分摊比例摊回真实成员**，并额外返回一个 `_lossRow`
+   *     仅用于 UI 展示「这笔差额是多少、去哪了」；
+   *   - 之所以不把差额挂在虚拟成员（如 __loss__）行上：虚拟成员不在房间成员表里，
+   *     结算时既不属于谁、也不会从谁身上扣，会让"净余额合计"残留一个非零尾巴，
+   *     破坏账恒平（曾残留 0.96）。虚拟行只能用于展示，不能参与记账。
    *
    * @param {Array}  splits       [{memberId, memberName, amount}]
    * @param {number} targetAmount 目标合计（账单金额）
-   * @param {Object} [opts]       { lossId, lossName, distributeLoss: Boolean }
-   * @returns {Array} 新的 splits（含损耗行）
+   * @param {Object} [opts]       { lossId, lossName }
+   * @returns {Array} 新的 splits —— 仅含真实成员，合计 === targetAmount
+   *                  数组上附 `_lossRow = { amount, distributed }` 供展示
    */
   function applyRoundingLoss(splits, targetAmount, opts) {
     opts = opts || {};
-    var lossId = opts.lossId || LOSS_MEMBER_ID;
-    var lossName = opts.lossName || LOSS_MEMBER_NAME;
     var target = round2(Number(targetAmount) || 0);
-
-    var plain = (splits || []).filter(function (s) { return s && s.memberId !== lossId; });
+    var plain = (splits || []).filter(function (s) { return s && s.memberId && s.memberId !== LOSS_MEMBER_ID; });
     if (!plain.length) return splits || [];
 
-    var sum = plain.reduce(function (s, x) { return s + (Number(x.amount) || 0); }, 0);
+    var sum = round2(plain.reduce(function (s, x) { return s + (Number(x.amount) || 0); }, 0));
     var diff = round2(target - sum);
 
-    if (Math.abs(diff) <= 0.004) {
-      // 差额可忽略：直接把尾差补在最后一个非损耗成员上，保证严格相等
-      var rest = target - plain.slice(0, -1).reduce(function (s, x) { return s + (Number(x.amount) || 0); }, 0);
-      var out0 = plain.map(function (x, i) {
-        return { memberId: x.memberId, memberName: x.memberName, amount: i === plain.length - 1 ? round2(rest) : round2(Number(x.amount) || 0) };
-      });
-      return out0;
-    }
-
+    // 第一步：把差额按原比例摊到每个真实成员（最大余额法消除二次尾差）
     var out = plain.map(function (x) {
       return { memberId: x.memberId, memberName: x.memberName, amount: round2(Number(x.amount) || 0) };
     });
-    // 损耗作为独立一行，正负都保留（正=凑多了，负=凑少了）
-    out.push({ memberId: lossId, memberName: lossName, amount: diff, isLoss: true });
+
+    if (Math.abs(diff) > 0.004) {
+      if (sum > 0) {
+        // 按原比例分摊差额
+        var running = 0;
+        out.forEach(function (row, i) {
+          var share = i === out.length - 1
+            ? round2(diff - running)
+            : round2(diff * ((Number(row.amount) || 0) / sum));
+          running = round2(running + share);
+          row.amount = round2(row.amount + share);
+        });
+      } else {
+        // 原分摊全为 0（异常数据）→ 等分
+        var parts = allocateEvenly(diff, out.length);
+        out.forEach(function (row, i) { row.amount = round2(row.amount + parts[i]); });
+      }
+    }
+
+    // 第二步：分位尾差兜底，保证合计**严格**等于 target
+    var after = round2(out.reduce(function (s, x) { return s + x.amount; }, 0));
+    var residual = round2(target - after);
+    if (Math.abs(residual) > 0.0001 && out.length) {
+      var maxIdx = 0;
+      out.forEach(function (r, i) { if (Math.abs(r.amount) > Math.abs(out[maxIdx].amount)) maxIdx = i; });
+      out[maxIdx].amount = round2(out[maxIdx].amount + residual);
+    }
+
+    // 供 UI 展示的"损耗说明"（不参与记账）
+    try {
+      Object.defineProperty(out, '_lossRow', {
+        value: {
+          amount: diff,
+          distributed: true,
+          lossId: opts.lossId || LOSS_MEMBER_ID,
+          lossName: opts.lossName || LOSS_MEMBER_NAME
+        },
+        enumerable: false
+      });
+    } catch (e) { /* 极端环境不支持 defineProperty 时忽略展示信息 */ }
+
     return out;
   }
 
@@ -1214,6 +1261,8 @@
       splits: splits,
       delta: totalBack,          // 退款总额（非零！）
       totalDelta: 0,             // 总额变化量：排除成员不改总额 → 恒为 0
+      // 同 reestimate：splits 是原币金额，汇率必须沿用原账单快照
+      rate: Number(bill && bill.rate) > 0 ? Number(bill.rate) : 1,
       summary: '退还 ' + (names.join('、') || '部分成员') + ' 合计 ¥' + totalBack.toFixed(2) +
         '，退回垫付人 ' + payName,
       createdAt: opts.ts || new Date().toISOString()
@@ -1358,7 +1407,10 @@
       zeroSum: Math.abs(delta) < 0.005,
       amount: 0,
       currency: (oldBill && oldBill.currency) || 'CNY',
-      rate: 1,
+      // ⚠️ 汇率必须沿用**原账单的快照汇率**：调整单的 splits 是原币金额，
+      //    若这里写 1，结算时会把"800 日元"当成"800 元人民币"，
+      //    凭空多出近 20 倍（曾因此让净余额合计残留 -761.6）。
+      rate: Number(oldBill && oldBill.rate) > 0 ? Number(oldBill.rate) : 1,
       cnyAmount: 0,
       description: (kind === 'fill' ? '补记金额 · ' : '暂估改价 · ') +
         (oldBill && oldBill.description ? oldBill.description + ' ' : '') +
@@ -1433,7 +1485,11 @@
 
     // 调整单：全部计入有效份额（不依赖 adjustsBillId 是否填写，避免漏算）
     adjust.forEach(function (a) {
-      addShares(a.splits, 1);
+      // 调整单的 splits 与它所属基础账单**同币种口径** → 用基础账单的汇率折算；
+      // 找不到基础账单时退回用调整单自身汇率（此时它是独立一笔）。
+      var owner = normal.filter(function (b) { return (b.id || b._id) === a.adjustsBillId; })[0];
+      var useRate = owner ? owner.rate : a.rate;
+      addShares(a.splits, useRate);
 
       // 只有"总额真的变了"的调整单才会改变实付：
       //   暂估改价 3200→3560：垫付人后来又补付 360 → 实付 3560
@@ -1546,13 +1602,15 @@
    */
   function isSettleable(bill) {
     if (!bill) return false;
+    // 调整单（多退少补 / 暂估改价）必须参与结算 —— 它的 splits 承载"重新分配"，
+    // 而 amount 恒为 0。若不先放行，会因下面的"金额为 0"判断被误杀，
+    // 导致调整完全失效（demo 里曾因此在账单页看到调整单却结算不动）。
+    if (bill.isAdjustment) return !bill.voided;
     if (bill.status === 'draft' || bill.status === 'placeholder') return false;
     if (bill.needsCompletion) return false;
     if (bill.voided) return false;
-    var amt = Number(bill.amount) || 0;
-    // 占位单金额可能为 0；正常账单必须有金额
-    if (amt <= 0 && !bill.isAdjustment) return false;
-    return true;
+    // 普通账单金额为 0 视为未记清，不参与结算
+    return (Number(bill.amount) || 0) > 0;
   }
 
   /**
@@ -1776,6 +1834,7 @@
     cnNumToNumber: cnNumToNumber,
     normalizeSpeech: normalizeSpeech,
     getRates: getRates,
+    getRate: getRate,
     setRates: setRates,
     toCNY: toCNY,
     billCNY: billCNY,
