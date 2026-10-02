@@ -1186,6 +1186,62 @@
   }
 
   /**
+   * 人情账 / 私账：只统计"某个人自己花的、不进 AA 的钱"。
+   *
+   * 场景（用户明确提出的需求）：
+   *   买瓶水、随手买的小零食这类小钱，不值得拉进 AA 让大家互相找补，
+   *   但自己想知道"这趟我到底花了多少"。于是它不该进集体账，
+   *   却应该累计到本人的"我花了多少"。
+   *
+   * 与「请客」的区别（两者都表现为付款人全额承担，但语义不同）：
+   *   · 请客  scope='group'    → 仍是集体消费，只是某人买单；计入房间总消费
+   *   · 私账  scope='personal' → 个人消费，与别人无关；**不计入房间总消费**
+   * 判定优先级：bill.scope 显式声明 > isSoleBill(bill) 推断。
+   *
+   * @param {Array}  bills    全部账单
+   * @param {string} [userId] 只看某人的私账；不传则统计所有人的
+   * @returns {Object} { list, total(人民币), count, byMember }
+   */
+  function personalSpend(bills, userId) {
+    var list = (bills || []).filter(function (b) {
+      if (!b || b.isAdjustment) return false;
+      if (!isSettleable(b)) return false;
+      var scope = b.scope || (isSoleBill(b) ? 'personal' : 'group');
+      if (scope !== 'personal') return false;
+      if (userId == null) return true;
+      return b.payer === userId;
+    });
+
+    var total = round2(list.reduce(function (s, b) { return s + billCNY(b); }, 0));
+    var byMember = {};
+    list.forEach(function (b) {
+      var k = b.payer || '未知';
+      if (!byMember[k]) byMember[k] = { count: 0, total: 0 };
+      byMember[k].count += 1;
+      byMember[k].total = round2(byMember[k].total + billCNY(b));
+    });
+
+    return { list: list, total: total, count: list.length, byMember: byMember };
+  }
+
+  /**
+   * 集体账（AA 口径）：房间总消费只统计这部分 —— 私账不计入，
+   * 否则"这次旅行花了多少"会被个人消费撑虚。
+   */
+  function groupSpend(bills) {
+    var list = (bills || []).filter(function (b) {
+      if (!b || b.isAdjustment || !isSettleable(b)) return false;
+      var scope = b.scope || (isSoleBill(b) ? 'personal' : 'group');
+      return scope === 'group';
+    });
+    return {
+      list: list,
+      total: round2(list.reduce(function (s, b) { return s + billCNY(b); }, 0)),
+      count: list.length
+    };
+  }
+
+  /**
    * 多退少补：把某账单里"并未参与"的人从分摊中剔除，并要求其退款。
    *
    * 语义（零和）：退出者**退还自己的那份**，钱**退给当初垫付的人**。
@@ -1850,6 +1906,8 @@
     applyRoundingLoss: applyRoundingLoss,
     buildSoleSplits: buildSoleSplits,
     isSoleBill: isSoleBill,
+    personalSpend: personalSpend,
+    groupSpend: groupSpend,
     buildAdjustmentForExclusion: buildAdjustmentForExclusion,
     buildAdjustmentForReestimate: buildAdjustmentForReestimate,
     validateAdjustments: validateAdjustments,

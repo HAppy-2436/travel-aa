@@ -515,6 +515,80 @@ function mb(bills) { return AI.netBalances(bills, MEMBERS); }
       nb.balances.filter((b) => b.memberId === 'u1')[0].amount);
   })();
 
+  /* ---------- A9 人情账 / 私账 ---------- */
+  section('A9 人情账（私账）：小钱不进 AA，但自己知道花了多少');
+  (function () {
+    const sole = (payer, amount, desc) => mkBill({
+      id: 'p_' + payer + '_' + amount, payer, payerName: '', amount, description: desc,
+      category: 'other', splitType: 'sole', scope: 'personal',
+      splits: AI.buildSoleSplits({ payer, payerName: '', amount }, MEMBERS),
+    });
+    const treat = (payer, amount, desc) => mkBill({
+      id: 't_' + payer + '_' + amount, payer, payerName: '', amount, description: desc,
+      category: 'food', splitType: 'treat', scope: 'group',
+      splits: AI.buildSoleSplits({ payer, payerName: '', amount }, MEMBERS),
+    });
+
+    // 小明：一笔 AA 打车 + 两笔私账小钱；小红：一笔 AA；小李：一笔请客
+    const aa = mkBill({ id: 'aa', payer: 'u1', payerName: '小明', amount: 300, description: '打车',
+      category: 'transport', splits: equalSplits(300, MEMBERS) });
+    const bills = [
+      aa,
+      sole('u1', 18, '买瓶水'),
+      sole('u1', 42, '随手买的零食'),
+      mkBill({ id: 'bb', payer: 'u2', payerName: '小红', amount: 200, description: '午餐',
+        category: 'food', splits: equalSplits(200, MEMBERS) }),
+      treat('u3', 600, '我请大家吃烤肉'),
+    ];
+
+    const mine = AI.personalSpend(bills, 'u1');
+    ok('小明的私账 = 18 + 42 = 60', mine.total === 60, String(mine.total));
+    ok('小明的私账 2 笔', mine.count === 2, String(mine.count));
+    ok('私账明细含「买瓶水」', mine.list.some((b) => b.description === '买瓶水'));
+
+    ok('小红没有私账（只统计本人）', AI.personalSpend(bills, 'u2').total === 0);
+    ok('不传 userId 时统计全部私账 = 60', AI.personalSpend(bills).total === 60,
+      String(AI.personalSpend(bills).total));
+
+    const g = AI.groupSpend(bills);
+    ok('★ 集体账 = 300 + 200 + 600 = 1100（私账不计入）', g.total === 1100, String(g.total));
+    ok('★ 集体账笔数 = 3（两笔私账被排除）', g.count === 3, String(g.count));
+    ok('★ 请客仍算集体消费（它只是某人买单）', g.list.some((b) => b.id === 't_u3_600'));
+
+    // 关键：私账不能影响别人欠多少
+    const net = {};
+    AI.netBalances(bills, MEMBERS).balances.forEach((b) => { net[b.memberId] = b.amount; });
+    const netNo = {};
+    AI.netBalances(bills.filter((b) => !(AI.isSoleBill(b) && b.scope !== 'group')), MEMBERS)
+      .balances.forEach((b) => { netNo[b.memberId] = b.amount; });
+    ok('★ 私账不改变任何人的净余额（欠款与私账无关）',
+      MEMBERS.every((m) => Math.abs((net[m.id] || 0) - (netNo[m.id] || 0)) < 0.01),
+      JSON.stringify(net) + ' vs ' + JSON.stringify(netNo));
+    ok('★ 含私账时账仍恒平', AI.netBalances(bills, MEMBERS).balanced === true, JSON.stringify(net));
+
+    // 单独一笔私账：谁都不欠
+    const only = AI.netBalances([sole('u1', 25, '矿泉水')], MEMBERS);
+    ok('★ 只记一笔私账 → 所有人净余额为 0（谁都不欠）',
+      only.balances.every((b) => Math.abs(b.amount) < 0.01), JSON.stringify(only.balances));
+
+    // scope 推断：没显式写 scope 的 sole 账单也按私账处理
+    const inferred = mkBill({ id: 'inf', payer: 'u1', amount: 30, description: '没写scope',
+      splitType: 'sole', splits: AI.buildSoleSplits({ payer: 'u1', amount: 30 }, MEMBERS) });
+    delete inferred.scope;
+    ok('未显式声明 scope 时也按 sole 推断为私账', AI.personalSpend([inferred], 'u1').total === 30,
+      String(AI.personalSpend([inferred], 'u1').total));
+
+    // 外币私账按快照汇率折算
+    const jpyP = mkBill({ id: 'jp', payer: 'u1', amount: 2000, currency: 'JPY', rate: AI.getRate('JPY'),
+      cnyAmount: AI.toCNY(2000, 'JPY'), description: '自动贩卖机', splitType: 'sole', scope: 'personal',
+      splits: AI.buildSoleSplits({ payer: 'u1', amount: 2000 }, MEMBERS) });
+    ok('外币私账按快照汇率折算人民币（2000 JPY → ¥96）',
+      AI.personalSpend([jpyP], 'u1').total === 96, String(AI.personalSpend([jpyP], 'u1').total));
+
+    ok('空账单不崩', AI.personalSpend([], 'u1').total === 0 && AI.groupSpend([]).total === 0);
+    ok('占位单不计入私账', AI.personalSpend([AI.buildPlaceholder({})], 'u1').count === 0);
+  })();
+
   /* ---------- Z 账恒平总闸 ---------- */
   section('Z 账恒平总闸（A1~A6 全部混用后仍严格为 0）');
   (function () {

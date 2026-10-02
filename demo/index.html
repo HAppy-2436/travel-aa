@@ -370,8 +370,18 @@ function roomBills(roomId) {
   return State.bills.filter(function (b) { return b.roomId === roomId; });
 }
 
+/* 房间「集体消费」：只统计 AA 部分 —— 私账（人情账）不计入，
+   否则"这次旅行花了多少"会被个人消费撑虚。 */
 function roomTotalCNY(roomId) {
-  return roomBills(roomId).reduce(function (s, b) { return s + billCNY(b); }, 0);
+  var bills = roomBills(roomId);
+  if (AI && AI.groupSpend) return AI.groupSpend(bills).total;
+  return bills.reduce(function (s, b) { return s + billCNY(b); }, 0);
+}
+
+/* 某人在本房间的「我的私账」合计（人民币）—— 他想知道"这些零碎我到底花了多少" */
+function myPersonalCNY(userId, roomId) {
+  if (!AI || !AI.personalSpend) return 0;
+  return AI.personalSpend(roomBills(roomId), userId).total;
 }
 
 /* 统一构造账单：补全多币种快照、来源、时间（统计页按天聚合依赖 createdAt）
@@ -416,6 +426,10 @@ function makeBill(room, opts) {
     description: opts.description || '消费',
     category: opts.category || 'food',
     splitType: opts.splitType || 'equal',
+    // scope 区分「集体账」与「个人私账（人情账）」：
+    // 两者都由付款人全额承担，但私账不计入房间总消费，只累计到本人的"我花了多少"。
+    // 请客 = group（仍是集体消费，只是某人买单）；私账 = personal。
+    scope: opts.scope || (opts.splitType === 'sole' ? 'personal' : 'group'),
     splits: splits,
     source: opts.source || 'manual',
     roundedLoss: opts.roundedLoss || 0,
@@ -559,7 +573,14 @@ function renderRoomDetail(userId,roomId){
     else if(level==='warn')html+='<div class="bal warn">⚠️ 已用 '+(pct||0).toFixed(0)+'%'+(bs&&bs.willExceed?'，按当前速度将超支':'，注意控制消费')+'</div>';
     else html+='<div class="bal safe">✅ 预算内'+(bs&&bs.safeDaily&&bs.days?((' · 剩余 '+bs.days+' 天，日均可用 ¥'+money(bs.safeDaily,0))):(' · 剩余 ¥'+money(totalBudget-totalSpent,0)))+'</div>';
   }
-  html+='<div class="og"><div class="oi"><div class="ol">TOTAL / 合计</div><div class="ov">¥'+money(totalSpent,0)+'</div></div><div class="oi"><div class="ol">BILLS</div><div class="ov sm">'+bills.length+'</div></div><div class="oi"><div class="ol">MEMBERS</div><div class="ov sm">'+room.members.length+'</div></div><div class="oi"><div class="ol">CODE</div><div class="ov sm">'+room.code+'</div></div></div>';
+  html+='<div class="og"><div class="oi"><div class="ol">TOTAL / 集体账</div><div class="ov">¥'+money(totalSpent,0)+'</div></div><div class="oi"><div class="ol">BILLS</div><div class="ov sm">'+bills.length+'</div></div><div class="oi"><div class="ol">MEMBERS</div><div class="ov sm">'+room.members.length+'</div></div><div class="oi"><div class="ol">CODE</div><div class="ov sm">'+room.code+'</div></div></div>';
+  /* 我的私账（人情账）：只有本人看得到自己那些"没进 AA 的零碎钱"总共花了多少 */
+  var myP = myPersonalCNY(userId, roomId);
+  if (myP > 0) {
+    var pInfo = AI.personalSpend(bills, userId);
+    html+='<div class="os" style="margin-top:-6px;border-color:var(--g300);"><span>🙋</span><span>另：<b>我的私账</b> ¥'+money(myP)+
+      '（'+pInfo.count+' 笔，未计入 AA，只有你可见）</span></div>';
+  }
   if(hasForeign)html+='<div class="os" style="margin-top:-12px;"><span>💱</span><span>含外币账单，已按记账时汇率快照折算为人民币</span></div>';
   html+='<div class="sh"><div class="st">成员</div><div class="sc">'+room.members.length+' PEOPLE</div></div><div class="mnames">';
   room.members.forEach(function(m){html+='<div class="mname '+(m.id===userId?'ac':'')+'">'+esc(m.name)+(m.id===userId?' · 我':'')+'</div>';});
@@ -579,7 +600,9 @@ function renderRoomDetail(userId,roomId){
   else{bills.slice().reverse().forEach(function(b){
     var amountHtml='¥'+money(b.amount,0);
     if(b.currency&&b.currency!=='CNY')amountHtml=b.currency+' '+money(b.amount,0)+'<div style="font-size:9px;color:var(--g400);font-weight:500;">≈¥'+money(b.cnyAmount,0)+'</div>';
-    html+='<div class="br"><div class="bi">'+getCatIcon2(b.category)+'</div><div class="bin"><div class="bn">'+esc(b.description)+'</div><div class="bm">'+esc(b.payerName)+' · '+(b.timeStr||'刚刚')+' · '+sourceLabel(b.source)+'</div></div><div class="ba">'+amountHtml+'</div><div class="bd" onclick="askDeleteBill(\''+userId+'\',\''+b.id+'\',\''+esc(b.description)+'\')">✕</div></div>';
+    var isP=(b.scope||(b.splitType==='sole'?'personal':'group'))==='personal';
+    var tag=isP?'<span style="display:inline-block;margin-left:5px;padding:1px 6px;border-radius:100px;background:var(--g100);color:var(--g500);font-size:8.5px;font-weight:600;vertical-align:middle;">私账</span>':'';
+    html+='<div class="br"><div class="bi">'+getCatIcon2(b.category)+'</div><div class="bin"><div class="bn">'+esc(b.description)+tag+'</div><div class="bm">'+esc(b.payerName)+' · '+(b.timeStr||'刚刚')+' · '+sourceLabel(b.source)+'</div></div><div class="ba">'+amountHtml+'</div><div class="bd" onclick="askDeleteBill(\''+userId+'\',\''+b.id+'\',\''+esc(b.description)+'\')">✕</div></div>';
   });}
   return html;
 }
@@ -593,12 +616,32 @@ function sourceLabel(src){
    ============================================================ */
 function renderStats(userId,roomId){
   var room=State.rooms.find(function(r){return r.id===roomId});
-  var bills=room?State.bills.filter(function(b){return b.roomId===roomId}):State.bills;
+  var allBills=room?State.bills.filter(function(b){return b.roomId===roomId}):State.bills;
   var scopeName=room?room.name:'全部旅行';
-  if(!bills.length)return '<div class="em"><div class="ei">📊</div><div class="et">还没有数据</div><div class="es">先记几笔账再来看统计</div></div>';
+  if(!allBills.length)return '<div class="em"><div class="ei">📊</div><div class="et">还没有数据</div><div class="es">先记几笔账再来看统计</div></div>';
+  /* 统计口径：默认只看「集体账」；私账（人情账）单独一块，不混进总消费 */
+  var bills=allBills.filter(function(b){return !AI||!AI.isSoleBill||!AI.isSoleBill(b)});
   var total=bills.reduce(function(s,b){return s+billCNY(b)},0);
+  var me=USERS.filter(function(x){return x.id===userId})[0];
+  var myP=AI&&AI.personalSpend?AI.personalSpend(allBills,userId):{total:0,count:0,list:[]};
   var html='<div class="hs" style="padding:8px 0 14px;"><div class="hl">SPENDING REPORT</div><div class="ht">消费统计</div><div style="font-size:10.5px;color:var(--g400);margin-top:4px;">'+esc(scopeName)+'</div></div>';
-  html+='<div class="og"><div class="oi"><div class="ol">TOTAL / 总消费</div><div class="ov">¥'+money(total,0)+'</div></div><div class="oi"><div class="ol">BILLS / 笔数</div><div class="ov sm">'+bills.length+'</div></div></div>';
+  html+='<div class="og"><div class="oi"><div class="ol">TOTAL / 集体账</div><div class="ov">¥'+money(total,0)+'</div></div><div class="oi"><div class="ol">BILLS / 笔数</div><div class="ov sm">'+bills.length+'</div></div></div>';
+
+  /* ---- 我的私账（人情账）：不进 AA 的零碎钱，只有本人可见 ---- */
+  if(myP.count>0){
+    var allIn=total+myP.total;
+    html+='<div class="sh" style="margin-top:16px;"><div class="st">我的私账</div><div class="sc">PERSONAL · 仅你可见</div></div>';
+    html+='<div class="mbi" style="background:#18181b;color:#fff;border:none;">';
+    html+='<div style="font-size:10px;letter-spacing:1.6px;color:rgba(255,255,255,.45);">'+(me?esc(me.name):'我')+' 自己花的</div>';
+    html+='<div style="font-family:Space Grotesk,sans-serif;font-size:26px;font-weight:700;letter-spacing:-1px;margin-top:4px;">¥'+money(myP.total)+'</div>';
+    html+='<div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:6px;">'+myP.count+' 笔零碎 · 不进 AA、不影响别人</div>';
+    html+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.12);font-size:11px;color:rgba(255,255,255,.8);">这次旅行我总共花了　<b style="font-size:15px;">¥'+money(allIn)+'</b><br><span style="color:rgba(255,255,255,.5);font-size:10px;">= 集体账分摊后的个人部分 + 私账</span></div>';
+    html+='</div>';
+    html+='<div style="margin-top:10px;font-size:10px;color:var(--g400);line-height:1.6;">明细：';
+    myP.list.slice(-6).forEach(function(b){html+='「'+esc(b.description)+'」'+curSym(b.currency)+money(b.amount,0)+'　';});
+    if(myP.count>6)html+='… 等 '+myP.count+' 笔';
+    html+='</div>';
+  }
 
   /* 分类占比 */
   var byCat={};bills.forEach(function(b){var c=b.category||'other';byCat[c]=(byCat[c]||0)+billCNY(b);});
@@ -657,71 +700,113 @@ function renderAddBill(userId,roomId){
   var ai=u._ai;var aiText=u._aiText||'';
   var html='';
 
-  /* ---- AI 一句话记账 ---- */
-  html+='<div class="amb"><div class="aml">AI 一句话记账 / SAY IT</div>';
+  /* ============================================================
+     记账页设计原则（重要，别改回"表单堆料"）：
+       一句话是**主入口**；金额/说明/分类/付款人/分摊 全部有合理默认值，
+       用户不需要逐个确认。非常用能力（币种/分类/分摊方式/抹零）收进
+       「更多选项」，默认收起 —— 一次记账要做的决定从 ~24 个降到 ~5 个。
+     ============================================================ */
+
+  /* ---- ① 一句话记账（主入口） ---- */
+  html+='<div class="amb"><div class="aml">说一句就能记 / SAY IT</div>';
   html+='<input class="fi" placeholder="如：打车去机场86块，我垫的，和小红平分" value="'+esc(aiText)+'" oninput="updateAiText(\''+userId+'\',this.value)" onkeydown="aiKeydown(event,\''+userId+'\')">';
   html+='<div style="display:flex;gap:6px;margin-top:10px;">';
-  html+='<button class="btn lt" style="flex:1;font-size:11px;padding:12px 8px;white-space:nowrap;" onclick="startVoiceInput(\''+userId+'\')">'+(u._listening?'🎙️ 聆听中':'🎙️ 语音')+'</button>';
-  html+='<button class="btn lt" style="flex:1;font-size:11px;padding:12px 8px;white-space:nowrap;" onclick="aiUseSample(\''+userId+'\')">💡 换例子</button>';
-  html+='<button class="btn dk" style="flex:1.25;font-size:11px;padding:12px 8px;white-space:nowrap;" onclick="aiParseBill(\''+userId+'\')">🤖 AI 识别</button>';
+  html+='<button class="btn lt" style="flex:.85;font-size:11px;padding:12px 6px;white-space:nowrap;" onclick="startVoiceInput(\''+userId+'\')">'+(u._listening?'🎙️ 聆听中':'🎙️ 语音')+'</button>';
+  html+='<button class="btn dk" data-act="ai-parse" style="flex:1.5;font-size:11.5px;padding:12px 6px;white-space:nowrap;" onclick="aiParseBill(\''+userId+'\')">🤖 智能填表</button>';
+  html+='<button class="btn lt" style="flex:.85;font-size:11px;padding:12px 6px;white-space:nowrap;" onclick="aiUseSample(\''+userId+'\')">💡 例子</button>';
   html+='</div>';
   if(ai&&ai.parsed){
     var p=ai.parsed;
     html+='<div class="mbi" style="margin-top:12px;">';
-    html+='<div class="mbt">'+(p.success?'✅ 已解析为账单':'⚠️ 仅识别到部分字段')+'</div>';
-    html+='<div class="mbs">可信度 '+p.confidence+'%'+(p.currency&&p.currency!=='CNY'?' · 币种 '+p.currency:'')+'</div>';
-    html+='<div class="mbr"><span>金额</span><span>'+(p.amount==null?'—':'¥'+money(p.amount))+'</span></div>';
-    html+='<div class="mbr"><span>说明</span><span>'+(p.description||'—')+'</span></div>';
-    html+='<div class="mbr"><span>分类</span><span>'+catLabel(p.category)+'</span></div>';
-    html+='<div class="mbr"><span>付款人</span><span>'+(p.payerName||'—')+'</span></div>';
-    html+='<div class="mbr"><span>分摊</span><span>'+(p.splitType==='treat'?'请客':'AA · '+p.splitWith.length+'人')+'</span></div>';
+    html+='<div class="mbt">'+(p.success?'✅ 已填好，确认即可':'⚠️ 只认出部分，请补一下')+'</div>';
+    html+='<div class="mbs">可信度 '+p.confidence+'%'+(p.currency&&p.currency!=='CNY'?' · '+p.currency:'')+' · 下面可改</div>';
     html+='</div>';
   }
   html+='</div>';
 
-  /* ---- 金额 + 币种 ---- */
-  html+='<div class="amb"><div class="aml">消费金额 / AMOUNT</div><div class="air"><span class="acu">'+curSym(form.currency)+'</span><input class="ain" type="text" placeholder="0.00" value="'+esc(form.amount)+'" oninput="updateForm(\''+userId+'\',\'amount\',this.value)"></div>';
+  /* ---- ② 金额（唯一的必填项） ---- */
+  html+='<div class="amb"><div class="aml">多少钱 / AMOUNT</div><div class="air"><span class="acu">'+curSym(form.currency)+'</span><input class="ain" type="text" placeholder="0.00" value="'+esc(form.amount)+'" oninput="updateForm(\''+userId+'\',\'amount\',this.value)"></div>';
   if(form.currency!=='CNY'){
-    html+='<div style="margin-top:10px;font-family:Space Grotesk,sans-serif;font-size:11px;color:var(--g400);">≈ ¥'+money((Number(form.amount)||0)*rateOf(form.currency))+' · 按记账时汇率快照 '+rateOf(form.currency)+' 折算</div>';
-  }
-  /* 智能抹零：出境游真实需求（日币 12780 想记成 12800 好算），差额进「抹零损耗」 */
-  var rnd=AI?AI.smartRound(Number(form.amount)||0,form.currency):null;
-  html+='<div style="margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">';
-  if(rnd&&rnd.changed){
-    html+='<button class="btn lt" style="padding:9px 14px;font-size:12px;" onclick="roundAmount(\''+userId+'\')">✨ 抹零到 '+curSym(form.currency)+rnd.rounded+'</button>';
-    html+='<span style="font-family:Space Grotesk,sans-serif;font-size:10.5px;color:var(--g400);">差额 '+(rnd.loss>0?'+':'')+money(rnd.loss)+' 计入「抹零损耗」</span>';
-  }else if(Number(form.amount)>0){
-    html+='<span style="font-family:Space Grotesk,sans-serif;font-size:10.5px;color:var(--grn);">✅ 已是顺手整数，无需抹零</span>';
-  }else{
-    html+='<span style="font-family:Space Grotesk,sans-serif;font-size:10.5px;color:var(--g400);">填入金额后，可一键抹零到'+AI.roundStepOf(form.currency)+'的整数倍</span>';
+    html+='<div style="margin-top:8px;font-size:10.5px;color:var(--g400);">≈ ¥'+money((Number(form.amount)||0)*rateOf(form.currency))+'（按记账时汇率 '+rateOf(form.currency)+' 快照）</div>';
   }
   html+='</div>';
-  html+='<div class="fl" style="margin-top:16px;">币种 / CURRENCY</div><div class="pm">';
-  CURRENCIES.forEach(function(c){
-    html+='<div class="pi '+(form.currency===c.code?'act':'')+'" onclick="selectCurrency(\''+userId+'\',\''+c.code+'\')">'+c.label+'</div>';
+
+  /* ---- ③ 说明（选填，留空就用分类名） ---- */
+  html+='<div class="fg"><div class="fl">买了什么 <span style="color:var(--g300);font-weight:400;">选填</span></div><input class="fi" placeholder="如：晚餐、打车、门票" value="'+esc(form.desc)+'" oninput="updateForm(\''+userId+'\',\'desc\',this.value)"></div>';
+
+  /* ---- ④ 归属：AA 还是我的私账（一句话说清，不给术语） ---- */
+  var isPersonal=form.splitType==='sole';
+  html+='<div class="fg"><div class="fl">算谁的</div><div class="pm">';
+  html+='<div class="pi '+(!isPersonal?'act':'')+'" onclick="setOwnership(\''+userId+'\',\'aa\')">👥 大家 AA</div>';
+  html+='<div class="pi '+(isPersonal?'act':'')+'" onclick="setOwnership(\''+userId+'\',\'personal\')">🙋 我的私账</div>';
+  html+='</div>';
+  html+='<div style="margin-top:8px;font-size:10.5px;color:var(--g400);line-height:1.6;">'+
+    (isPersonal
+      ? '🙋 <b style="color:var(--g500);">私账</b>：只有你花钱、只有你看得到小计，<b style="color:var(--g500);">不进 AA、不影响别人</b>，但会累计到你的「我花了多少」。'
+      : '👥 <b style="color:var(--g500);">AA</b>：按下面的分摊方式计入集体账，结算时互相找补。')+
+    '</div></div>';
+
+  /* ---- ⑤ 付款人（默认我，才需要时改） ---- */
+  html+='<div class="fg"><div class="fl">谁付的 <span style="color:var(--g300);font-weight:400;">默认我</span></div><div class="pm">';
+  room.members.forEach(function(m){
+    html+='<div class="pi '+(form.payer===m.id?'act':'')+'" onclick="updateForm(\''+userId+'\',\'payer\',\''+m.id+'\');renderApp(USERS.find(function(u){return u.id==\''+userId+'\'}))">'+esc(m.name)+(m.id===userId?' · 我':'')+'</div>';
   });
   html+='</div></div>';
 
-  /* ---- 说明 / 分类 / 付款人 / 分摊 ---- */
-  html+='<div class="fg"><div class="fl">消费说明</div><input class="fi" placeholder="如：晚餐、打车、门票" value="'+esc(form.desc)+'" oninput="updateForm(\''+userId+'\',\'desc\',this.value)"></div>';
-  html+='<div class="fg"><div class="fl">消费分类</div><div class="pm">';
-  CATS.forEach(function(c){
-    html+='<div class="pi '+(form.category===c[0]?'act':'')+'" onclick="updateForm(\''+userId+'\',\'category\',\''+c[0]+'\');renderApp(USERS.find(function(u){return u.id==\''+userId+'\'}))">'+c[1]+'</div>';
-  });
-  html+='</div></div><div class="fg"><div class="fl">付款人</div><div class="pm">';
-  room.members.forEach(function(m){
-    html+='<div class="pi '+(form.payer===m.id?'act':'')+'" onclick="updateForm(\''+userId+'\',\'payer\',\''+m.id+'\');renderApp(USERS.find(function(u){return u.id==\''+userId+'\'}))">'+esc(m.name)+'</div>';
-  });
-  html+='</div></div><div class="fg"><div class="fl">分摊方式</div><div class="pm">';
-  [['equal','⚖️ 均分'],['treat','🎁 请客'],['sole','🙋 不参与AA']].forEach(function(c){
-    html+='<div class="pi '+(form.splitType===c[0]?'act':'')+'" onclick="updateForm(\''+userId+'\',\'splitType\',\''+c[0]+'\');renderApp(USERS.find(function(u){return u.id==\''+userId+'\'}))">'+c[1]+'</div>';
-  });
-  html+='</div>';
-  if(form.splitType==='sole'){
-    html+='<div style="margin-top:8px;font-size:10.5px;color:var(--g400);line-height:1.6;">代购 / 私人消费：这笔由付款人自己承担，<b style="color:var(--g500);">不计入其他人的 AA 分摊</b>。</div>';
+  /* ---- ⑥ 更多选项（默认收起：分类 / 分摊方式 / 币种 / 抹零） ---- */
+  var adv=!!u._adv;
+  html+='<button class="btn lt" style="width:100%;margin-top:16px;font-size:12px;" onclick="toggleAdv(\''+userId+'\')">'+
+    (adv?'▲ 收起更多选项':'▼ 更多选项（分类 · 分摊方式 · 币种 · 抹零）')+'</button>';
+
+  if(adv){
+    html+='<div class="fg" style="margin-top:14px;"><div class="fl">消费分类</div><div class="pm">';
+    CATS.forEach(function(c){
+      html+='<div class="pi '+(form.category===c[0]?'act':'')+'" onclick="updateForm(\''+userId+'\',\'category\',\''+c[0]+'\');renderApp(USERS.find(function(u){return u.id==\''+userId+'\'}))">'+c[1]+'</div>';
+    });
+    html+='</div></div>';
+
+    /* 分摊方式：AA 归属下才有意义 */
+    if(!isPersonal){
+      html+='<div class="fg"><div class="fl">怎么分</div><div class="pm">';
+      [['equal','⚖️ 均分'],['treat','🎁 我请客']].forEach(function(c){
+        html+='<div class="pi '+(form.splitType===c[0]?'act':'')+'" onclick="updateForm(\''+userId+'\',\'splitType\',\''+c[0]+'\');renderApp(USERS.find(function(u){return u.id==\''+userId+'\'}))">'+c[1]+'</div>';
+      });
+      html+='</div></div>';
+    }
+
+    /* 币种：只在实际用到时才需要 */
+    html+='<div class="fg"><div class="fl">币种</div><div class="pm">';
+    CURRENCIES.forEach(function(c){
+      html+='<div class="pi '+(form.currency===c.code?'act':'')+'" onclick="selectCurrency(\''+userId+'\',\''+c.code+'\')">'+c.label+'</div>';
+    });
+    html+='</div></div>';
+
+    /* 抹零：出境游凑整用，按当前金额给建议 */
+    var rnd=AI?AI.smartRound(Number(form.amount)||0,form.currency):null;
+    html+='<div class="fg"><div class="fl">抹零凑整 <span style="color:var(--g300);font-weight:400;">选填</span></div>';
+    if(rnd&&rnd.changed){
+      html+='<button class="btn lt" style="width:100%;font-size:12px;padding:12px;" onclick="roundAmount(\''+userId+'\')">✨ 凑成 '+curSym(form.currency)+rnd.rounded+'（差额 '+(rnd.loss>0?'+':'')+money(rnd.loss)+' 记进损耗）</button>';
+    }else if(Number(form.amount)>0){
+      html+='<div style="font-size:10.5px;color:var(--grn);">✅ '+curSym(form.currency)+form.amount+' 已经是顺手整数，不用凑</div>';
+    }else{
+      html+='<div style="font-size:10.5px;color:var(--g400);">填了金额后，可一键凑成 '+AI.roundStepOf(form.currency)+' 的整数倍</div>';
+    }
+    html+='</div>';
   }
-  html+='</div>';
+
   return html;
+}
+
+/* 归属切换：AA ↔ 我的私账（私账用 splitType='sole' 表达，后端/内核无需新字段） */
+function setOwnership(userId, kind){
+  var u=USERS.find(function(x){return x.id===userId});if(!u||!u._form)return;
+  u._form.splitType = (kind==='personal') ? 'sole' : 'equal';
+  renderApp(u);
+}
+/* 更多选项开合 */
+function toggleAdv(userId){
+  var u=USERS.find(function(x){return x.id===userId});if(!u)return;
+  u._adv=!u._adv;renderApp(u);
 }
 
 /* 智能抹零：把金额凑到该币种的顺手整数，差额交给「抹零损耗」 */
@@ -1913,11 +1998,14 @@ function runUITest() {
     add('记一笔：输入 → 提交 → 回房间', atAdd && billAdded && uiTitle('u1') === '房间详情',
       atAdd ? (billAdded ? ('¥' + State.bills[0].amount) : '账单未写入或金额错误') : '未进入记一笔页');
 
-    /* 4+. AI 一句话记账：真实点击「AI 识别」 */
+    /* 4+. AI 一句话记账：真实点击「智能填表」
+       用 data-act 稳定选择器，不按文案点 —— 文案会改，测试不该跟着断 */
     goPhone('u1', 'add');
     USERS[0]._aiText = '打车去机场86块，我垫的，和小红平分';
     setInput('#app-u1 .amb .fi', '打车去机场86块，我垫的，和小红平分');
-    clickByText('#app-u1 .amb', 'AI 识别');
+    var aiBtn = document.querySelector('#app-u1 [data-act="ai-parse"]');
+    if (!aiBtn) aiBtn = clickByText('#app-u1 .amb', '智能填表') || clickByText('#app-u1 .amb', 'AI 识别');
+    else aiBtn.click();
     var aiFilled = USERS[0]._form && String(USERS[0]._form.amount) === '86';
     add('AI 记账：输入一句话 → 点识别 → 自动填表', aiFilled,
       aiFilled ? ('金额 ¥' + USERS[0]._form.amount + ' · 分类 ' + USERS[0]._form.category) : '未填入金额');
@@ -2120,6 +2208,24 @@ function runUITest() {
       USERS.slice(0, State.phoneCount).some(function (u) { return !!CAPTION[u.id]; }) ||
       typeof setCaption === 'function',
       '字幕条 #cap-* 已就绪');
+
+    /* 19. 记账页必须保持"简单"：非常用控件默认收起
+       —— 守护这次简化，避免以后又被堆成表单墙 */
+    goPhone('u1', 'add');
+    if (USERS[0]) USERS[0]._adv = false;
+    renderApp(USERS[0]);
+    var addApp = document.querySelector('#app-u1');
+    var chips = addApp.querySelectorAll('.pi').length;
+    add('★ 记一笔页默认不堆控件（可选 chips ≤ 6）', chips <= 6, chips + ' 个可选项');
+    var hasAdvToggle = !!clickByText('#app-u1', '更多选项');
+    add('★ 记一笔页有「更多选项」折叠入口', hasAdvToggle);
+    add('★ 归属用大白话（大家 AA / 我的私账），不出现术语',
+      /大家 AA/.test(addApp.textContent) && /我的私账/.test(addApp.textContent));
+
+    /* 20. 人情账（私账）要真的进统计 */
+    var meP = AI.personalSpend(State.bills.filter(function (b) { return b.roomId === State.rooms[0].id; }), 'u1');
+    add('★ 私账口径可用（能算出"我自己花了多少"）', typeof meP.total === 'number',
+      '私账 ¥' + meP.total + ' · ' + meP.count + ' 笔');
   } catch (e) {
     add('交互测试执行异常', false, e && e.message);
   }
