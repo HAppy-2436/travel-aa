@@ -1,0 +1,22 @@
+# 统一换行符：仓库内一律 LF，工作区按平台自动转换
+# 目的：Windows 开发 + Linux 部署（Docker/PM2）不会因为 CRLF 产生满屏假 diff，
+#      也避免 shell 脚本（deploy.sh）在容器里因 CRLF 报 `\r: command not found`。
+* text=auto eol=lf
+
+# 明确二进制，避免被当文本处理
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.zip   binary
+*.woff  binary
+*.woff2 binary
+
+# Shell / 部署脚本必须 LF
+*.sh       text eol=lf
+Dockerfile text eol=lf
+
+# Windows 批处理必须 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf

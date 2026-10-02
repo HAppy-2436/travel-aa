@@ -1,1 +1,21 @@
-{"name":"travel-aa","version":"2.0.0","private":true,"description":"TravelAA test harness deps","scripts":{"test":"node tests/ai.test.js && node tests/v2.test.js && node tests/demo.check.js"},"dependencies":{"jsdom":"^29.1.1"}}
+{
+  "name": "travel-aa",
+  "version": "2.1.0",
+  "private": true,
+  "description": "TravelAA · 旅行 AA 记账（携程高校 AI HACKATHON）——根级验收入口",
+  "scripts": {
+    "test": "node tests/run-all.js",
+    "test:core": "node tests/ai.test.js && node tests/v2.test.js",
+    "test:sync": "node tests/sync.test.js",
+    "test:paths": "node tests/requires.check.js",
+    "test:demo": "node tests/demo.check.js",
+    "test:server": "node tests/server.test.js",
+    "test:browser": "node tests/browser.check.js"
+  },
+  "dependencies": {
+    "jsdom": "^29.1.1"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
