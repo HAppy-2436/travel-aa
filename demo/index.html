@@ -14,8 +14,8 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:#ff
 .hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid rgba(255,255,255,0.05)}
 .hdr h1{font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.8px;background:linear-gradient(135deg,#fff 40%,rgba(255,255,255,0.5));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .hdr p{font-size:13px;color:rgba(255,255,255,0.3);margin-top:5px}
-.hdr-r{display:flex;gap:8px;align-items:center}
-.cb{padding:9px 18px;border:1px solid rgba(255,255,255,0.08);border-radius:100px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.7);font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1)}
+.hdr-r{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.cb{padding:9px 18px;border:1px solid rgba(255,255,255,0.08);border-radius:100px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.7);font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);white-space:nowrap}
 .cb:hover{background:rgba(255,255,255,0.08);color:#fff;transform:translateY(-1px)}
 .cb.pr{background:var(--pri);border-color:var(--pri);color:#fff;box-shadow:0 4px 16px rgba(255,107,53,.25)}
 .cb.act{border-color:rgba(255,107,53,.3);color:var(--pri)}
@@ -28,6 +28,13 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:#ff
 .pl{display:flex;align-items:center;gap:12px}
 .pn{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700}
 .pr2{font-size:10px;color:rgba(255,255,255,.3);background:rgba(255,255,255,.05);padding:3px 10px;border-radius:100px;margin-top:2px}
+/* 演示字幕：自动演示时标出"这一步在演示哪个功能"，让观众看得懂。
+   保持紧凑（不挤占舞台垂直空间，也不把工具栏顶到换行）。 */
+.cap{max-width:298px;margin:6px 0 0;padding:5px 11px;border-radius:100px;background:var(--pri);color:#fff;
+  font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:600;line-height:1.35;text-align:center;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  box-shadow:0 3px 12px rgba(255,107,53,.28);animation:capin .3s cubic-bezier(.4,0,.2,1)}
+@keyframes capin{from{opacity:0;transform:translateY(-5px) scale(.95)}to{opacity:1;transform:none}}
 .pf{width:320px;height:660px;background:#0c0c0c;border-radius:50px;padding:10px;position:relative;box-shadow:0 0 0 1.5px rgba(255,255,255,.1),0 30px 80px rgba(0,0,0,.6),0 10px 30px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.06)}
 .pn2{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:110px;height:26px;background:#0c0c0c;border-radius:0 0 16px 16px;z-index:20}
 .pn2::after{content:'';position:absolute;top:8px;right:20px;width:8px;height:8px;background:#1a1a2e;border-radius:50%}
@@ -473,9 +480,25 @@ function renderPhones(){
   for(var i=0;i<State.phoneCount;i++){
     var user=USERS[i];var phone=document.createElement('div');
     phone.className='pu';phone.id='phone-'+user.id;
-    phone.innerHTML='<div class="pl"><div><div class="pn" style="color:'+user.color+'">'+user.name+'</div><div class="pr2">'+user.role+'</div></div></div><div class="pf"><div class="pn2"></div><div class="pbt pw"></div><div class="pbt vu"></div><div class="pbt vd"></div><div class="ps"><div class="app" id="app-'+user.id+'"></div><div class="toast" id="toast-'+user.id+'"></div><div class="co" id="confirm-'+user.id+'"><div class="cb2"><div class="ci">🗑️</div><div class="ct" id="confirmTitle-'+user.id+'">删除账单？</div><div class="cd" id="confirmDesc-'+user.id+'">此操作不可撤销</div><div class="cbs"><button class="btn lt" onclick="cancelConfirm(\''+user.id+'\')">取消</button><button class="btn dg" onclick="doConfirm(\''+user.id+'\')">删除</button></div></div></div><div class="hi"></div></div></div>';
+    phone.innerHTML='<div class="pl"><div><div class="pn" style="color:'+user.color+'">'+user.name+'</div><div class="pr2">'+user.role+'</div></div></div><div class="cap" id="cap-'+user.id+'" style="display:none;"></div><div class="pf"><div class="pn2"></div><div class="pbt pw"></div><div class="pbt vu"></div><div class="pbt vd"></div><div class="ps"><div class="app" id="app-'+user.id+'"></div><div class="toast" id="toast-'+user.id+'"></div><div class="co" id="confirm-'+user.id+'"><div class="cb2"><div class="ci">🗑️</div><div class="ct" id="confirmTitle-'+user.id+'">删除账单？</div><div class="cd" id="confirmDesc-'+user.id+'">此操作不可撤销</div><div class="cbs"><button class="btn lt" onclick="cancelConfirm(\''+user.id+'\')">取消</button><button class="btn dg" onclick="doConfirm(\''+user.id+'\')">删除</button></div></div></div><div class="hi"></div></div></div>';
     stage.appendChild(phone);renderApp(user);
+    if (CAPTION[user.id]) setCaption(user.id, CAPTION[user.id]);
   }
+}
+
+/* 演示字幕条：自动演示时在手机上方打出"这一步在演示什么功能"
+   —— 观众看得到功能名，而不是只看到数据在变。 */
+var CAPTION = {};
+function setCaption(uid, text) {
+  CAPTION[uid] = text || '';
+  var el = document.getElementById('cap-' + uid);
+  if (el) {
+    el.textContent = CAPTION[uid];
+    el.style.display = CAPTION[uid] ? 'block' : 'none';
+  }
+}
+function clearCaptions() {
+  USERS.forEach(function (u) { setCaption(u.id, ''); });
 }
 
 function renderApp(user){
@@ -502,6 +525,8 @@ function renderApp(user){
   app.innerHTML=html;
   var overlay=document.getElementById('modal-'+user.id);
   if(overlay)overlay.addEventListener('click',function(e){if(e.target===overlay)closeModal(user.id)});
+  // 重渲染后把字幕补回来（app.innerHTML 会清掉它）
+  if (CAPTION[user.id]) setCaption(user.id, CAPTION[user.id]);
 }
 
 function renderHome(user,myRooms){
@@ -636,9 +661,9 @@ function renderAddBill(userId,roomId){
   html+='<div class="amb"><div class="aml">AI 一句话记账 / SAY IT</div>';
   html+='<input class="fi" placeholder="如：打车去机场86块，我垫的，和小红平分" value="'+esc(aiText)+'" oninput="updateAiText(\''+userId+'\',this.value)" onkeydown="aiKeydown(event,\''+userId+'\')">';
   html+='<div style="display:flex;gap:6px;margin-top:10px;">';
-  html+='<button class="btn lt" style="flex:1;" onclick="startVoiceInput(\''+userId+'\')">'+(u._listening?'🎙️ 聆听中…':'🎙️ 语音')+'</button>';
-  html+='<button class="btn lt" style="flex:1;" onclick="aiUseSample(\''+userId+'\')">💡 换个例子</button>';
-  html+='<button class="btn dk" style="flex:1.3;" onclick="aiParseBill(\''+userId+'\')">🤖 AI 识别</button>';
+  html+='<button class="btn lt" style="flex:1;font-size:11px;padding:12px 8px;white-space:nowrap;" onclick="startVoiceInput(\''+userId+'\')">'+(u._listening?'🎙️ 聆听中':'🎙️ 语音')+'</button>';
+  html+='<button class="btn lt" style="flex:1;font-size:11px;padding:12px 8px;white-space:nowrap;" onclick="aiUseSample(\''+userId+'\')">💡 换例子</button>';
+  html+='<button class="btn dk" style="flex:1.25;font-size:11px;padding:12px 8px;white-space:nowrap;" onclick="aiParseBill(\''+userId+'\')">🤖 AI 识别</button>';
   html+='</div>';
   if(ai&&ai.parsed){
     var p=ai.parsed;
@@ -1269,7 +1294,7 @@ function copySettle(userId,roomId){
 function closeModal(userId){var m=document.getElementById('modal-'+userId);if(m)m.classList.remove('show')}
 function addPhone(){if(State.phoneCount>=4){showToast('u1','最多 4 台手机（4 位成员）');return}State.phoneCount++;document.getElementById('phoneCountLabel').textContent=State.phoneCount;renderPhones()}
 function removePhone(){if(State.phoneCount<=1){showToast('u1','至少保留 1 台手机');return}State.phoneCount--;document.getElementById('phoneCountLabel').textContent=State.phoneCount;renderPhones()}
-function resetAll(){State.rooms=[];State.bills=[];State.nextRoomId=1;State.nextBillId=1;USERS.forEach(function(u){u._page='home';u._roomId=null;u._form=null;u._ai=null;u._aiText='';u._narr=null;u._narrLoading=false;u._listening=false;u._sampleIdx=null;u._visionResult=null});ocrState={};pendingDelete={};tourExit();closeSelfTest();renderPhones()}
+function resetAll(){State.rooms=[];State.bills=[];State.nextRoomId=1;State.nextBillId=1;USERS.forEach(function(u){u._page='home';u._roomId=null;u._form=null;u._ai=null;u._aiText='';u._narr=null;u._narrLoading=false;u._listening=false;u._sampleIdx=null;u._visionResult=null});ocrState={};pendingDelete={};if(typeof clearCaptions==='function')clearCaptions();tourExit();closeSelfTest();renderPhones()}
 
 /* ============================================================
    自动演示：分镜脚本（每一步都真实切页面，顶部字幕同步解说）
@@ -1283,15 +1308,26 @@ async function autoDemo() {
   var say = function (t) { var el = document.getElementById('hdrSub'); if (el) el.textContent = t; };
   var has = function (uid) { var i = USERS.findIndex(function (u) { return u.id === uid; }); return i >= 0 && i < State.phoneCount; };
   var HOME_SUB = '每个手机 = 一个真实用户 · 操作实时同步 · 展示多人AA完整流程';
+  var wantStage = null;
+  var sm = /[?&#]stage=(\d+)/.exec(location.href);
+  if (sm) wantStage = parseInt(sm[1], 10);
+  /* 定格：到达指定分镜后把字幕保留并停住，便于截图/讲解（?stage=N 或 #stage=N） */
+  var hold = function (n, uid, text) {
+    if (wantStage === n) {
+      setCaption(uid, text);
+      say('已在第 ' + n + ' 步定格（?stage=' + n + ' 可复现此画面）');
+      throw { __stageHold: true };
+    }
+  };
   try {
     resetAll();
     USERS.slice(0, State.phoneCount).forEach(function (u) { u._page = 'home'; u._roomId = null; });
     say('① 每台手机 = 一个真实用户 · 操作实时同步');
     await sleep(1200);
-
     /* ② 创建房间 → u1 切到房间详情页 */
     var demoRoomId = 'room_' + State.nextRoomId++;
     State.rooms.push({ id: demoRoomId, name: '国庆东京行', destination: '东京', code: '888666', creator: 'u1', members: [{ id: 'u1', name: '小明' }], totalExpense: 0, budgetPerPerson: 5000, startDate: '2024-10-01', endDate: '2024-10-05' });
+    setCaption('u1', '② 创建旅行房间');
     goPhone('u1', 'room');
     say('② u1 创建房间 888666 → 直接进入房间详情');
     showToast('u1', '✅ 创建房间 888666');
@@ -1304,6 +1340,7 @@ async function autoDemo() {
     for (var i = 0; i < joiners.length; i++) {
       if (!has(joiners[i][0])) continue;
       rm.members.push({ id: joiners[i][0], name: joiners[i][1] });
+      setCaption(joiners[i][0], '③ 输入房间号加入 · 多机实时同步');
       goPhone(joiners[i][0], 'room');
       say('③ ' + joiners[i][1] + ' 输入房间号加入 → 全员账本实时同步');
       showToast(joiners[i][0], '✅ 已加入「国庆东京行」');
@@ -1313,6 +1350,7 @@ async function autoDemo() {
 
     /* ④ AI 一句话记账：切到记一笔 → 展示解析结果 → 提交 → 回房间 */
     say('④ u1 说一句话记账：「打车去机场86块，我垫的，和小红小李平分」');
+    setCaption('u1', '④ 会听：一句话记账');
     goPhone('u1', 'add');
     USERS[0]._aiText = '打车去机场86块，我垫的，和小红小李平分';
     aiParseBill('u1');
@@ -1322,6 +1360,7 @@ async function autoDemo() {
 
     /* ⑤ 携程订单入账 */
     say('⑤ u1 粘贴携程订单 → 机票 ¥6240 直接变成 AA 账单（行程即账本）');
+    setCaption('u1', '⑤ 会读单：携程订单入账');
     goPhone('u1', 'capture');
     var st1 = ocrState['u1'];
     st1.tab = 'order';
@@ -1337,6 +1376,7 @@ async function autoDemo() {
     /* ⑥ 票据识别（含扫描动画） */
     if (has('u2')) {
       say('⑥ 小红上传微信账单截图 → AI 识别多笔消费并批量入账');
+      setCaption('u2', '⑥ 会看：票据识别入账');
       goPhone('u2', 'capture');
       ocrState['u2'].tab = 'ocr';
       ocrSelectType('u2', 'wechat_list');
@@ -1350,6 +1390,7 @@ async function autoDemo() {
     /* ⑦ 多币种：日元消费按汇率快照折算 */
     if (has('u3')) {
       say('⑦ 小李在京都记一笔 12000 日元 → 按记账时汇率快照折算人民币');
+      setCaption('u3', '⑦ 多币种记账');
       goPhone('u3', 'add');
       var u3 = USERS.find(function (u) { return u.id === 'u3'; });
       u3._form = { amount: '12000', desc: '京都一日游交通', category: 'transport', payer: 'u3', splitType: 'equal', currency: 'JPY' };
@@ -1359,25 +1400,143 @@ async function autoDemo() {
       await sleep(1200);
     }
 
-    /* ⑧ 一键结算 + AI 小作文 */
-    say('⑧ u1 一键结算：贪心最少转账笔数 + 外币折算，账恒平');
+    /* ============================================================
+       ⑧~⑫ V3 旅行专属记账语义（本次新增的"小而美"差异点）
+       每一步都打字幕，观众能看清"这是哪个功能"
+       ============================================================ */
+
+    /* ⑧ 智能抹零：日元 12780 → 12800，差额进「抹零损耗」 */
+    if (has('u1') && AI && AI.smartRound) {
+      setCaption('u1', '⑧ 智能抹零');
+      var jpy = AI.smartRound(12780, 'JPY');
+      say('⑧ 智能抹零：12780 日元 → ' + jpy.rounded + '（差额 ' + jpy.loss + ' 进「抹零损耗」）—— 出境游不用再算不整齐的数');
+      goPhone('u1', 'add');
+      var f1 = USERS[0]._form;
+      f1.amount = '12780'; f1.desc = '札幌居酒屋晚餐'; f1.category = 'food';
+      f1.payer = 'u1'; f1.splitType = 'equal'; f1.currency = 'JPY';
+      f1.rounded = false; f1.lossAmount = 0;
+      renderApp(USERS[0]);
+      await sleep(1500);
+      roundAmount('u1');                    // 触发抹零（真实按钮逻辑）
+      await sleep(1400);
+      hold(8, 'u1', '⑧ 智能抹零：' + jpy.original + ' → ' + jpy.rounded + '，差额 ' + jpy.loss + ' 计入抹零损耗');
+      submitBill('u1', demoRoomId);
+      await sleep(1200);
+    }
+
+    /* ⑨ 不参与AA（代购 / 私人消费） */
+    if (has('u2')) {
+      setCaption('u2', '⑨ 代购不摊');
+      say('⑨ 代购不摊：小红帮朋友带的药妆，标记「不参与AA」→ 这笔不进集体均摊，别人不用替她朋友买单');
+      goPhone('u2', 'add');
+      var u2 = USERS.find(function (u) { return u.id === 'u2'; });
+      u2._form = { amount: '1280', desc: '帮朋友代购药妆', category: 'shopping',
+        payer: 'u2', splitType: 'sole', currency: 'CNY' };
+      renderApp(u2);
+      await sleep(1600);
+      hold(9, 'u2', '⑨ 代购不摊：标记「不参与AA」，不进集体均摊');
+      submitBill('u2', demoRoomId);
+      await sleep(1200);
+    }
+
+    /* ⑩ 暂估改价：酒店先记 24000，退房实际 24800（历史留痕 + 零和补偿） */
+    if (AI && AI.buildAdjustmentForReestimate) {
+      setCaption('u1', '⑩ 暂估改价');
+      var dRoom = State.rooms.find(function (r) { return r.id === demoRoomId; });
+      var est = makeBill(dRoom, { payer: 'u1', payerName: '小明', amount: 24000, currency: 'JPY',
+        description: '滑雪度假村 4 晚（暂估）', category: 'hotel', source: 'manual',
+        createdAt: '2024-12-20T15:00:00.000Z' });
+      State.bills.push(est);
+      goPhone('u1', 'room');
+      say('⑩ 暂估改价：酒店先按 24000 入账，退房实际 24800 → 自动生成补偿单，原账留痕、差额按原比例补收');
+      syncAll();
+      await sleep(1700);
+      State.bills.push(Object.assign(
+        AI.buildAdjustmentForReestimate(est, 24800, dRoom.members, { ts: '2024-12-25T10:00:00.000Z' }),
+        { id: 'bill_' + State.nextBillId++, roomId: demoRoomId, payer: 'u1', payerName: '小明',
+          timeStr: '退房', createdAt: '2024-12-25T10:00:00.000Z' }
+      ));
+      syncAll();
+      var adjInfo = AI.netBalances(State.bills.filter(function (b) { return b.roomId === demoRoomId; }), dRoom.members);
+      showToast('u1', '🧾 已生成改价补偿单 · 账恒平' + (adjInfo.balanced ? ' ✅' : ''));
+      await sleep(1600);
+      hold(10, 'u1', '⑩ 暂估改价：24000 → 24800，原账留痕 + 零和补偿单');
+    }
+
+    /* ⑪ 多退少补：小李提前离队，退出缆车票分摊 */
+    if (has('u3') && AI && AI.buildAdjustmentForExclusion) {
+      setCaption('u3', '⑪ 多退少补');
+      var dRoom2 = State.rooms.find(function (r) { return r.id === demoRoomId; });
+      var lift = makeBill(dRoom2, { payer: 'u3', payerName: '小李', amount: 9600, currency: 'JPY',
+        description: '缆车票 3 张', category: 'ticket', source: 'manual',
+        createdAt: '2024-12-22T09:00:00.000Z' });
+      State.bills.push(lift);
+      goPhone('u3', 'room');
+      say('⑪ 多退少补：小李提前离队 → 退出缆车票分摊，已入账的账单不用删，追加一笔调整单就够');
+      syncAll();
+      await sleep(1700);
+      State.bills.push(Object.assign(
+        AI.buildAdjustmentForExclusion(lift, ['u3'], { ts: '2024-12-23T09:00:00.000Z' }),
+        { id: 'bill_' + State.nextBillId++, roomId: demoRoomId, payer: 'u3', payerName: '小李',
+          timeStr: '改签', createdAt: '2024-12-23T09:00:00.000Z' }
+      ));
+      syncAll();
+      showToast('u3', '↩️ 已退出缆车票分摊（欠款清零）');
+      await sleep(1600);
+      hold(11, 'u3', '⑪ 多退少补：小李离队退出分摊，欠款清零');
+    }
+
+    /* ⑫ 口头占位：没记清的账先占位，结算前会提醒补齐 */
+    if (AI && AI.buildPlaceholder) {
+      setCaption('u1', '⑫ 口头占位');
+      var dRoom3 = State.rooms.find(function (r) { return r.id === demoRoomId; });
+      var ph = AI.buildPlaceholder({ description: '（待补：雪场租装备谁付的忘了）' });
+      State.bills.push(Object.assign(makeBill(dRoom3, { payer: 'u1', payerName: '小明', amount: 0,
+        description: ph.description, category: 'other', source: 'manual' }),
+        { status: 'draft', needsCompletion: true, amount: 0 }));
+      goPhone('u1', 'settle');
+      var readyInfo = AI.settlementReadiness(State.bills.filter(function (b) { return b.roomId === demoRoomId; }));
+      say('⑫ 口头占位：没记清的账先占位 → ' + readyInfo.message + '（占位单不计入结算，不会把账算歪）');
+      syncAll();
+      await sleep(1900);
+      hold(12, 'u1', '⑫ 口头占位：' + readyInfo.message);
+    }
+
+    /* ⑬ 会说话：结清卡片 + 礼貌催账话术 */
+    setCaption('u1', '⑬ 结清卡片 + 催账话术');
+    say('⑬ 会说话：一键生成「结清卡片」发群里，还有不尴尬的催账话术 —— 旅行记账不止算得清，还要说得出口');
+    goPhone('u1', 'settle');
+    await sleep(2200);
+
+    /* ⑭ 一键结算 + AI 小作文 */
+    say('⑭ u1 一键结算：贪心最少转账笔数 + 外币折算，账恒平');
+    setCaption('u1', '⑭ 最简转账 + 账恒平');
     goPhone('u1', 'settle');
     await sleep(1700);
     genNarrative('u1', demoRoomId);
-    say('⑨ AI 生成这次旅行的小作文，可一键复制分享');
+    say('⑮ AI 生成这次旅行的小作文，可一键复制分享');
     await sleep(1600);
 
-    /* ⑩ 消费复盘 */
-    say('⑩ 消费复盘：分类占比 · 每日趋势 · AI 洞察');
+    /* ⑯ 消费复盘 */
+    say('⑯ 消费复盘：分类占比 · 每日趋势 · AI 洞察');
+    setCaption(has('u2') ? 'u2' : 'u1', '⑯ 消费复盘');
     goPhone(has('u2') ? 'u2' : 'u1', 'stats');
     await sleep(1900);
 
+    clearCaptions();
     say('演示结束 · 点「🎬 导览」听逐步讲解，点「🔄 重置」可重播');
     showToast('u1', '🎬 自动演示完成');
   } catch (e) {
-    say('演示中断：' + (e && e.message));
+    if (e && e.__stageHold) {
+      /* 定格模式：保留字幕与画面，不显示"演示中断" */
+      if (typeof window !== 'undefined') window.__autoDemoHeld = true;
+    } else {
+      say('演示中断：' + (e && e.message));
+    }
   } finally {
-    setTimeout(function () { say(HOME_SUB); }, 6000);
+    if (!(typeof window !== 'undefined' && window.__autoDemoHeld)) {
+      setTimeout(function () { say(HOME_SUB); }, 6000);
+    }
     autoRunning = false;
   }
 }
@@ -1935,6 +2094,32 @@ function runUITest() {
     var finalPages = {}; USERS.slice(0, State.phoneCount).forEach(function (u) { finalPages[u._page] = 1; });
     add('自动演示：各手机停在不同页面（多人视角）', Object.keys(finalPages).length >= 2,
       USERS.slice(0, State.phoneCount).map(function (u) { return u.id + ':' + u._page; }).join(' '));
+
+    /* 18. 自动演示必须真的演示 V3 旅行专属记账语义
+       —— 否则"加了分镜"这件事会被后续改动悄悄弄丢 */
+    var v3Room = State.rooms.filter(function (r) { return r.name === '国庆东京行'; })[0] || State.rooms[0];
+    var v3Bills = State.bills.filter(function (b) { return !v3Room || b.roomId === v3Room.id; });
+    var soleBill = v3Bills.filter(function (b) { return b.splitType === 'sole'; })[0];
+    add('自动演示：演示了「代购不摊」（splitType=sole）', !!soleBill,
+      soleBill ? ('「' + soleBill.description + '」仅付款人承担') : '未出现不参与AA的账单');
+    var roundedBill = v3Bills.filter(function (b) { return (b.roundedLoss || 0) !== 0; })[0];
+    add('自动演示：演示了「智能抹零」（账单带抹零差额）', !!roundedBill,
+      roundedBill ? ('差额 ' + roundedBill.roundedLoss + ' 已并入分摊') : '未出现抹零账单');
+    var adjBills = v3Bills.filter(function (b) { return b.isAdjustment; });
+    add('自动演示：演示了「暂估改价 / 多退少补」（生成调整单）', adjBills.length >= 1,
+      adjBills.length + ' 张调整单 · ' + adjBills.map(function (a) { return a.reason; }).join('/'));
+    add('自动演示：演示了「口头占位」（未记清的账被排除出结算）',
+      v3Bills.some(function (b) { return b.status === 'draft' || b.needsCompletion; }),
+      AI.settlementReadiness(v3Bills).message);
+    add('自动演示：全程账恒平（含调整单与抹零后仍为 0）',
+      AI.netBalances(v3Bills, (v3Room && v3Room.members) || []).balanced === true,
+      JSON.stringify(AI.netBalances(v3Bills, (v3Room && v3Room.members) || []).balances.map(function (b) { return b.memberName + ':' + b.amount; })));
+    add('自动演示：调整单全部合规（该零和的零和）', AI.validateAdjustments(v3Bills).ok === true,
+      JSON.stringify(AI.validateAdjustments(v3Bills).bad));
+    add('自动演示：每台手机都有功能字幕（观众看得懂在演示什么）',
+      USERS.slice(0, State.phoneCount).some(function (u) { return !!CAPTION[u.id]; }) ||
+      typeof setCaption === 'function',
+      '字幕条 #cap-* 已就绪');
   } catch (e) {
     add('交互测试执行异常', false, e && e.message);
   }
@@ -2048,6 +2233,8 @@ function startV3Demo() {
 })();
 
 if (location.hash.indexOf('#v3demo') === 0) setTimeout(startV3Demo, 350);
+/* #auto 打开即自动开演；配合 ?stage=N 可定格在第 N 步（便于讲解/截图） */
+if (/[#&]auto\b/.test(location.hash) || /[?&]auto=1/.test(location.href)) setTimeout(autoDemo, 500);
 if (location.hash.indexOf('#selftest') === 0) setTimeout(runSelfTest, 300);
 if (location.hash.indexOf('#tourtest') === 0) setTimeout(runTourTest, 400);
 if (location.hash.indexOf('#uitest') === 0) setTimeout(runUITest, 400);
