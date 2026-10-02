@@ -1,0 +1,103 @@
+<!-- pages/room/room.wxml -->
+<view class="container">
+  <!-- Hero -->
+  <view class="room-hero">
+    <text class="hero-label">ROOM DETAIL</text>
+    <text class="hero-title">{{room.name}}</text>
+    <view class="room-dest" wx:if="{{room.destination}}">{{room.destination}}</view>
+  </view>
+
+  <!-- 概览 -->
+  <view class="overview">
+    <view class="overview-item">
+      <text class="overview-label">TOTAL</text>
+      <text class="overview-value">¥{{room.totalExpense || 0}}</text>
+    </view>
+    <view class="overview-item">
+      <text class="overview-label">BILLS</text>
+      <text class="overview-value sm">{{bills.length}}</text>
+    </view>
+    <view class="overview-item">
+      <text class="overview-label">MEMBERS</text>
+      <text class="overview-value sm">{{room.members.length}}</text>
+    </view>
+    <view class="overview-item">
+      <text class="overview-label">CODE</text>
+      <text class="overview-value sm">{{room.roomCode}}</text>
+    </view>
+  </view>
+
+  <!-- 成员 -->
+  <view class="section-head">
+    <text class="section-title">成员</text>
+    <text class="section-count">{{room.members.length}} PEOPLE</text>
+  </view>
+  <view class="members-row">
+    <view wx:for="{{room.members}}" wx:key="id" class="member" bindlongpress="removeMember" data-id="{{item.id}}" data-name="{{item.name}}">
+      <view class="member-av {{index === 0 ? 'active' : ''}}">{{item.name[0]}}</view>
+      <text class="member-name">{{item.name}}</text>
+    </view>
+  </view>
+
+  <!-- V2：预算 & AI 审计 -->
+  <view class="card" style="margin-top: 24rpx;" bindtap="setBudgetPrompt">
+    <view style="display:flex; justify-content:space-between; align-items:center;">
+      <text class="card-title">💰 旅行预算</text>
+      <text style="font-size: 22rpx; color: #FF6B35;">{{budgetInfo && budgetInfo.budget > 0 ? '点击调整' : '点击设置'}}</text>
+    </view>
+    <block wx:if="{{budgetInfo && budgetInfo.budget > 0}}">
+      <view style="display:flex; justify-content:space-between; font-size: 24rpx; color:#666; margin: 12rpx 0;">
+        <text>已花 ¥{{budgetInfo.spent}} / ¥{{budgetInfo.budget}}（{{budgetInfo.percent}}%）</text>
+        <text wx:if="{{budgetInfo.alert === 'warn'}}" style="color:#FA9D3B;">⚠️ 将超支</text>
+        <text wx:elif="{{budgetInfo.alert === 'danger'}}" style="color:#FA5151;">🚨 已超预算</text>
+        <text wx:else style="color:#07C160;">✅ 可控</text>
+      </view>
+      <view style="height: 12rpx; background:#F0F0F0; border-radius: 8rpx; overflow:hidden;">
+        <view style="height:100%; border-radius:8rpx; width: {{budgetInfo.percent > 100 ? 100 : budgetInfo.percent}}%;
+          background: {{budgetInfo.alert === 'danger' ? '#FA5151' : budgetInfo.alert === 'warn' ? '#FA9D3B' : '#07C160'}};"></view>
+      </view>
+      <text style="display:block; margin-top:12rpx; font-size:22rpx; color:#999;">{{budgetInfo.tips[1] || budgetInfo.tips[0]}}</text>
+    </block>
+    <text wx:else style="font-size: 24rpx; color:#999;">设置预算后自动预测超支、给出安全日均</text>
+  </view>
+
+  <view class="card" style="margin-top: 16rpx;" bindtap="showAuditDetail">
+    <view style="display:flex; justify-content:space-between; align-items:center;">
+      <text class="card-title">🔍 AI 账单审计</text>
+      <text style="font-size: 22rpx; color: #FF6B35;">{{auditInfo ? auditInfo.score + ' 分' : ''}} ›</text>
+    </view>
+    <text style="display:block; margin-top:8rpx; font-size:24rpx; color:#666;">{{auditInfo ? auditInfo.summary : '检出重复记账 / 账不平 / 异常大额 / 漏归类'}}</text>
+    <text wx:if="{{auditInfo && auditInfo.issues.length}}" style="display:block; margin-top:8rpx; font-size:22rpx; color:#FA9D3B;">⚠️ {{auditInfo.issues.length}} 个问题待复核，点击查看</text>
+  </view>
+
+  <!-- 账单 -->
+  <view class="section-head" style="margin-top: 40rpx;">
+    <text class="section-title">账单记录</text>
+    <text class="section-count">{{filteredBills.length}} ITEMS</text>
+  </view>
+
+  <view wx:if="{{filteredBills.length === 0}}" class="empty-state">
+    <text class="empty-icon">📝</text>
+    <text class="empty-text">还没有账单
+点击下方按钮开始记账</text>
+  </view>
+
+  <view wx:for="{{filteredBills}}" wx:key="_id" class="bill-row" bindtap="editBill" data-bill="{{item}}">
+    <view class="bill-icon">{{item.categoryIcon}}</view>
+    <view class="bill-info">
+      <text class="bill-name">{{item.sourceIcon}}{{item.description || '未命名消费'}}</text>
+      <text class="bill-meta">{{item.payerName}} · {{item.splitLabel}} · {{item.timeStr}}</text>
+    </view>
+    <view class="bill-right">
+      <text class="bill-amount">{{item.amountLabel}}</text>
+      <text style="font-size: 20rpx; color:#bbb;">点击编辑</text>
+    </view>
+  </view>
+</view>
+
+<!-- 底部操作栏 -->
+<view class="bottom-bar">
+  <view class="btn btn-secondary" style="flex:1;" bindtap="goToAddBill">＋ 记一笔</view>
+  <view class="btn btn-secondary" style="flex:1;" bindtap="goImportOrders">🧳 订单</view>
+  <view class="btn btn-primary" style="flex:1;" bindtap="goToSettle">一键结算</view>
+</view>

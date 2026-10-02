@@ -1,0 +1,147 @@
+<!-- pages/add-bill/add-bill.wxml -->
+<view class="container">
+  <!-- Hero -->
+  <view class="page-hero">
+    <text class="hero-label">ADD EXPENSE</text>
+    <text class="hero-title">{{isEdit ? '编辑账单' : '记一笔'}}</text>
+    <view class="room-dest" wx:if="{{isEdit}}">✏️ 修改后将自动重算结算方案</view>
+  </view>
+
+  <!-- 入账方式切换 -->
+  <view class="dest-pills" style="margin-bottom: 20rpx;">
+    <view class="dest-pill {{activeTab === 'ai' ? 'dest-pill-active' : ''}}" bindtap="switchTab" data-tab="ai">🤖 AI 一句话</view>
+    <view class="dest-pill {{activeTab === 'order' ? 'dest-pill-active' : ''}}" bindtap="switchTab" data-tab="order">🧳 携程订单</view>
+  </view>
+
+  <!-- AI 一句话记账 -->
+  <view class="ai-card" wx:if="{{activeTab === 'ai'}}">
+    <view class="ai-card-head">
+      <text class="ai-badge">🤖 AI 一句话记账</text>
+      <text class="ai-sub">说一句话，自动填好整张账单（支持口语数字）</text>
+    </view>
+    <textarea class="ai-input" placeholder="如：打车去机场八十六块，我垫的，和小红小李平分"
+      value="{{aiText}}" bindinput="onAiInput" maxlength="120" auto-height></textarea>
+    <view class="ai-samples">
+      <view wx:for="{{aiSamples}}" wx:key="*this" class="ai-sample" bindtap="useAiSample" data-text="{{item}}">💡 {{item}}</view>
+    </view>
+    <view class="ai-actions">
+      <view class="ai-btn ai-btn-primary" bindtap="parseAiText">{{aiLoading ? '解析中…' : '✨ AI 解析'}}</view>
+      <view class="ai-btn ai-btn-ghost" bindtap="startVoiceInput">{{voiceBusy ? '聆听中…' : '🎙️ 语音'}}</view>
+      <view class="ai-btn ai-btn-ghost" bindtap="clearAi">清空</view>
+    </view>
+
+    <!-- 解析结果预览 -->
+    <view wx:if="{{aiParsed}}" class="ai-result">
+      <view class="ai-result-title">AI 解析结果 · 置信度 {{aiParsed.confidence}}%</view>
+      <view class="ai-chips">
+        <text class="ai-chip">💰 ¥{{aiParsed.amount}}</text>
+        <text class="ai-chip">📝 {{aiParsed.description}}</text>
+        <text class="ai-chip">📂 {{aiParsed.categoryName}}</text>
+        <text class="ai-chip">👤 {{aiParsed.payerName}} 付款</text>
+        <text class="ai-chip">{{aiParsed.splitLabel}} · {{aiParsed.personCount}}人</text>
+      </view>
+      <text wx:if="{{aiParsed.needManual}}" class="ai-warn">⚠️ 未识别到金额，请在下方手动补充</text>
+      <text wx:else class="ai-ok">✅ 已自动填入下方表单，确认后提交即可</text>
+    </view>
+  </view>
+
+  <!-- 携程订单导入（会读单） -->
+  <view class="ai-card" wx:if="{{activeTab === 'order'}}">
+    <view class="ai-card-head">
+      <text class="ai-badge">🧳 携程订单导入</text>
+      <text class="ai-sub">粘贴订单文本，机票/酒店/门票自动入账</text>
+    </view>
+    <textarea class="ai-input" placeholder="粘贴携程订单确认文本（含金额即可识别）"
+      value="{{orderText}}" bindinput="onOrderInput" maxlength="600" auto-height></textarea>
+    <view class="ai-samples">
+      <view wx:for="{{orderSamples}}" wx:key="label" class="ai-sample" bindtap="useOrderSample" data-text="{{item.text}}">{{item.label}}</view>
+    </view>
+    <view class="ai-actions">
+      <view class="ai-btn ai-btn-primary" bindtap="parseOrderText">✨ 解析订单</view>
+      <view class="ai-btn ai-btn-ghost" bindtap="importOrderBills" wx:if="{{orderDrafts.length}}">📥 导入 {{orderDrafts.length}} 笔</view>
+    </view>
+    <view wx:if="{{orderDrafts.length}}" class="ai-result">
+      <view class="ai-result-title">识别结果 · 确认后批量入账</view>
+      <view class="ai-chips" wx:for="{{orderDrafts}}" wx:key="description">
+        <text class="ai-chip">{{item.orderType === 'flight' ? '✈️' : item.orderType === 'hotel' ? '🏨' : '🎫'}} {{item.description}}</text>
+        <text class="ai-chip">¥{{item.amount}}</text>
+        <text class="ai-chip">{{item.payerName}} 付款</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 金额输入 -->
+  <view class="amount-card">
+    <text class="form-label">消费金额 / Amount</text>
+    <view class="amount-row">
+      <text class="amount-currency">{{form.currency === 'CNY' ? '¥' : form.currency}}</text>
+      <input class="amount-input" type="digit" placeholder="0.00" value="{{form.amount}}" bindinput="onAmountInput" focus="{{true}}" />
+    </view>
+    <!-- 多币种（出境游） -->
+    <view class="dest-pills" style="margin-top: 16rpx;">
+      <view wx:for="{{currencies}}" wx:key="id"
+        class="dest-pill {{form.currency === item.id ? 'dest-pill-active' : ''}}"
+        bindtap="selectCurrency" data-id="{{item.id}}">
+        {{item.symbol}} {{item.name}}
+      </view>
+    </view>
+  </view>
+
+  <!-- 消费说明 -->
+  <view class="form-group">
+    <text class="form-label">消费说明 / Description</text>
+    <input class="form-input" placeholder="如：晚餐、打车、门票" value="{{form.description}}" bindinput="onDescInput" />
+  </view>
+
+  <!-- 消费分类 -->
+  <view class="form-group">
+    <text class="form-label">消费分类 / Category</text>
+    <view class="dest-pills">
+      <view wx:for="{{categories}}" wx:key="id"
+        class="dest-pill {{form.category === item.id ? 'dest-pill-active' : ''}}"
+        bindtap="selectCategory" data-id="{{item.id}}">
+        {{item.icon}} {{item.name}}
+      </view>
+    </view>
+  </view>
+
+  <!-- 付款人 -->
+  <view class="form-group">
+    <text class="form-label">付款人 / Paid By</text>
+    <view class="members-row">
+      <view wx:for="{{members}}" wx:key="id"
+        class="member" bindtap="selectPayer" data-id="{{item.id}}" data-name="{{item.name}}">
+        <view class="member-av {{form.payer === item.id ? 'active' : ''}}">{{item.name[0]}}</view>
+        <text class="member-name">{{item.name}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 分摊方式 -->
+  <view class="form-group">
+    <text class="form-label">分摊方式 / Split Mode</text>
+    <view class="dest-pills">
+      <view class="dest-pill {{form.splitType === 'equal' ? 'dest-pill-active' : ''}}"
+        bindtap="selectSplitType" data-type="equal">⚖️ 均分</view>
+      <view class="dest-pill {{form.splitType === 'custom' ? 'dest-pill-active' : ''}}"
+        bindtap="selectSplitType" data-type="custom">🔢 自定义</view>
+      <view class="dest-pill {{form.splitType === 'treat' ? 'dest-pill-active' : ''}}"
+        bindtap="selectSplitType" data-type="treat">🎁 请客</view>
+    </view>
+  </view>
+
+  <!-- 自定义分摊 -->
+  <view wx:if="{{form.splitType === 'custom'}}" class="card">
+    <text class="card-title">自定义分摊</text>
+    <view wx:for="{{members}}" wx:key="id" class="split-member">
+      <text class="split-member-name">{{item.name}}</text>
+      <input class="form-input" type="digit" placeholder="0.00" value="{{item.customAmount}}"
+        bindinput="onCustomAmount" data-index="{{index}}" style="flex:1; text-align:right;" />
+    </view>
+  </view>
+</view>
+
+<!-- 底部提交 -->
+<view class="bottom-bar">
+  <view class="btn btn-primary btn-block" bindtap="submitBill">{{isEdit ? '保存修改' : '确认记账'}}</view>
+</view>

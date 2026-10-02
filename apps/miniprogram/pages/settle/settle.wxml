@@ -1,0 +1,79 @@
+<!-- pages/settle/settle.wxml -->
+<view class="container">
+  <!-- Hero -->
+  <view class="settle-hero">
+    <text class="hero-label">TOTAL EXPENSE · 旅行总消费</text>
+    <text class="settle-value">¥{{settlement.totalExpense.toFixed(2)}}</text>
+    <text wx:if="{{settlement.hasForeign}}" class="hero-label" style="margin-top: 8rpx;">💱 含外币消费，已按记账汇率折算人民币结算</text>
+    <text wx:if="{{settledAt}}" class="hero-label" style="margin-top: 8rpx;">✅ 已结清 · {{settledAt}}</text>
+  </view>
+
+  <!-- 概览 -->
+  <view class="overview overview-3">
+    <view class="overview-item">
+      <text class="overview-label">MEMBERS</text>
+      <text class="overview-value sm">{{members.length}}</text>
+    </view>
+    <view class="overview-item">
+      <text class="overview-label">BILLS</text>
+      <text class="overview-value sm">{{billCount}}</text>
+    </view>
+    <view class="overview-item">
+      <text class="overview-label">TRANSFERS</text>
+      <text class="overview-value sm">{{settlement.transfers.length}}</text>
+    </view>
+  </view>
+
+  <!-- 各人收支 -->
+  <view class="section-head">
+    <text class="section-title">各人收支</text>
+    <text class="section-count">BALANCE</text>
+  </view>
+
+  <view wx:for="{{settlement.balances}}" wx:key="id" class="balance-row">
+    <view class="balance-av">{{item.name[0]}}</view>
+    <view class="balance-info">
+      <text class="balance-name">{{item.name}}</text>
+      <text class="balance-type">{{item.amount >= 0 ? '应收款 · RECEIVE' : '应付款 · PAY'}}</text>
+    </view>
+    <text class="balance-amount {{item.amount >= 0 ? 'balance-amount-pos' : 'balance-amount-neg'}}">
+      {{item.amount >= 0 ? '+' : ''}}¥{{item.amount.toFixed(2)}}
+    </text>
+  </view>
+
+  <!-- 转账方案 -->
+  <view class="section-head" style="margin-top: 48rpx;">
+    <text class="section-title">最简转账</text>
+    <text class="section-count">ONLY {{settlement.transfers.length}} STEPS</text>
+  </view>
+
+  <view wx:if="{{settlement.transfers.length === 0}}" class="empty-state">
+    <text class="empty-icon">✅</text>
+    <text class="empty-text">无需转账，账目已清</text>
+  </view>
+
+  <view wx:for="{{settlement.transfers}}" wx:key="index" class="transfer-row">
+    <view class="transfer-step">{{index + 1}}</view>
+    <view class="transfer-flow">
+      <text class="transfer-name">{{item.fromName}}</text>
+      <text class="transfer-amount">→ ¥{{item.amount.toFixed(2)}} →</text>
+      <text class="transfer-name">{{item.toName}}</text>
+    </view>
+  </view>
+
+  <!-- V2：AI 消费小作文 -->
+  <view class="card" style="margin-top: 48rpx;" wx:if="{{narrative}}">
+    <text class="card-title">🤖 AI 消费小作文</text>
+    <text style="display:block; margin-top: 12rpx; font-size: 26rpx; color:#555; line-height: 1.7;">{{narrative}}</text>
+    <view class="btn btn-secondary" style="margin-top: 16rpx;" bindtap="copyNarrative">📋 复制小作文</view>
+  </view>
+
+  <!-- 操作 -->
+  <view style="display: flex; gap: 18rpx; margin-top: 48rpx;">
+    <view class="btn btn-secondary" style="flex: 1;" bindtap="copyBillText">📋 复制账单</view>
+    <view class="btn btn-primary" style="flex: 1;" bindtap="shareBill">📤 分享结算</view>
+  </view>
+  <view style="display: flex; gap: 18rpx; margin-top: 18rpx;">
+    <view class="btn btn-secondary" style="flex: 1;" bindtap="markSettled">{{settledAt ? '✅ 已结清' : '🤝 标记已结清'}}</view>
+  </view>
+</view>

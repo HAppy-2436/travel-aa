@@ -1,0 +1,10 @@
+{
+  "name": "ocr",
+  "version": "1.0.0",
+  "description": "OCR图片识别（腾讯云API + 规则解析）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3",
+    "tencentcloud-sdk-nodejs-ocr": "^4.0.0"
+  }
+}

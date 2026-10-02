@@ -1,0 +1,116 @@
+<!-- pages/index/index.wxml -->
+<view class="container">
+  <!-- Hero -->
+  <view class="hero">
+    <text class="hero-label">TRAVEL EXPENSE SPLITTER</text>
+    <text class="hero-title">旅行结束</text>
+    <text class="hero-title hero-title-sub">一键清账</text>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="actions">
+    <view class="btn btn-primary" bindtap="showCreateModal">＋ 创建房间</view>
+    <view class="btn btn-secondary" bindtap="showJoinModal">↳ 加入房间</view>
+  </view>
+
+  <!-- 我的旅行 -->
+  <view class="section-head">
+    <text class="section-title">我的旅行</text>
+    <text class="section-count">{{rooms.length}} ROOMS</text>
+  </view>
+
+  <view wx:if="{{rooms.length === 0}}" class="empty-state">
+    <text class="empty-icon">✈️</text>
+    <text class="empty-text">还没有旅行房间
+点击上方按钮创建或加入</text>
+  </view>
+
+  <view wx:for="{{rooms}}" wx:key="_id" class="room-card" bindtap="goToRoom" data-roomid="{{item._id}}">
+    <view class="room-header">
+      <view>
+        <text class="room-name">{{item.name}}</text>
+        <view class="room-dest" wx:if="{{item.destination}}">{{item.destination}}</view>
+      </view>
+      <view class="room-code">
+        <text class="room-code-label">ROOM CODE</text>
+        <text class="room-code-val">{{item.roomCode}}</text>
+      </view>
+    </view>
+    <view class="room-stats">
+      <view class="room-stat">
+        <text class="room-stat-val">{{item.members.length}}</text>
+        <text class="room-stat-label">成员</text>
+      </view>
+      <view class="room-stat">
+        <text class="room-stat-val">{{item.billCount}}</text>
+        <text class="room-stat-label">账单</text>
+      </view>
+      <view class="room-stat">
+        <text class="room-stat-val money">¥{{item.totalExpense}}</text>
+        <text class="room-stat-label">总消费</text>
+      </view>
+    </view>
+  </view>
+</view>
+
+<!-- 创建房间弹窗 -->
+<view class="modal-mask" wx:if="{{showCreate}}" bindtap="hideCreateModal">
+  <view class="modal" catchtap="">
+    <view class="modal-handle"></view>
+    <view class="modal-header">
+      <text class="modal-title">创建旅行房间</text>
+      <text class="modal-close" bindtap="hideCreateModal">✕</text>
+    </view>
+    <view class="modal-body">
+      <view class="form-group">
+        <text class="form-label">旅行名称 / Trip Name</text>
+        <input class="form-input" placeholder="如：国庆东京行" value="{{form.name}}" bindinput="onInput" data-field="name" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">目的地 / Destination</text>
+        <scroll-view scroll-x class="dest-scroll">
+          <view class="dest-pills">
+            <view wx:for="{{destinations}}" wx:key="*this"
+              class="dest-pill {{form.destination === item ? 'dest-pill-active' : ''}}"
+              bindtap="selectDest" data-dest="{{item}}">
+              {{item}}
+            </view>
+          </view>
+        </scroll-view>
+        <input class="form-input mt-md" placeholder="或手动输入目的地" value="{{form.destination}}" bindinput="onInput" data-field="destination" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">你的昵称 / Your Name</text>
+        <input class="form-input" placeholder="在房间中显示的名称" value="{{form.creatorName}}" bindinput="onInput" data-field="creatorName" />
+      </view>
+    </view>
+    <view class="modal-footer">
+      <view class="btn btn-primary btn-block" bindtap="createRoom">创建房间</view>
+    </view>
+  </view>
+</view>
+
+<!-- 加入房间弹窗 -->
+<view class="modal-mask" wx:if="{{showJoin}}" bindtap="hideJoinModal">
+  <view class="modal" catchtap="">
+    <view class="modal-handle"></view>
+    <view class="modal-header">
+      <text class="modal-title">加入旅行房间</text>
+      <text class="modal-close" bindtap="hideJoinModal">✕</text>
+    </view>
+    <view class="modal-body">
+      <view class="form-group">
+        <text class="form-label">房间号 / Room Code</text>
+        <input class="form-input room-code-input" type="number" maxlength="6"
+          placeholder="输入6位房间号" value="{{joinCode}}" bindinput="onJoinCodeInput" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">你的昵称 / Your Name</text>
+        <input class="form-input" placeholder="在房间中显示的名称" value="{{joinName}}" bindinput="onJoinNameInput" />
+      </view>
+    </view>
+    <view class="modal-footer">
+      <view class="btn btn-primary btn-block" bindtap="joinRoom">加入房间</view>
+    </view>
+  </view>
+</view>

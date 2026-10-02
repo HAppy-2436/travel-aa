@@ -1,0 +1,585 @@
+/* ==========================================
+   TravelAA · 极简瑞士风设计系统
+   ========================================== */
+
+page {
+  /* 色彩系统 */
+  --black: #000000;
+  --white: #ffffff;
+  --gray-25: #fcfcfc;
+  --gray-50: #fafafa;
+  --gray-100: #f5f5f5;
+  --gray-150: #eeeeee;
+  --gray-200: #e5e5e5;
+  --gray-300: #d4d4d4;
+  --gray-400: #a3a3a3;
+  --gray-500: #737373;
+  --gray-600: #525252;
+  --gray-700: #404040;
+  --gray-800: #262626;
+  --gray-900: #171717;
+  --green: #059669;
+  --green-bg: #ecfdf5;
+  --red: #dc2626;
+  --red-bg: #fef2f2;
+
+  /* 间距系统 */
+  --space-xs: 8rpx;
+  --space-sm: 16rpx;
+  --space-md: 24rpx;
+  --space-lg: 32rpx;
+  --space-xl: 48rpx;
+
+  /* 圆角 */
+  --radius-sm: 12rpx;
+  --radius-md: 16rpx;
+  --radius-lg: 20rpx;
+  --radius-xl: 28rpx;
+  --radius-full: 100rpx;
+
+  font-family: -apple-system, 'Helvetica Neue', 'PingFang SC', sans-serif;
+  font-size: 28rpx;
+  color: var(--black);
+  background: var(--white);
+  line-height: 1.6;
+}
+
+/* ===== 布局 ===== */
+.container {
+  padding: 40rpx 48rpx;
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding-bottom: 200rpx;
+}
+
+/* ===== 卡片 ===== */
+.card {
+  background: var(--white);
+  border: 3rpx solid var(--gray-150);
+  border-radius: var(--radius-lg);
+  padding: 48rpx 40rpx;
+  margin-bottom: 28rpx;
+}
+
+.card-title {
+  font-size: 40rpx;
+  font-weight: 700;
+  letter-spacing: -1rpx;
+  color: var(--black);
+  margin-bottom: 32rpx;
+}
+
+/* ===== 分节标题 ===== */
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+  padding-bottom: 20rpx;
+  border-bottom: 4rpx solid var(--black);
+}
+
+.section-title {
+  font-size: 38rpx;
+  font-weight: 700;
+  letter-spacing: -1rpx;
+}
+
+.section-count {
+  font-size: 22rpx;
+  font-weight: 600;
+  letter-spacing: 2rpx;
+  color: var(--gray-400);
+}
+
+/* ===== 按钮 ===== */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  padding: 32rpx 40rpx;
+  border: none;
+  border-radius: var(--radius-full);
+  font-size: 28rpx;
+  font-weight: 600;
+  transition: all 0.25s;
+}
+
+.btn-primary {
+  background: var(--black);
+  color: var(--white);
+}
+
+.btn-primary:active {
+  transform: scale(0.97);
+  background: var(--gray-800);
+}
+
+.btn-secondary {
+  background: var(--white);
+  color: var(--black);
+  border: 3rpx solid var(--gray-200);
+}
+
+.btn-secondary:active {
+  transform: scale(0.97);
+  border-color: var(--gray-400);
+}
+
+.btn-block {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ===== 房间卡片 ===== */
+.room-card {
+  border: 3rpx solid var(--gray-150);
+  border-radius: var(--radius-lg);
+  padding: 40rpx;
+  margin-bottom: 24rpx;
+  transition: all 0.25s;
+}
+
+.room-card:active {
+  border-color: var(--gray-400);
+  transform: scale(0.985);
+}
+
+.room-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32rpx;
+}
+
+.room-name {
+  font-size: 38rpx;
+  font-weight: 700;
+  letter-spacing: -1rpx;
+}
+
+.room-dest {
+  display: inline-block;
+  font-size: 20rpx;
+  font-weight: 600;
+  letter-spacing: 2rpx;
+  color: var(--gray-500);
+  background: var(--gray-50);
+  padding: 6rpx 22rpx;
+  border-radius: var(--radius-full);
+  margin-top: 12rpx;
+}
+
+.room-code {
+  text-align: right;
+}
+
+.room-code-label {
+  font-size: 18rpx;
+  font-weight: 700;
+  letter-spacing: 3rpx;
+  color: var(--gray-400);
+}
+
+.room-code-val {
+  font-size: 32rpx;
+  font-weight: 700;
+  letter-spacing: 5rpx;
+}
+
+.room-stats {
+  display: flex;
+  gap: 48rpx;
+}
+
+.room-stat-val {
+  font-size: 34rpx;
+  font-weight: 700;
+  letter-spacing: -1rpx;
+}
+
+.room-stat-val.money {
+  font-size: 40rpx;
+}
+
+.room-stat-label {
+  font-size: 18rpx;
+  font-weight: 600;
+  letter-spacing: 3rpx;
+  text-transform: uppercase;
+  color: var(--gray-400);
+}
+
+/* ===== 数据概览 ===== */
+.overview {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rpx;
+  background: var(--gray-100);
+  border: 2rpx solid var(--gray-100);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 48rpx;
+}
+
+.overview-item {
+  background: var(--white);
+  padding: 36rpx;
+}
+
+.overview-label {
+  font-size: 18rpx;
+  font-weight: 700;
+  letter-spacing: 3rpx;
+  text-transform: uppercase;
+  color: var(--gray-400);
+  margin-bottom: 10rpx;
+}
+
+.overview-value {
+  font-size: 52rpx;
+  font-weight: 700;
+  letter-spacing: -2rpx;
+}
+
+.overview-value.sm {
+  font-size: 36rpx;
+}
+
+/* ===== 成员列表 ===== */
+.members-row {
+  display: flex;
+  gap: 32rpx;
+  overflow-x: auto;
+  padding: 8rpx 0 20rpx;
+}
+
+.member {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 108rpx;
+}
+
+.member-av {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  background: var(--gray-50);
+  border: 3rpx solid var(--gray-150);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: var(--gray-600);
+  margin-bottom: 12rpx;
+}
+
+.member-av.active {
+  background: var(--black);
+  color: var(--white);
+  border-color: var(--black);
+}
+
+.member-name {
+  font-size: 20rpx;
+  font-weight: 600;
+  color: var(--gray-500);
+}
+
+/* ===== 账单列表 ===== */
+.bill-row {
+  display: flex;
+  align-items: center;
+  padding: 28rpx 0;
+  border-bottom: 2rpx solid var(--gray-100);
+}
+
+.bill-row:last-child {
+  border-bottom: none;
+}
+
+.bill-icon {
+  width: 76rpx;
+  height: 76rpx;
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34rpx;
+  margin-right: 24rpx;
+}
+
+.bill-info {
+  flex: 1;
+}
+
+.bill-name {
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.bill-meta {
+  font-size: 20rpx;
+  color: var(--gray-400);
+  margin-top: 4rpx;
+}
+
+.bill-amount {
+  font-size: 30rpx;
+  font-weight: 700;
+  letter-spacing: -1rpx;
+}
+
+/* ===== 表单 ===== */
+.form-group {
+  margin-bottom: 36rpx;
+}
+
+.form-label {
+  font-size: 20rpx;
+  font-weight: 700;
+  letter-spacing: 3rpx;
+  text-transform: uppercase;
+  color: var(--gray-400);
+  margin-bottom: 16rpx;
+  display: block;
+}
+
+.form-input {
+  width: 100%;
+  height: 96rpx;
+  background: var(--gray-50);
+  border: 3rpx solid var(--gray-150);
+  border-radius: var(--radius-md);
+  padding: 0 32rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+  color: var(--black);
+  box-sizing: border-box;
+}
+
+.form-input-focus {
+  background: var(--white);
+  border-color: var(--black);
+}
+
+/* ===== 标签选择 ===== */
+.dest-pills {
+  display: flex;
+  gap: 14rpx;
+  overflow-x: auto;
+  padding: 12rpx 0;
+}
+
+.dest-pill {
+  padding: 16rpx 36rpx;
+  border: 3rpx solid var(--gray-150);
+  border-radius: var(--radius-full);
+  font-size: 24rpx;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.dest-pill-active {
+  background: var(--black);
+  color: var(--white);
+  border-color: var(--black);
+}
+
+/* ===== 金额大输入框 ===== */
+.amount-card {
+  border: 3rpx solid var(--gray-150);
+  border-radius: var(--radius-lg);
+  padding: 48rpx 40rpx;
+  margin-bottom: 36rpx;
+}
+
+.amount-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10rpx;
+}
+
+.amount-currency {
+  font-size: 42rpx;
+  color: var(--gray-400);
+}
+
+.amount-input {
+  font-size: 88rpx;
+  font-weight: 700;
+  letter-spacing: -3rpx;
+  border: none;
+  background: transparent;
+  width: 100%;
+}
+
+/* ===== 结算页 ===== */
+.balance-row {
+  display: flex;
+  align-items: center;
+  padding: 30rpx 0;
+  border-bottom: 2rpx solid var(--gray-100);
+}
+
+.balance-row:last-child {
+  border-bottom: none;
+}
+
+.balance-av {
+  width: 76rpx;
+  height: 76rpx;
+  border-radius: 50%;
+  background: var(--gray-50);
+  border: 3rpx solid var(--gray-150);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: var(--gray-600);
+  margin-right: 24rpx;
+}
+
+.balance-info {
+  flex: 1;
+}
+
+.balance-name {
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.balance-type {
+  font-size: 20rpx;
+  color: var(--gray-400);
+}
+
+.balance-amount {
+  font-size: 34rpx;
+  font-weight: 700;
+  letter-spacing: -1rpx;
+}
+
+.balance-amount-pos { color: var(--green); }
+.balance-amount-neg { color: var(--red); }
+
+/* ===== 转账方案 ===== */
+.transfer-row {
+  display: flex;
+  align-items: center;
+  padding: 26rpx 0;
+  border-bottom: 2rpx solid var(--gray-100);
+}
+
+.transfer-row:last-child {
+  border-bottom: none;
+}
+
+.transfer-step {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: var(--black);
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22rpx;
+  font-weight: 700;
+  margin-right: 24rpx;
+}
+
+.transfer-flow {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.transfer-name {
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.transfer-amount {
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+/* ===== 统计条 ===== */
+.stat-bar-item {
+  margin-bottom: 32rpx;
+}
+
+.stat-bar-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+
+.stat-bar-name {
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.stat-bar-val {
+  font-size: 26rpx;
+  font-weight: 700;
+}
+
+.stat-bar-track {
+  height: 10rpx;
+  background: var(--gray-100);
+  border-radius: 5rpx;
+  overflow: hidden;
+}
+
+.stat-bar-fill {
+  height: 100%;
+  border-radius: 5rpx;
+  background: var(--black);
+  transition: width 1s;
+}
+
+/* ===== 空状态 ===== */
+.empty-state {
+  text-align: center;
+  padding: 96rpx 40rpx;
+}
+
+.empty-icon {
+  font-size: 88rpx;
+  margin-bottom: 20rpx;
+}
+
+.empty-text {
+  font-size: 24rpx;
+  color: var(--gray-400);
+}
+
+/* ===== 动画 ===== */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.anim {
+  animation: slideUp 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+/* ===== 通用工具类 ===== */
+.flex { display: flex; }
+.flex-between { justify-content: space-between; }
+.flex-center { align-items: center; justify-content: center; }
+.gap-sm { gap: 16rpx; }
+.gap-md { gap: 24rpx; }
+.mt-md { margin-top: 24rpx; }
+.mb-md { margin-bottom: 24rpx; }
+.text-center { text-align: center; }

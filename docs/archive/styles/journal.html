@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>TravelAA · 旅行手账风</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;600;700;900&family=Caveat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --cream: #FAF3E8;
+      --paper: #FFF8ED;
+      --paper-dark: #F5E6D0;
+      --ink: #3D2B1F;
+      --ink-light: #6B5344;
+      --ink-dim: #A08C7B;
+      --terracotta: #C4704F;
+      --terracotta-light: #E8A088;
+      --sage: #8FAE8B;
+      --sage-light: #C5D8C1;
+      --mustard: #E8B84B;
+      --mustard-light: #F5DFA0;
+      --blush: #E8C4C4;
+      --blue-gray: #8B9DAF;
+    }
+
+    body {
+      font-family: 'Noto Serif SC', serif;
+      background: var(--cream);
+      max-width: 430px;
+      margin: 0 auto;
+      min-height: 100vh;
+    }
+
+    .phone {
+      background: var(--cream);
+      min-height: 100vh;
+      position: relative;
+    }
+
+    /* 纸张纹理 */
+    .phone::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c4704f' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ===== 导航 ===== */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--paper);
+      border-bottom: 2px dashed var(--paper-dark);
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 48px 24px 16px;
+    }
+
+    .nav-title {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .nav-back {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      background: var(--paper-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--ink-light);
+    }
+
+    .nav-pill {
+      padding: 8px 20px;
+      background: var(--terracotta);
+      color: var(--paper);
+      border-radius: 100px;
+      font-family: 'Caveat', cursive;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* ===== 页面 ===== */
+    .page { display: none; padding: 24px; padding-bottom: 120px; position: relative; z-index: 1; }
+    .page.active { display: block; }
+
+    /* ===== 卡片 ===== */
+    .card {
+      background: var(--paper);
+      border: 2px solid var(--paper-dark);
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: -4px; left: 50%;
+      transform: translateX(-50%);
+      width: 60px; height: 8px;
+      background: var(--terracotta);
+      border-radius: 0 0 4px 4px;
+    }
+
+    .card-title {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ===== Hero ===== */
+    .hero {
+      text-align: center;
+      padding: 32px 0 40px;
+    }
+
+    .hero-stamp {
+      display: inline-block;
+      width: 80px; height: 80px;
+      border: 3px solid var(--terracotta);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Caveat', cursive;
+      font-size: 36px;
+      color: var(--terracotta);
+      transform: rotate(-12deg);
+      margin-bottom: 16px;
+    }
+
+    .hero h1 {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 32px;
+      font-weight: 900;
+      color: var(--ink);
+      letter-spacing: 2px;
+    }
+
+    .hero p {
+      font-family: 'Caveat', cursive;
+      font-size: 20px;
+      color: var(--ink-light);
+      margin-top: 8px;
+    }
+
+    /* ===== 操作按钮 ===== */
+    .actions {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+
+    .btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 18px 24px;
+      border: none;
+      border-radius: 16px;
+      font-family: 'Noto Serif SC', serif;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: var(--terracotta);
+      color: var(--paper);
+    }
+
+    .btn-primary:hover {
+      background: var(--terracotta-light);
+      color: var(--ink);
+    }
+
+    .btn-secondary {
+      background: var(--paper-dark);
+      color: var(--ink);
+    }
+
+    .btn-secondary:hover {
+      background: var(--mustard-light);
+    }
+
+    /* ===== 概览 ===== */
+    .overview {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .overview-card {
+      background: var(--paper);
+      border: 2px solid var(--paper-dark);
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .overview-label {
+      font-family: 'Caveat', cursive;
+      font-size: 14px;
+      color: var(--ink-dim);
+      margin-bottom: 8px;
+    }
+
+    .overview-value {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--ink);
+    }
+
+    .overview-value.money { color: var(--terracotta); }
+
+    /* ===== 房间卡片 ===== */
+    .room-card {
+      background: var(--paper);
+      border: 2px solid var(--paper-dark);
+      border-radius: 20px;
+      padding: 28px;
+      margin-bottom: 20px;
+      cursor: pointer;
+      transition: all 0.3s;
+      position: relative;
+    }
+
+    .room-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(196, 112, 79, 0.15);
+    }
+
+    /* 邮票装饰 */
+    .room-card::after {
+      content: '✈️';
+      position: absolute;
+      top: -12px; right: 20px;
+      width: 44px; height: 44px;
+      background: var(--mustard-light);
+      border: 2px dashed var(--mustard);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .room-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+    }
+
+    .room-name {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 22px;
+      font-weight: 900;
+      color: var(--ink);
+    }
+
+    .room-dest {
+      display: inline-block;
+      font-family: 'Caveat', cursive;
+      font-size: 16px;
+      color: var(--terracotta);
+      background: var(--blush);
+      padding: 4px 16px;
+      border-radius: 100px;
+      margin-top: 8px;
+    }
+
+    .room-code {
+      text-align: right;
+    }
+
+    .room-code-label {
+      font-family: 'Caveat', cursive;
+      font-size: 12px;
+      color: var(--ink-dim);
+    }
+
+    .room-code-val {
+      font-family: 'Caveat', cursive;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--terracotta);
+      letter-spacing: 2px;
+    }
+
+    .room-stats {
+      display: flex;
+      gap: 20px;
+    }
+
+    .room-stat { flex: 1; text-align: center; }
+
+    .room-stat-val {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--ink);
+    }
+
+    .room-stat-label {
+      font-family: 'Caveat', cursive;
+      font-size: 14px;
+      color: var(--ink-dim);
+      margin-top: 2px;
+    }
+
+    .room-stat-val.money { color: var(--terracotta); font-size: 18px; }
+
+    /* ===== 成员 ===== */
+    .members-row {
+      display: flex;
+      gap: 18px;
+      overflow-x: auto;
+      padding: 4px 0 8px;
+    }
+
+    .member {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 64px;
+    }
+
+    .member-av {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      border: 3px solid var(--paper-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Noto Serif SC', serif;
+      font-size: 18px;
+      font-weight: 900;
+      margin-bottom: 8px;
+    }
+
+    .member:nth-child(4n+1) .member-av { background: var(--terracotta-light); color: var(--paper); }
+    .member:nth-child(4n+2) .member-av { background: var(--sage-light); color: var(--ink); }
+    .member:nth-child(4n+3) .member-av { background: var(--mustard-light); color: var(--ink); }
+    .member:nth-child(4n+4) .member-av { background: var(--blush); color: var(--ink); }
+
+    .member-name {
+      font-family: 'Caveat', cursive;
+      font-size: 16px;
+      color: var(--ink-light);
+    }
+
+    /* ===== 账单 ===== */
+    .bill-row {
+      display: flex;
+      align-items: center;
+      padding: 16px 0;
+      border-bottom: 1px dashed var(--paper-dark);
+    }
+
+    .bill-row:last-child { border-bottom: none; }
+
+    .bill-icon-box {
+      width: 48px; height: 48px;
+      background: var(--paper-dark);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      margin-right: 14px;
+    }
+
+    .bill-info { flex: 1; }
+
+    .bill-name {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .bill-meta {
+      font-family: 'Caveat', cursive;
+      font-size: 14px;
+      color: var(--ink-dim);
+      margin-top: 2px;
+    }
+
+    .bill-amount {
+      font-family: 'Caveat', cursive;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--terracotta);
+    }
+
+    /* ===== 结算 ===== */
+    .settle-hero {
+      text-align: center;
+      padding: 32px 0 40px;
+    }
+
+    .settle-stamp {
+      display: inline-block;
+      width: 80px; height: 80px;
+      border: 3px solid var(--terracotta);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Caveat', cursive;
+      font-size: 24px;
+      color: var(--terracotta);
+      transform: rotate(-12deg);
+      margin-bottom: 16px;
+    }
+
+    .settle-label {
+      font-family: 'Caveat', cursive;
+      font-size: 18px;
+      color: var(--ink-dim);
+      margin-bottom: 8px;
+    }
+
+    .settle-value {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 48px;
+      font-weight: 900;
+      color: var(--ink);
+    }
+
+    .balance-row {
+      display: flex;
+      align-items: center;
+      padding: 16px 0;
+      border-bottom: 1px dashed var(--paper-dark);
+    }
+
+    .balance-row:last-child { border-bottom: none; }
+
+    .balance-av {
+      width: 44px; height: 44px;
+      border: 2px solid var(--paper-dark);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Noto Serif SC', serif;
+      font-size: 16px;
+      font-weight: 900;
+      margin-right: 14px;
+    }
+
+    .balance-av:nth-child(4n+1) { background: var(--terracotta-light); color: var(--paper); }
+
+    .balance-info { flex: 1; }
+    .balance-name { font-family: 'Noto Serif SC', serif; font-size: 15px; font-weight: 700; color: var(--ink); }
+    .balance-type { font-family: 'Caveat', cursive; font-size: 14px; color: var(--ink-dim); }
+
+    .balance-amount {
+      font-family: 'Caveat', cursive;
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .balance-amount.pos { color: var(--sage); }
+    .balance-amount.neg { color: var(--terracotta); }
+
+    .transfer-row {
+      display: flex;
+      align-items: center;
+      padding: 14px 0;
+      border-bottom: 1px dashed var(--paper-dark);
+    }
+
+    .transfer-row:last-child { border-bottom: none; }
+
+    .transfer-step {
+      width: 32px; height: 32px;
+      border: 2px solid var(--terracotta);
+      border-radius: 50%;
+      background: var(--mustard-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Caveat', cursive;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--terracotta);
+      margin-right: 14px;
+    }
+
+    .transfer-flow {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .transfer-name {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .transfer-line {
+      flex: 1;
+      height: 2px;
+      background: repeating-linear-gradient(90deg, var(--paper-dark) 0, var(--paper-dark) 4px, transparent 4px, transparent 8px);
+    }
+
+    .transfer-amt {
+      font-family: 'Caveat', cursive;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--terracotta);
+    }
+
+    /* ===== 统计 ===== */
+    .stat-item {
+      margin-bottom: 20px;
+    }
+
+    .stat-head {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .stat-name { font-family: 'Noto Serif SC', serif; font-size: 14px; font-weight: 700; color: var(--ink); }
+    .stat-val { font-family: 'Caveat', cursive; font-size: 18px; font-weight: 700; color: var(--terracotta); }
+
+    .stat-track {
+      height: 10px;
+      background: var(--paper-dark);
+      border-radius: 5px;
+      overflow: hidden;
+    }
+
+    .stat-fill {
+      height: 100%;
+      border-radius: 5px;
+      background: var(--terracotta);
+      transition: width 1s;
+    }
+
+    .stat-fill:nth-child(odd) { background: var(--sage); }
+    .stat-fill:nth-child(even) { background: var(--terracotta); }
+
+    /* ===== 底部栏 ===== */
+    .bottom-bar {
+      position: fixed;
+      bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%;
+      max-width: 430px;
+      display: flex;
+      gap: 12px;
+      padding: 16px 24px calc(16px + env(safe-area-inset-bottom));
+      background: var(--paper);
+      border-top: 2px dashed var(--paper-dark);
+    }
+
+    /* ===== 弹窗 ===== */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(61, 43, 31, 0.4);
+      z-index: 200;
+      display: flex;
+      align-items: flex-end;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+
+    .modal-overlay.show { opacity: 1; pointer-events: auto; }
+
+    .modal {
+      width: 100%;
+      max-width: 430px;
+      margin: 0 auto;
+      background: var(--paper);
+      border: 2px solid var(--paper-dark);
+      border-radius: 28px 28px 0 0;
+      max-height: 85vh;
+      overflow-y: auto;
+      transform: translateY(100%);
+      transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+    }
+
+    .modal-overlay.show .modal { transform: translateY(0); }
+
+    .modal-handle {
+      width: 36px; height: 4px;
+      background: var(--paper-dark);
+      border-radius: 2px;
+      margin: 12px auto 0;
+    }
+
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px 16px;
+    }
+
+    .modal-title {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 22px;
+      font-weight: 900;
+      color: var(--ink);
+    }
+
+    .modal-close {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      background: var(--paper-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--ink-light);
+    }
+
+    .modal-body { padding: 0 24px 28px; }
+
+    /* ===== 表单 ===== */
+    .form-group { margin-bottom: 20px; }
+
+    .form-label {
+      font-family: 'Caveat', cursive;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--ink-light);
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .form-input {
+      width: 100%;
+      height: 54px;
+      background: var(--cream);
+      border: 2px solid var(--paper-dark);
+      border-radius: 14px;
+      padding: 0 18px;
+      font-family: 'Noto Serif SC', serif;
+      font-size: 16px;
+      color: var(--ink);
+      outline: none;
+    }
+
+    .form-input:focus {
+      border-color: var(--terracotta);
+    }
+
+    .dest-pills {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding: 8px 0;
+    }
+
+    .dest-pill {
+      padding: 10px 22px;
+      background: var(--cream);
+      border: 2px solid var(--paper-dark);
+      border-radius: 100px;
+      font-family: 'Noto Serif SC', serif;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .dest-pill:hover, .dest-pill.active {
+      background: var(--terracotta);
+      color: var(--paper);
+      border-color: var(--terracotta);
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%) scale(0.9) rotate(-3deg);
+      background: var(--paper);
+      border: 3px solid var(--terracotta);
+      color: var(--ink);
+      padding: 16px 32px;
+      border-radius: 16px;
+      font-family: 'Caveat', cursive;
+      font-size: 20px;
+      z-index: 400;
+      opacity: 0;
+      transition: all 0.3s;
+      pointer-events: none;
+    }
+
+    .toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(-3deg); }
+
+    /* 标签 */
+    .style-badge {
+      position: fixed;
+      top: 12px; right: 12px;
+      background: var(--sage);
+      color: var(--paper);
+      padding: 6px 16px;
+      border-radius: 100px;
+      font-family: 'Caveat', cursive;
+      font-size: 14px;
+      z-index: 300;
+    }
+
+    .link-back {
+      position: fixed;
+      bottom: 80px; left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Caveat', cursive;
+      font-size: 16px;
+      color: var(--ink-dim);
+      text-decoration: none;
+      z-index: 300;
+    }
+
+    /* 动画 */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .anim { animation: fadeIn 0.5s ease-out forwards; opacity: 0; }
+    .anim:nth-child(2) { animation-delay: 0.05s; }
+    .anim:nth-child(3) { animation-delay: 0.1s; }
+    .anim:nth-child(4) { animation-delay: 0.15s; }
+  </style>
+</head>
+<body>
+  <div class="style-badge">04 / WARM</div>
+  <a href="index.html" class="link-back">← 返回风格选择</a>
+  <div class="phone">
+    <div class="nav">
+      <div class="nav-inner">
+        <div class="nav-back" id="navBack" onclick="goBack()" style="display:none">←</div>
+        <div class="nav-title" id="navTitle">TravelAA</div>
+        <div class="nav-pill" id="navAction" onclick="goToPage('stats')">📊 统计</div>
+      </div>
+    </div>
+
+    <!-- 首页 -->
+    <div class="page active" id="page-home">
+      <div class="hero anim">
+        <div class="hero-stamp">✈️</div>
+        <h1>旅行记账本</h1>
+        <p>记录旅途中的每一笔美好</p>
+      </div>
+
+      <div class="actions anim">
+        <button class="btn btn-primary" onclick="showModal('create')">＋ 创建房间</button>
+        <button class="btn btn-secondary" onclick="showModal('join')">🔗 加入房间</button>
+      </div>
+
+      <div class="card anim">
+        <div class="card-title">📋 我的旅行</div>
+        <div class="room-card" onclick="goToRoom('demo_room_1')">
+          <div class="room-top">
+            <div>
+              <div class="room-name">国庆东京行</div>
+              <div class="room-dest">📍 东京 · TOKYO</div>
+            </div>
+            <div class="room-code">
+              <div class="room-code-label">房间号</div>
+              <div class="room-code-val">888666</div>
+            </div>
+          </div>
+          <div class="room-stats">
+            <div class="room-stat"><div class="room-stat-val">4</div><div class="room-stat-label">成员</div></div>
+            <div class="room-stat"><div class="room-stat-val">8</div><div class="room-stat-label">账单</div></div>
+            <div class="room-stat"><div class="room-stat-val money">¥12,580</div><div class="room-stat-label">总消费</div></div>
+          </div>
+        </div>
+
+        <div class="room-card" onclick="goToRoom('demo_room_2')">
+          <div class="room-top">
+            <div>
+              <div class="room-name">周末杭州游</div>
+              <div class="room-dest">📍 杭州 · HANGZHOU</div>
+            </div>
+            <div class="room-code">
+              <div class="room-code-label">房间号</div>
+              <div class="room-code-val">123456</div>
+            </div>
+          </div>
+          <div class="room-stats">
+            <div class="room-stat"><div class="room-stat-val">2</div><div class="room-stat-label">成员</div></div>
+            <div class="room-stat"><div class="room-stat-val">5</div><div class="room-stat-label">账单</div></div>
+            <div class="room-stat"><div class="room-stat-val money">¥2,860</div><div class="room-stat-label">总消费</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 房间详情 -->
+    <div class="page" id="page-room">
+      <div class="hero anim" style="padding: 16px 0 32px;">
+        <h1 id="roomName">国庆东京行</h1>
+        <p id="roomDest">📍 东京 · TOKYO</p>
+      </div>
+
+      <div class="overview anim">
+        <div class="overview-card"><div class="overview-label">总消费</div><div class="overview-value money" id="roomTotal">¥12,580</div></div>
+        <div class="overview-card"><div class="overview-label">账单数</div><div class="overview-value" id="roomBills">8</div></div>
+        <div class="overview-card"><div class="overview-label">房间号</div><div class="overview-value" id="roomCode">888666</div></div>
+        <div class="overview-card"><div class="overview-label">日期</div><div class="overview-value" style="font-size:16px;">10/01-07</div></div>
+      </div>
+
+      <div class="card anim">
+        <div class="card-title">👥 成员</div>
+        <div class="members-row" id="membersList"></div>
+      </div>
+
+      <div class="card anim">
+        <div class="card-title">📝 账单记录</div>
+        <div id="billsList"></div>
+      </div>
+    </div>
+
+    <!-- 记账页 -->
+    <div class="page" id="page-add">
+      <div class="hero anim" style="padding: 16px 0 24px;">
+        <h1>记一笔</h1>
+        <p>记录旅途中的小确幸</p>
+      </div>
+
+      <div class="card anim">
+        <div class="form-label">消费金额</div>
+        <div style="display:flex; align-items:baseline; gap:4px;">
+          <span style="font-family:'Caveat',cursive; font-size:32px; color:var(--ink-dim);">¥</span>
+          <input style="font-family:'Caveat',cursive; font-size:48px; font-weight:700; border:none; outline:none; background:transparent; color:var(--ink); width:100%;" type="text" placeholder="0.00" id="billAmount">
+        </div>
+      </div>
+
+      <div class="card anim">
+        <div class="form-group">
+          <label class="form-label">消费说明</label>
+          <input class="form-input" placeholder="如：晚餐、打车、门票" id="billDesc">
+        </div>
+        <div class="form-group">
+          <label class="form-label">消费分类</label>
+          <div class="dest-pills">
+            <div class="dest-pill active" onclick="selectCat(this)">🍜 餐饮</div>
+            <div class="dest-pill" onclick="selectCat(this)">🚗 交通</div>
+            <div class="dest-pill" onclick="selectCat(this)">🏨 住宿</div>
+            <div class="dest-pill" onclick="selectCat(this)">🎫 门票</div>
+            <div class="dest-pill" onclick="selectCat(this)">🛍️ 购物</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">付款人</label>
+          <div class="members-row" id="payerList"></div>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">分摊方式</label>
+          <div class="dest-pills">
+            <div class="dest-pill active" onclick="selectCat(this)">⚖️ 均分</div>
+            <div class="dest-pill" onclick="selectCat(this)">🔢 自定义</div>
+            <div class="dest-pill" onclick="selectCat(this)">🎁 请客</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 结算页 -->
+    <div class="page" id="page-settle">
+      <div class="settle-hero anim">
+        <div class="settle-stamp">💰</div>
+        <div class="settle-label">旅行总消费</div>
+        <div class="settle-value">¥12,580.50</div>
+      </div>
+
+      <div class="overview anim">
+        <div class="overview-card"><div class="overview-label">成员</div><div class="overview-value">4</div></div>
+        <div class="overview-card"><div class="overview-label">账单</div><div class="overview-value">8</div></div>
+        <div class="overview-card"><div class="overview-label">最少转账</div><div class="overview-value money">3</div></div>
+        <div class="overview-card"><div class="overview-label">状态</div><div class="overview-value" style="font-size:16px;">待结算</div></div>
+      </div>
+
+      <div class="card anim">
+        <div class="card-title">📊 各人收支</div>
+        <div id="balancesList"></div>
+      </div>
+
+      <div class="card anim">
+        <div class="card-title">🔄 最简转账方案</div>
+        <div id="transfersList"></div>
+      </div>
+    </div>
+
+    <!-- 统计页 -->
+    <div class="page" id="page-stats">
+      <div class="hero anim" style="padding: 16px 0 24px;">
+        <h1>消费统计</h1>
+        <p>旅途中的花费地图</p>
+      </div>
+
+      <div class="card anim">
+        <div class="card-title">📊 分类占比</div>
+        <div id="statsList"></div>
+      </div>
+    </div>
+
+    <div class="bottom-bar" id="bottomBar" style="display:none">
+      <button class="btn btn-secondary" onclick="goToPage('add')">📝 记一笔</button>
+      <button class="btn btn-primary" onclick="goToPage('settle')">💰 一键结算</button>
+    </div>
+  </div>
+
+  <!-- 弹窗 -->
+  <div class="modal-overlay" id="createModal" onclick="if(event.target===this)hideModal('create')">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-head">
+        <div class="modal-title">创建旅行房间</div>
+        <div class="modal-close" onclick="hideModal('create')">✕</div>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">旅行名称</label>
+          <input class="form-input" placeholder="如：国庆东京行" id="createName">
+        </div>
+        <div class="form-group">
+          <label class="form-label">目的地</label>
+          <div class="dest-pills">
+            <div class="dest-pill" onclick="selectCat(this)">东京</div>
+            <div class="dest-pill" onclick="selectCat(this)">大阪</div>
+            <div class="dest-pill" onclick="selectCat(this)">首尔</div>
+            <div class="dest-pill" onclick="selectCat(this)">曼谷</div>
+            <div class="dest-pill" onclick="selectCat(this)">巴黎</div>
+            <div class="dest-pill" onclick="selectCat(this)">杭州</div>
+          </div>
+          <input class="form-input" placeholder="或手动输入目的地" id="createDest">
+        </div>
+        <button class="btn btn-primary" style="width:100%; margin-top:8px;" onclick="createRoom()">创建房间</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="joinModal" onclick="if(event.target===this)hideModal('join')">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-head">
+        <div class="modal-title">加入旅行房间</div>
+        <div class="modal-close" onclick="hideModal('join')">✕</div>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">房间号</label>
+          <input class="form-input" placeholder="输入6位房间号" maxlength="6" style="text-align:center; font-size:24px; letter-spacing:8px; font-weight:700;" id="joinCode">
+        </div>
+        <div class="form-group">
+          <label class="form-label">你的昵称</label>
+          <input class="form-input" placeholder="输入昵称" id="joinName">
+        </div>
+        <button class="btn btn-primary" style="width:100%; margin-top:8px;" onclick="joinRoom()">加入房间</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const DATA = {
+      rooms: {
+        demo_room_1: { name:'国庆东京行', dest:'📍 东京 · TOKYO', code:'888666', members:['小明','小红','小李','小王'], total:12580.50 },
+        demo_room_2: { name:'周末杭州游', dest:'📍 杭州 · HANGZHOU', code:'123456', members:['小明','小张'], total:2860.00 }
+      },
+      bills: {
+        demo_room_1: [
+          { icon:'🏨', name:'酒店4晚', payer:'小明', amount:3200, time:'10/01 14:30' },
+          { icon:'🚗', name:'机票(4人)', payer:'小红', amount:1560, time:'10/01 08:00' },
+          { icon:'🍜', name:'浅草寺晚餐', payer:'小明', amount:680, time:'10/02 19:30' },
+          { icon:'🚗', name:'地铁+出租车', payer:'小李', amount:450, time:'10/03 16:00' },
+          { icon:'🎫', name:'迪士尼门票', payer:'小王', amount:2800, time:'10/04 09:00' },
+          { icon:'🍜', name:'银座购物午餐', payer:'小红', amount:520, time:'10/05 12:30' },
+          { icon:'🛍️', name:'药妆店扫货', payer:'小明', amount:2100, time:'10/06 15:00' },
+          { icon:'🍜', name:'居酒屋聚餐', payer:'小李', amount:1270.50, time:'10/07 20:00' }
+        ],
+        demo_room_2: [
+          { icon:'🏨', name:'西湖边民宿', payer:'小明', amount:1200, time:'09/14 14:00' },
+          { icon:'🚗', name:'高铁票', payer:'小张', amount:460, time:'09/14 08:00' },
+          { icon:'🍜', name:'楼外楼午餐', payer:'小明', amount:380, time:'09/15 12:00' },
+          { icon:'🎫', name:'灵隐寺+游船', payer:'小张', amount:520, time:'09/15 09:00' },
+          { icon:'🍜', name:'晚餐+宵夜', payer:'小明', amount:300, time:'09/16 19:00' }
+        ]
+      }
+    };
+
+    let currentPage = 'home', currentRoomId = null, pageHistory = [];
+
+    function goToPage(page, roomId) {
+      pageHistory.push(currentPage);
+      currentPage = page;
+      currentRoomId = roomId || currentRoomId;
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById('page-' + page).classList.add('active');
+      document.querySelectorAll('.anim').forEach(el => { el.style.animation='none'; el.offsetHeight; el.style.animation=''; });
+      const titles = { home:'TravelAA', room:'房间详情', add:'记一笔', settle:'一键结算', stats:'消费统计' };
+      document.getElementById('navTitle').textContent = titles[page];
+      document.getElementById('navBack').style.display = page === 'home' ? 'none' : 'flex';
+      document.getElementById('navAction').style.display = page === 'home' ? 'block' : 'none';
+      document.getElementById('bottomBar').style.display = page === 'room' ? 'flex' : 'none';
+      if (page === 'room') loadRoom();
+      if (page === 'add') loadPayers();
+      if (page === 'settle') loadSettle();
+      if (page === 'stats') loadStats();
+    }
+
+    function goBack() {
+      const prev = pageHistory.pop() || 'home';
+      currentPage = prev;
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById('page-' + prev).classList.add('active');
+      const titles = { home:'TravelAA', room:'房间详情', add:'记一笔', settle:'一键结算', stats:'消费统计' };
+      document.getElementById('navTitle').textContent = titles[prev];
+      document.getElementById('navBack').style.display = prev === 'home' ? 'none' : 'flex';
+      document.getElementById('navAction').style.display = prev === 'home' ? 'block' : 'none';
+      document.getElementById('bottomBar').style.display = prev === 'room' ? 'flex' : 'none';
+    }
+
+    function goToRoom(id) { goToPage('room', id); }
+
+    function loadRoom() {
+      const room = DATA.rooms[currentRoomId], bills = DATA.bills[currentRoomId] || [];
+      document.getElementById('roomName').textContent = room.name;
+      document.getElementById('roomDest').textContent = room.dest;
+      document.getElementById('roomTotal').textContent = '¥' + room.total.toLocaleString();
+      document.getElementById('roomBills').textContent = bills.length;
+      document.getElementById('roomCode').textContent = room.code;
+      document.getElementById('membersList').innerHTML = room.members.map(m =>
+        '<div class="member"><div class="member-av">' + m[0] + '</div><div class="member-name">' + m + '</div></div>'
+      ).join('');
+      document.getElementById('billsList').innerHTML = bills.map(b =>
+        '<div class="bill-row"><div class="bill-icon-box">' + b.icon + '</div><div class="bill-info"><div class="bill-name">' + b.name + '</div><div class="bill-meta">' + b.payer + ' · ' + b.time + '</div></div><div class="bill-amount">¥' + b.amount.toLocaleString() + '</div></div>'
+      ).join('');
+    }
+
+    function loadPayers() {
+      const room = DATA.rooms[currentRoomId] || DATA.rooms.demo_room_1;
+      document.getElementById('payerList').innerHTML = room.members.map(m =>
+        '<div class="member"><div class="member-av">' + m[0] + '</div><div class="member-name">' + m + '</div></div>'
+      ).join('');
+    }
+
+    function loadSettle() {
+      const balances = [
+        { name:'小明', type:'应收款', amount:3040.35 },
+        { name:'小红', type:'应收款', amount:1530.13 },
+        { name:'小王', type:'应收款', amount:9.88 },
+        { name:'小李', type:'应付款', amount:-4580.36 }
+      ];
+      document.getElementById('balancesList').innerHTML = balances.map(b =>
+        '<div class="balance-row"><div class="balance-av">' + b.name[0] + '</div><div class="balance-info"><div class="balance-name">' + b.name + '</div><div class="balance-type">' + b.type + '</div></div><div class="balance-amount ' + (b.amount>=0?'pos':'neg') + '">' + (b.amount>=0?'+':'') + '¥' + Math.abs(b.amount).toLocaleString(undefined,{minimumFractionDigits:2}) + '</div></div>'
+      ).join('');
+
+      const transfers = [
+        { from:'小红', to:'小明', amount:1530.13 },
+        { from:'小李', to:'小明', amount:1159.74 },
+        { from:'小李', to:'小王', amount:9.88 }
+      ];
+      document.getElementById('transfersList').innerHTML = transfers.map((t,i) =>
+        '<div class="transfer-row"><div class="transfer-step">' + (i+1) + '</div><div class="transfer-flow"><div class="transfer-name">' + t.from + '</div><div class="transfer-line"></div><div class="transfer-amt">¥' + t.amount.toLocaleString(undefined,{minimumFractionDigits:2}) + '</div><div class="transfer-line"></div><div class="transfer-name">' + t.to + '</div></div></div>'
+      ).join('');
+    }
+
+    function loadStats() {
+      const cats = [
+        { icon:'🏨', name:'住宿', amount:3200, pct:100 },
+        { icon:'🎫', name:'门票', amount:2800, pct:87.5 },
+        { icon:'🍜', name:'餐饮', amount:2470.50, pct:77 },
+        { icon:'🛍️', name:'购物', amount:2100, pct:65.6 },
+        { icon:'🚗', name:'交通', amount:2010, pct:62.8 }
+      ];
+      document.getElementById('statsList').innerHTML = cats.map(c =>
+        '<div class="stat-item"><div class="stat-head"><div class="stat-name">' + c.icon + ' ' + c.name + '</div><div class="stat-val">¥' + c.amount.toLocaleString() + '</div></div><div class="stat-track"><div class="stat-fill" style="width:' + c.pct + '%"></div></div></div>'
+      ).join('');
+    }
+
+    function showModal(type) { document.getElementById(type + 'Modal').classList.add('show'); }
+    function hideModal(type) { document.getElementById(type + 'Modal').classList.remove('show'); }
+    function selectCat(el) { el.parentElement.querySelectorAll('.dest-pill').forEach(p => p.classList.remove('active')); el.classList.add('active'); }
+    function createRoom() { hideModal('create'); toast('✅ 房间创建成功'); }
+    function joinRoom() { hideModal('join'); toast('✅ 加入成功'); }
+    function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000); }
+  </script>
+</body>
+</html>

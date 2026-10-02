@@ -1,0 +1,1 @@
+{"name":"travel-aa","version":"2.0.0","private":true,"description":"TravelAA test harness deps","scripts":{"test":"node tests/ai.test.js && node tests/v2.test.js && node tests/demo.check.js"},"dependencies":{"jsdom":"^29.1.1"}}

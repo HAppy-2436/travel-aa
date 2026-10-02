@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif; }
+  body { width:390px; height:844px; background:#f5f6f8; }
+  .top { background:linear-gradient(135deg,#2b7fff,#3a9bff); color:#fff; padding:48px 16px 14px; font-size:17px; font-weight:600; text-align:center; position:relative; }
+  .back { position:absolute; left:14px; top:48px; font-size:20px; }
+  .status { background:#fff; margin:10px 12px; border-radius:12px; padding:18px 16px; }
+  .status h2 { font-size:19px; color:#111; margin-bottom:6px; }
+  .status .sub { font-size:12px; color:#999; }
+  .hotel { background:#fff; margin:10px 12px; border-radius:12px; padding:16px; }
+  .hotel .row { display:flex; gap:12px; }
+  .hotel .thumb { width:86px; height:86px; border-radius:10px; background:linear-gradient(135deg,#ffe3c9,#ffc7a3); display:flex; align-items:center; justify-content:center; font-size:34px; }
+  .hotel .name { font-size:16px; font-weight:700; color:#111; line-height:1.5; }
+  .hotel .tags { margin-top:8px; }
+  .tag { display:inline-block; font-size:11px; color:#2b7fff; background:#eaf3ff; border-radius:4px; padding:2px 8px; margin-right:6px; }
+  .kv { background:#fff; margin:10px 12px; border-radius:12px; padding:6px 16px; }
+  .kv .item { display:flex; justify-content:space-between; padding:11px 0; border-bottom:1px solid #f2f2f2; font-size:13px; }
+  .kv .item:last-child { border-bottom:none; }
+  .kv .k { color:#999; }
+  .kv .v { color:#111; font-weight:500; }
+  .pay { background:#fff; margin:10px 12px; border-radius:12px; padding:16px; display:flex; justify-content:space-between; align-items:center; }
+  .pay .money { font-size:22px; font-weight:800; color:#ff4d24; }
+  .pay .money small { font-size:13px; }
+  .foot { position:absolute; bottom:0; left:0; right:0; background:#fff; padding:12px 16px 28px; display:flex; gap:10px; }
+  .btn { flex:1; text-align:center; padding:11px 0; border-radius:22px; font-size:14px; }
+  .btn.ghost { border:1px solid #ddd; color:#666; }
+  .btn.main { background:#2b7fff; color:#fff; }
+</style>
+</head>
+<body>
+  <div class="top"><span class="back">‹</span>订单详情</div>
+  <div class="status">
+    <h2>订单已完成</h2>
+    <div class="sub">感谢您的预订，期待再次为您服务</div>
+  </div>
+  <div class="hotel">
+    <div class="row">
+      <div class="thumb">🏨</div>
+      <div>
+        <div class="name">东京新宿格拉斯丽酒店<br>高级大床房 4晚</div>
+        <div class="tags"><span class="tag">免费取消</span><span class="tag">含双早</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="kv">
+    <div class="item"><span class="k">入住日期</span><span class="v">2024-10-01 周二 15:00后</span></div>
+    <div class="item"><span class="k">离店日期</span><span class="v">2024-10-05 周六 12:00前</span></div>
+    <div class="item"><span class="k">入住人</span><span class="v">小明</span></div>
+    <div class="item"><span class="k">房间数</span><span class="v">1间 x 4晚</span></div>
+    <div class="item"><span class="k">订单号</span><span class="v">H9876543210</span></div>
+    <div class="item"><span class="k">下单时间</span><span class="v">2024-08-15 21:34</span></div>
+  </div>
+  <div class="pay">
+    <span style="font-size:13px; color:#666;">实付款</span>
+    <span class="money"><small>¥</small>3,200.00</span>
+  </div>
+  <div class="foot">
+    <div class="btn ghost">联系客服</div>
+    <div class="btn ghost">再次预订</div>
+    <div class="btn main">评价有礼</div>
+  </div>
+</body>
+</html>

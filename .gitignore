@@ -1,0 +1,38 @@
+# ===== 依赖（交接时不打包，对方 npm install 即可）=====
+node_modules/
+apps/miniprogram/miniprogram_npm/
+mini_program_npm/
+
+# ===== 运行时产物（数据库 / 日志，不入库）=====
+server/data/
+*.db
+*.db-shm
+*.db-wal
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# ===== 本地配置与密钥（红线：任何 Key 都不得提交）=====
+.env
+.env.*
+!.env.example
+server/.env
+*.key
+*.pem
+*.p12
+
+# ===== 编辑器 / 系统 =====
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+
+# ===== 本地验收/调试临时产物（不要入库）=====
+/edgeprof/
+/chrome-prof/
+/dom*.html
+/err*.txt
+/tmp/

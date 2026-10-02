@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif; }
+  body { width:390px; height:844px; background:#f5f6f8; }
+  .top { background:linear-gradient(135deg,#2b7fff,#3a9bff); color:#fff; padding:48px 16px 14px; font-size:17px; font-weight:600; text-align:center; position:relative; }
+  .back { position:absolute; left:14px; top:48px; font-size:20px; }
+  .status { background:#fff; margin:10px 12px; border-radius:12px; padding:18px 16px; }
+  .status h2 { font-size:19px; color:#111; margin-bottom:6px; }
+  .status .sub { font-size:12px; color:#999; }
+  .trip { background:#fff; margin:10px 12px; border-radius:12px; padding:18px 16px; }
+  .trip .route { display:flex; align-items:center; justify-content:space-between; }
+  .trip .city { text-align:center; }
+  .trip .city .code { font-size:26px; font-weight:800; color:#111; }
+  .trip .city .time { font-size:12px; color:#999; margin-top:4px; }
+  .trip .line { flex:1; height:1px; background:#d9e6ff; margin:0 14px; position:relative; }
+  .trip .plane { position:absolute; top:-11px; left:50%; transform:translateX(-50%); font-size:16px; background:#fff; padding:0 6px; }
+  .trip .meta { margin-top:14px; padding-top:12px; border-top:1px solid #f2f2f2; font-size:12px; color:#666; display:flex; justify-content:space-between; }
+  .kv { background:#fff; margin:10px 12px; border-radius:12px; padding:6px 16px; }
+  .kv .item { display:flex; justify-content:space-between; padding:11px 0; border-bottom:1px solid #f2f2f2; font-size:13px; }
+  .kv .item:last-child { border-bottom:none; }
+  .kv .k { color:#999; }
+  .kv .v { color:#111; font-weight:500; }
+  .pay { background:#fff; margin:10px 12px; border-radius:12px; padding:16px; display:flex; justify-content:space-between; align-items:center; }
+  .pay .money { font-size:22px; font-weight:800; color:#ff4d24; }
+  .pay .money small { font-size:13px; }
+</style>
+</head>
+<body>
+  <div class="top"><span class="back">‹</span>订单详情</div>
+  <div class="status">
+    <h2>出票成功</h2>
+    <div class="sub">已为您成功出票，请按时到达机场办理乘机</div>
+  </div>
+  <div class="trip">
+    <div class="route">
+      <div class="city"><div class="code">浦东 T1</div><div class="time">10-01 09:15</div></div>
+      <div class="line"><span class="plane">✈️</span></div>
+      <div class="city"><div class="code">成田 T2</div><div class="time">10-01 13:20</div></div>
+    </div>
+    <div class="meta"><span>中国东方航空 MU523</span><span>经济舱 · 20kg托运</span></div>
+  </div>
+  <div class="kv">
+    <div class="item"><span class="k">乘机人</span><span class="v">小明</span></div>
+    <div class="item"><span class="k">票号</span><span class="v">781-2345678901</span></div>
+    <div class="item"><span class="k">订单号</span><span class="v">1034567890</span></div>
+    <div class="item"><span class="k">订单金额</span><span class="v">¥6,240.00</span></div>
+    <div class="item"><span class="k">下单时间</span><span class="v">2024-08-10 19:02</span></div>
+  </div>
+  <div class="pay">
+    <span style="font-size:13px; color:#666;">实付款（含机建燃油）</span>
+    <span class="money"><small>¥</small>6,240.00</span>
+  </div>
+</body>
+</html>

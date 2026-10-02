@@ -1,0 +1,28 @@
+/* pages/room/room.wxss */
+
+.room-hero {
+  padding: 40rpx 0 56rpx;
+}
+
+.room-hero .hero-title {
+  font-size: 64rpx;
+}
+
+.bill-right {
+  text-align: right;
+}
+
+/* 底部栏 */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  gap: 18rpx;
+  padding: 24rpx 40rpx calc(24rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20rpx);
+  border-top: 2rpx solid var(--gray-100);
+  z-index: 100;
+}

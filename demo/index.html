@@ -1,0 +1,1845 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TravelAA · 多人实时联动演示</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#08080c;--white:#fff;--g100:#f7f7f8;--g200:#eeeef0;--g300:#d4d4d8;--g400:#a1a1aa;--g500:#71717a;--pri:#FF6B35;--pri-bg:#FFF0EB;--grn:#07C160;--grn-bg:#EDFAF3;--red:#FA5151;--red-bg:#FEF0F0;--amb:#FF9500;--amb-bg:#FFF8EE;--blu:#1a73e8}
+body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:#fff;min-height:100vh;overflow-x:auto;-webkit-font-smoothing:antialiased}
+.bg{position:fixed;inset:0;background:radial-gradient(ellipse 60% 40% at 20% 10%,rgba(255,107,53,0.06),transparent 60%),radial-gradient(ellipse 50% 50% at 80% 80%,rgba(100,100,255,0.04),transparent 60%);z-index:0}
+.wrap{position:relative;z-index:1;max-width:1600px;margin:0 auto;padding:28px 32px}
+.hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid rgba(255,255,255,0.05)}
+.hdr h1{font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.8px;background:linear-gradient(135deg,#fff 40%,rgba(255,255,255,0.5));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hdr p{font-size:13px;color:rgba(255,255,255,0.3);margin-top:5px}
+.hdr-r{display:flex;gap:8px;align-items:center}
+.cb{padding:9px 18px;border:1px solid rgba(255,255,255,0.08);border-radius:100px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.7);font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1)}
+.cb:hover{background:rgba(255,255,255,0.08);color:#fff;transform:translateY(-1px)}
+.cb.pr{background:var(--pri);border-color:var(--pri);color:#fff;box-shadow:0 4px 16px rgba(255,107,53,.25)}
+.cb.act{border-color:rgba(255,107,53,.3);color:var(--pri)}
+.stage{display:flex;gap:40px;justify-content:center;align-items:flex-start;padding:16px 0 40px;min-height:calc(100vh - 200px)}
+.pu{display:flex;flex-direction:column;align-items:center;gap:18px;transition:transform .4s cubic-bezier(.4,0,.2,1)}
+.pu:hover{transform:translateY(-6px)}
+.pl{display:flex;align-items:center;gap:12px}
+.pn{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700}
+.pr2{font-size:10px;color:rgba(255,255,255,.3);background:rgba(255,255,255,.05);padding:3px 10px;border-radius:100px;margin-top:2px}
+.pf{width:320px;height:660px;background:#0c0c0c;border-radius:50px;padding:10px;position:relative;box-shadow:0 0 0 1.5px rgba(255,255,255,.1),0 30px 80px rgba(0,0,0,.6),0 10px 30px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.06)}
+.pn2{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:110px;height:26px;background:#0c0c0c;border-radius:0 0 16px 16px;z-index:20}
+.pn2::after{content:'';position:absolute;top:8px;right:20px;width:8px;height:8px;background:#1a1a2e;border-radius:50%}
+.pbt{position:absolute;width:2.5px;background:#222;border-radius:2px}
+.pbt.pw{right:-2.5px;top:170px;height:50px}.pbt.vu{left:-2.5px;top:140px;height:28px}.pbt.vd{left:-2.5px;top:178px;height:28px}
+.ps{width:100%;height:100%;background:#fff;border-radius:42px;overflow:hidden;position:relative}
+.hi{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:100px;height:4px;background:#1a1a1a;border-radius:2px;opacity:.12;z-index:25}
+.app{width:100%;height:100%;display:flex;flex-direction:column;font-family:'Inter',sans-serif;color:#18181b}
+.an{padding:48px 22px 14px;background:rgba(255,255,255,.92);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid var(--g200);display:flex;align-items:center;justify-content:space-between}
+.an-t{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700}
+.an-b{font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:600;padding:7px 16px;border:1.5px solid var(--g200);border-radius:100px;cursor:pointer;color:var(--g500);transition:all .15s}
+.an-b:hover{border-color:var(--g300);background:var(--g100)}
+.ab{flex:1;overflow-y:auto;padding:18px 22px 24px}.ab::-webkit-scrollbar{width:0}
+.hs{padding:20px 0 24px}
+.hl{font-family:'Space Grotesk',sans-serif;font-size:8px;font-weight:700;letter-spacing:3.5px;color:var(--g400);margin-bottom:10px}
+.ht{font-family:'Space Grotesk',sans-serif;font-size:34px;font-weight:700;letter-spacing:-1.8px;line-height:1.08}
+.ht span{color:var(--g300)}
+.ag{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:28px}
+.btn{display:flex;align-items:center;justify-content:center;gap:7px;padding:15px 18px;border:none;border-radius:100px;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);user-select:none}
+.btn:active{transform:scale(.96)}
+.btn.dk{background:#18181b;color:#fff;box-shadow:0 2px 12px rgba(0,0,0,.12)}
+.btn.lt{background:#fff;color:#18181b;border:1.5px solid var(--g200);box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.btn.or{background:var(--pri);color:#fff;box-shadow:0 2px 12px rgba(255,107,53,.2)}
+.btn.dg{background:var(--red);color:#fff;box-shadow:0 2px 12px rgba(250,81,81,.2)}
+.sh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:1.5px solid #18181b}
+.st{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700}
+.sc{font-family:'Space Grotesk',sans-serif;font-size:10px;color:var(--g400);letter-spacing:1px}
+.rc{background:#fff;border:1.5px solid var(--g200);border-radius:18px;padding:18px;margin-bottom:12px;cursor:pointer;transition:all .25s cubic-bezier(.4,0,.2,1);box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.rc:hover{border-color:var(--g300);box-shadow:0 2px 8px rgba(0,0,0,.06),0 0 1px rgba(0,0,0,.08);transform:translateY(-2px)}
+.rt{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.rn{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700}
+.rco{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;letter-spacing:2.5px;color:var(--pri)}
+.rco small{display:block;font-size:7px;letter-spacing:1.5px;color:var(--g400);text-transform:uppercase}
+.rs{display:flex;gap:24px}
+.rsv{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700}
+.rsl{font-size:8px;color:var(--g400);text-transform:uppercase;letter-spacing:1.2px;margin-top:1px}
+.em{text-align:center;padding:48px 20px;color:var(--g300);animation:fi .4s ease-out}
+.ei{font-size:48px;margin-bottom:10px;opacity:.6}.et{font-family:'Space Grotesk',sans-serif;font-size:13px;color:var(--g400)}.es{font-size:10px;color:var(--g300);margin-top:8px}
+@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.og{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--g200);border:1px solid var(--g200);border-radius:16px;overflow:hidden;margin-bottom:22px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.oi{background:#fff;padding:16px 18px}
+.ol{font-family:'Space Grotesk',sans-serif;font-size:8px;font-weight:700;letter-spacing:2px;color:var(--g400);margin-bottom:5px}
+.ov{font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.8px}.ov.sm{font-size:17px}
+.mm{display:flex;gap:16px;overflow-x:auto;padding:6px 0 12px}.mm::-webkit-scrollbar{height:0}
+/* 成员展示：无头像，姓名胶囊（选中态为黑底） */
+.mnames{display:flex;flex-wrap:wrap;gap:6px}
+.mname{padding:6px 13px;border:1.5px solid var(--g200);border-radius:100px;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;color:var(--g500);white-space:nowrap;transition:all .2s}
+.mname.ac{background:#18181b;color:#fff;border-color:#18181b}
+.br{display:flex;align-items:center;padding:12px 0;border-bottom:1px solid var(--g100)}.br:last-child{border-bottom:none}
+.bi{width:40px;height:40px;border-radius:12px;background:var(--g100);display:flex;align-items:center;justify-content:center;font-size:18px;margin-right:12px}
+.bin{flex:1}.bn{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600}.bm{font-family:'Space Grotesk',sans-serif;font-size:10px;color:var(--g400);margin-top:1px}
+.ba{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700}
+.bd{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--g200);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-left:10px;font-size:12px;color:var(--g400);transition:all .15s}
+.bd:hover{border-color:var(--red);color:var(--red);background:var(--red-bg)}
+.bbw{margin-bottom:18px}
+.bh{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.bl{font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--g400)}
+.bnum{font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;color:var(--g500)}.bnum strong{font-size:18px;color:#18181b}
+.bbg{width:100%;height:8px;background:var(--g100);border-radius:4px;overflow:hidden}
+.bf{height:100%;border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.bf.safe{background:linear-gradient(90deg,#07C160,#34D399)}.bf.warn{background:linear-gradient(90deg,#FF9500,#FFBB4D)}.bf.over{background:linear-gradient(90deg,#FA5151,#FF7A7A)}
+.bal{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;font-size:11px;font-weight:600;margin-bottom:14px;font-family:'Space Grotesk',sans-serif}
+.bal.safe{background:var(--grn-bg);color:var(--grn)}.bal.warn{background:var(--amb-bg);color:var(--amb)}.bal.over{background:var(--red-bg);color:var(--red)}
+.amb{border:1.5px solid var(--g200);border-radius:18px;padding:22px;margin-bottom:18px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.aml{font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--g400);margin-bottom:10px}
+.air{display:flex;align-items:baseline;gap:4px}
+.acu{font-family:'Space Grotesk',sans-serif;font-size:20px;color:var(--g300)}
+.ain{font-family:'Space Grotesk',sans-serif;font-size:40px;font-weight:700;letter-spacing:-1.5px;border:none;outline:none;background:transparent;width:100%;color:#18181b}
+.ain::placeholder{color:var(--g200)}
+.fg{margin-bottom:16px}
+.fl{font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--g400);margin-bottom:8px}
+.fi{width:100%;height:44px;background:var(--g100);border:1.5px solid transparent;border-radius:12px;padding:0 16px;font-family:'Space Grotesk',sans-serif;font-size:14px;color:#18181b;outline:none;transition:all .2s}
+.fi:focus{background:#fff;border-color:var(--pri);box-shadow:0 0 0 3px rgba(255,107,53,.1)}
+.pm{display:flex;gap:8px;overflow-x:auto;padding:4px 0}.pm::-webkit-scrollbar{height:0}
+.pi{padding:9px 18px;border:1.5px solid var(--g200);border-radius:100px;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer;transition:all .15s;user-select:none}
+.pi:active,.pi.act{background:#18181b;color:#fff;border-color:#18181b}
+.shm{text-align:center;padding:28px 0 24px}
+.svm{font-family:'Space Grotesk',sans-serif;font-size:44px;font-weight:700;letter-spacing:-2.5px}
+.brm{display:flex;align-items:center;padding:12px 0;border-bottom:1px solid var(--g100)}.brm:last-child{border-bottom:none}
+.bin2{flex:1}.bnn{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600}.bnt{font-family:'Space Grotesk',sans-serif;font-size:10px;color:var(--g400)}
+.bam{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700}.bam.pos{color:var(--grn)}.bam.neg{color:var(--red)}
+.trm{display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--g100)}.trm:last-child{border-bottom:none}
+.tsm{width:28px;height:28px;border-radius:50%;background:#18181b;color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;margin-right:12px}
+.ttm{flex:1;display:flex;align-items:center;gap:10px}
+.tnm{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600}
+.tam{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;color:var(--pri)}
+.abb{display:flex;gap:8px;padding:14px 22px 28px;background:rgba(255,255,255,.92);backdrop-filter:blur(20px) saturate(180%);border-top:1px solid var(--g200)}
+.abb .btn{flex:1;padding:13px 16px}
+.mo{position:absolute;inset:0;background:rgba(0,0,0,.3);backdrop-filter:blur(4px);z-index:50;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .3s}
+.mo.show{opacity:1;pointer-events:auto}
+.mm2{width:100%;background:#fff;border-radius:22px 22px 0 0;max-height:85%;overflow-y:auto;transform:translateY(100%);transition:transform .4s cubic-bezier(.32,.72,0,1);box-shadow:0 -8px 40px rgba(0,0,0,.1)}
+.mo.show .mm2{transform:translateY(0)}
+.mh{width:36px;height:4px;background:var(--g200);border-radius:2px;margin:12px auto 0}
+.mhd{display:flex;justify-content:space-between;align-items:center;padding:16px 22px 12px}
+.mt{font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:700}
+.mc{width:32px;height:32px;border-radius:50%;background:var(--g100);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;color:var(--g500);transition:all .15s}
+.mc:hover{background:var(--g200)}
+.mb{padding:0 22px 24px}
+.co{position:absolute;inset:0;background:rgba(0,0,0,.25);backdrop-filter:blur(6px);z-index:60;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
+.co.show{opacity:1;pointer-events:auto}
+.cb2{background:#fff;border-radius:20px;padding:28px 24px 20px;width:80%;max-width:260px;text-align:center;transform:scale(.9);transition:transform .3s cubic-bezier(.32,.72,0,1);box-shadow:0 16px 48px rgba(0,0,0,.12)}
+.co.show .cb2{transform:scale(1)}
+.ci{font-size:32px;margin-bottom:10px}
+.ct{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;margin-bottom:6px}
+.cd{font-size:12px;color:var(--g500);margin-bottom:20px}
+.cbs{display:flex;gap:8px}.cbs .btn{flex:1;padding:11px 16px;font-size:13px}
+.toast{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#18181b;color:#fff;padding:11px 24px;border-radius:100px;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;z-index:70;opacity:0;transition:all .3s cubic-bezier(.4,0,.2,1);pointer-events:none;box-shadow:0 8px 32px rgba(0,0,0,.15)}
+.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.sp{position:relative;background:#18181b;border-radius:18px;padding:18px;margin-bottom:16px;overflow:hidden}
+.spc{background:#fff;border-radius:12px;padding:16px;min-height:120px}
+.sl{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--pri),transparent);animation:sm 1.8s ease-in-out infinite;z-index:5;box-shadow:0 0 16px rgba(255,107,53,.5)}
+@keyframes sm{0%{top:8%}50%{top:88%}100%{top:8%}}
+.ss{text-align:center;padding:10px;font-family:'Space Grotesk',sans-serif;font-size:11px;color:var(--pri);font-weight:600}
+.cts{display:flex;gap:6px;margin-bottom:16px}
+.ct2{flex:1;padding:12px 8px;border:1.5px solid var(--g200);border-radius:14px;text-align:center;cursor:pointer;transition:all .2s}
+.ct2:active,.ct2.act{border-color:#18181b;background:#18181b;color:#fff}
+.cti{font-size:22px;margin-bottom:4px}.ctl{font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700}
+.ca{border:2px dashed var(--g200);border-radius:18px;padding:32px 20px;text-align:center;margin-bottom:16px;cursor:pointer;transition:all .2s}
+.ca:hover{border-color:var(--pri);background:var(--pri-bg)}
+.cai{font-size:40px;margin-bottom:8px}.cat{font-family:'Space Grotesk',sans-serif;font-size:12px;color:var(--g400)}
+.os{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--g100);border-radius:12px;margin-bottom:14px;font-family:'Space Grotesk',sans-serif;font-size:10px;color:var(--g500)}
+.ors{margin-bottom:14px}
+.orc{background:#fff;border:1.5px solid var(--g200);border-radius:16px;padding:16px;margin-bottom:10px;cursor:pointer;transition:all .2s;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.orc:hover{border-color:var(--g300);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.orc.sel{border-color:var(--pri);background:var(--pri-bg)}
+.ort{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.ord{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700}
+.ora{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700}
+.orm{font-family:'Space Grotesk',sans-serif;font-size:10px;color:var(--g400)}
+.orb{display:inline-block;padding:2px 8px;border-radius:100px;font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700}
+.orb.single{background:var(--g100);color:var(--g500)}.orb.list{background:#EEF2FF;color:var(--blu)}.orb.receipt{background:var(--amb-bg);color:var(--amb)}.orb.invoice{background:var(--red-bg);color:var(--red)}
+.oc{display:inline-block;margin-left:4px;font-family:'Space Grotesk',sans-serif;font-size:9px;color:var(--grn);font-weight:700}
+.mbi{background:#fff;border:1px solid var(--g200);border-radius:14px;padding:16px;font-family:'Space Grotesk',sans-serif;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.mbr{display:flex;justify-content:space-between;padding:5px 0;font-size:11px;color:var(--g500)}
+.mbr.tot{border-top:1px solid var(--g200);margin-top:6px;padding-top:8px;font-weight:700;font-size:14px;color:#18181b}
+.mbt{text-align:center;font-weight:700;font-size:14px;margin-bottom:10px}
+.mbs{text-align:center;font-size:9px;color:var(--g400);margin-bottom:10px}
+.sf{animation:sp2 .8s cubic-bezier(.4,0,.2,1)}
+@keyframes sp2{0%{box-shadow:0 0 0 0 rgba(255,107,53,.5),0 30px 80px rgba(0,0,0,.6)}40%{box-shadow:0 0 0 12px rgba(255,107,53,.08),0 30px 80px rgba(0,0,0,.6)}100%{box-shadow:0 0 0 1.5px rgba(255,255,255,.1),0 30px 80px rgba(0,0,0,.6)}}
+.ab>div{animation:pg .35s cubic-bezier(.4,0,.2,1)}
+@keyframes pg{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.fh{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);font-size:11px;color:rgba(255,255,255,.15);z-index:0}
+/* ===== 导览（演讲者模式） ===== */
+.tour-mask{position:fixed;z-index:200;pointer-events:none;border-radius:14px;box-shadow:0 0 0 9999px rgba(8,8,12,.74);transition:all .35s cubic-bezier(.4,0,.2,1)}
+.tour-card{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);width:min(560px,92vw);background:#fff;color:#18181b;border-radius:20px;padding:20px 22px;z-index:210;box-shadow:0 24px 64px rgba(0,0,0,.5);animation:pg .3s cubic-bezier(.4,0,.2,1)}
+.tour-step{font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700;letter-spacing:3px;color:var(--g400)}
+.tour-title{font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:700;margin:6px 0 8px}
+.tour-script{font-size:13px;line-height:1.7;color:var(--g500);min-height:44px}
+.tour-dots{display:flex;gap:5px;margin:14px 0 12px}
+.tour-dot{width:6px;height:6px;border-radius:50%;background:var(--g200);transition:all .2s}
+.tour-dot.on{background:#18181b;width:18px;border-radius:3px}
+.tour-ctrl{display:flex;gap:8px}
+.tour-ctrl .btn{flex:1;padding:12px 14px;font-size:12px}
+/* ===== 演示自检面板 ===== */
+.test-panel{position:fixed;inset:0;background:rgba(8,8,12,.82);z-index:220;display:flex;align-items:center;justify-content:center;padding:24px}
+.test-card{background:#fff;color:#18181b;border-radius:20px;padding:24px;width:min(520px,92vw);max-height:82vh;overflow-y:auto;animation:pg .3s cubic-bezier(.4,0,.2,1)}
+.test-hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.test-tt{font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700}
+.test-sum{font-family:'Space Grotesk',sans-serif;font-size:11px;color:var(--g400);margin-bottom:16px}
+.test-row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--g100);font-family:'Space Grotesk',sans-serif;font-size:12px}
+.test-row:last-of-type{border-bottom:none}
+.test-ok{color:var(--grn);font-weight:700;white-space:nowrap}
+.test-no{color:var(--red);font-weight:700;white-space:nowrap}
+/* ===== 手机内排版比例（对齐真机字号阶梯：320px 框宽，正文 13px 级 / 标题 23px 级 / 数字 28px 级） ===== */
+.app .an{padding:50px 16px 12px}
+.app .an-t{font-size:15.5px}
+.app .an-b{font-size:11px;padding:6px 13px}
+.app .ab{padding:16px 18px 22px}
+.app .hs{padding:14px 0 16px}
+.app .ht{font-size:23px;letter-spacing:-0.8px;line-height:1.15}
+/* 主视觉标题：要的就是冲击力（首屏 slogan / 关键大数字允许超出正文阶梯） */
+.app .ht-hero{font-size:34px;letter-spacing:-1.6px;line-height:1.06;font-weight:700}
+.app .ht-hero span{color:var(--g300)}
+.app .hl{font-size:9.5px;letter-spacing:2.6px}
+.app .btn{font-size:12.5px;padding:13px 15px;gap:6px}
+.app .abb{padding:12px 16px 22px}
+.app .abb .btn{padding:12px 8px}
+.app .st{font-size:15px}
+.app .sc{font-size:9.5px}
+.app .sh{margin-bottom:12px;padding-bottom:9px}
+.app .rc{padding:14px;border-radius:16px}
+.app .rn{font-size:15.5px}
+.app .rco{font-size:13.5px;letter-spacing:2px}
+.app .rco small{font-size:7px;letter-spacing:1px}
+.app .rs{justify-content:space-between;gap:12px}
+.app .rsv{font-size:14.5px}
+.app .rsl{font-size:9.5px}
+.app .og{border-radius:14px;margin-bottom:18px}
+.app .oi{padding:13px 14px}
+.app .ol{font-size:9px;letter-spacing:1.4px}
+.app .ov{font-size:19px;letter-spacing:-0.5px}
+.app .ov.sm{font-size:14.5px}
+.app .mname{font-size:11.5px;padding:5px 12px}
+.app .br{padding:11px 0}
+.app .bi{width:36px;height:36px;font-size:16px;margin-right:10px;border-radius:10px}
+.app .bn{font-size:13.5px}
+.app .bm{font-size:9.5px}
+.app .ba{font-size:14px}
+.app .bd{width:26px;height:26px;font-size:11px}
+.app .bbw{margin-bottom:14px}
+.app .bl{font-size:10px;letter-spacing:1.4px}
+.app .bnum{font-size:11px}
+.app .bnum strong{font-size:15.5px}
+.app .bal{font-size:10.5px;padding:9px 12px;border-radius:10px}
+.app .amb{padding:16px;border-radius:16px;margin-bottom:14px}
+.app .aml{font-size:10px;letter-spacing:1.4px}
+.app .acu{font-size:16px}
+.app .ain{font-size:28px;letter-spacing:-0.8px}
+.app .fl{font-size:10px;letter-spacing:1.4px}
+.app .fi{font-size:13px;height:42px;padding:0 13px}
+.app .pi{font-size:11.5px;padding:8px 14px}
+.app .shm{padding:16px 0 14px}
+.app .svm{font-size:31px;letter-spacing:-1.4px}
+.app .bnn{font-size:13.5px}
+.app .bnt{font-size:9.5px}
+.app .bam{font-size:14.5px}
+.app .tsm{width:26px;height:26px;font-size:10px;margin-right:10px}
+.app .tnm{font-size:12.5px}
+.app .tam{font-size:12.5px}
+.app .mt{font-size:16px}
+.app .mhd{padding:14px 18px 11px}
+.app .mb{padding:0 18px 20px}
+.app .ct{font-size:15px}
+.app .cd{font-size:11.5px}
+.app .ci{font-size:26px}
+.app .cbs .btn{font-size:12.5px}
+.app .spc{border-radius:10px}
+.app .ss{font-size:10.5px}
+.app .cti{font-size:18px}
+.app .ctl{font-size:8.5px}
+.app .cai{font-size:30px}
+.app .cat{font-size:11.5px}
+.app .os{font-size:9.5px;padding:9px 12px}
+.app .ord{font-size:13.5px}
+.app .ora{font-size:14.5px}
+.app .orm{font-size:9.5px}
+.app .orb{font-size:8.5px;padding:2px 7px}
+.app .oc{font-size:8.5px}
+.app .mbi{padding:14px;border-radius:12px}
+.app .mbt{font-size:13px}
+.app .mbs{font-size:9.5px}
+.app .mbr{font-size:10.5px}
+.app .mbr.tot{font-size:13px}
+.app .em{padding:30px 16px}
+.app .ei{font-size:32px}
+.app .et{font-size:12.5px}
+.app .es{font-size:9.5px}
+.app .toast{font-size:11.5px;padding:10px 20px}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="wrap">
+  <div class="hdr">
+    <div><h1>✈️ TravelAA · 多人实时联动演示</h1><p id="hdrSub">每个手机 = 一个真实用户 · 操作实时同步 · 展示多人AA完整流程</p></div>
+    <div class="hdr-r">
+      <span class="cb" id="engineBadge">🔌 检测中…</span>
+      <button class="cb" onclick="runSelfTest()">🩺 自检</button>
+      <button class="cb" onclick="startTour()">🎬 导览</button>
+      <button class="cb" onclick="removePhone()">−</button>
+      <button class="cb act">📱 <span id="phoneCountLabel">1</span>人</button>
+      <button class="cb" onclick="addPhone()">＋</button>
+      <button class="cb" onclick="resetAll()">🔄 重置</button>
+      <button class="cb pr" onclick="autoDemo()">▶ 自动演示</button>
+    </div>
+  </div>
+  <div class="stage" id="phonesStage"></div>
+</div>
+<div class="fh">💡 点击任意手机操作 · 所有手机实时同步 · ▶ 一键自动演示完整流程</div>
+
+<!-- 共享算法内核（与小程序、服务端同一份代码，UMD 三端复用；纯本地计算，无网络依赖） -->
+<script src="../apps/miniprogram/utils/ai.js"></script>
+<script src="../apps/miniprogram/utils/ctrip.js"></script>
+<!-- 订单截图样例（base64 内嵌，离线可用） -->
+<script src="assets/vision-samples.js"></script>
+<script>
+var State={rooms:[],bills:[],nextRoomId:1,nextBillId:1,phoneCount:1};
+var USERS=[{id:'u1',name:'小明',color:'#FF6B35',role:'发起人'},{id:'u2',name:'小红',color:'#E91E63',role:'成员'},{id:'u3',name:'小李',color:'#2196F3',role:'成员'},{id:'u4',name:'小王',color:'#4CAF50',role:'成员'}];
+var ocrState={};var pendingDelete={};
+
+/* ==================================================================
+   V3 共享内核适配层
+   全部为本地计算（TravelAI / TravelCTrip 为 UMD 内核，离线可用）；
+   不依赖任何服务器与 API Key，AI 通道仅作可选增强（见 probeEngine）。
+   ================================================================== */
+var AI = window.TravelAI || null;
+var CTRIP = window.TravelCTrip || null;
+
+var CURRENCIES = [
+  { code: 'CNY', label: '¥ 人民币' },
+  { code: 'JPY', label: '¥ 日元' },
+  { code: 'USD', label: '$ 美元' },
+  { code: 'KRW', label: '₩ 韩元' },
+  { code: 'THB', label: '฿ 泰铢' },
+  { code: 'EUR', label: '€ 欧元' },
+  { code: 'HKD', label: 'HK$ 港币' }
+];
+
+var AI_SAMPLES = [
+  '打车去机场86块，我垫的，和小红小李平分',
+  '昨天晚上吃火锅三百二十八，四人AA',
+  '酒店4晚3200，我付的，大家平摊',
+  '迪士尼门票380，请客，不用还了'
+];
+
+/* 金额格式化：与页面既有风格一致 */
+function money(n, dec) {
+  return (Number(n) || 0).toFixed(dec === undefined ? 2 : dec);
+}
+
+/* 当前币种 → 人民币汇率（由内核提供，记账时快照） */
+function rateOf(code) {
+  if (!code || code === 'CNY' || !AI) return 1;
+  return AI.toCNY(1, code);
+}
+
+/* 账单人民币金额（快照优先） */
+function billCNY(b) {
+  if (!b) return 0;
+  if (AI) return AI.billCNY(b);
+  return b.cnyAmount != null ? b.cnyAmount : (Number(b.amount) || 0);
+}
+
+function membersOf(room) {
+  return (room && room.members ? room.members : []).map(function (m) { return { id: m.id, name: m.name }; });
+}
+
+function roomBills(roomId) {
+  return State.bills.filter(function (b) { return b.roomId === roomId; });
+}
+
+function roomTotalCNY(roomId) {
+  return roomBills(roomId).reduce(function (s, b) { return s + billCNY(b); }, 0);
+}
+
+/* 统一构造账单：补全多币种快照、来源、时间（统计页按天聚合依赖 createdAt） */
+function makeBill(room, opts) {
+  var amount = Number(opts.amount) || 0;
+  var currency = opts.currency || 'CNY';
+  var rate = currency === 'CNY' ? 1 : rateOf(currency);
+  var members = room.members;
+  var splits;
+  if (opts.splits) {
+    splits = opts.splits;
+  } else if (opts.splitType === 'treat') {
+    splits = members.map(function (m) {
+      return { memberId: m.id, memberName: m.name, amount: m.id === opts.payer ? amount : 0 };
+    });
+  } else {
+    var parts = AI ? AI.allocateEvenly(amount, members.length)
+                   : members.map(function () { return amount / members.length; });
+    splits = members.map(function (m, i) {
+      return { memberId: m.id, memberName: m.name, amount: parts[i] };
+    });
+  }
+  return {
+    id: 'bill_' + State.nextBillId++,
+    roomId: room.id,
+    payer: opts.payer,
+    payerName: opts.payerName || '',
+    amount: amount,
+    currency: currency,
+    rate: rate,
+    cnyAmount: Math.round(amount * rate * 100) / 100,
+    description: opts.description || '消费',
+    category: opts.category || 'food',
+    splits: splits,
+    source: opts.source || 'manual',
+    timeStr: opts.timeStr || '刚刚',
+    createdAt: opts.createdAt || new Date().toISOString()
+  };
+}
+
+/* AI 通道探测（可选增强）：仅探测本机服务，未连接时页面完整可用 */
+var engineInfo = { online: false, model: '', checked: false };
+function probeEngine() {
+  var done = function () { engineInfo.checked = true; renderEngineBadge(); };
+  if (typeof fetch !== 'function') { done(); return; }
+  var ctl = typeof AbortController === 'function' ? new AbortController() : null;
+  var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 1500);
+  fetch('http://localhost:3000/api/ai/engine', ctl ? { signal: ctl.signal } : {})
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      clearTimeout(timer);
+      if (d && d.engine && d.engine.cloudLLM) {
+        engineInfo.online = true;
+        engineInfo.model = d.engine.cloudModel || 'LLM';
+      }
+      done();
+    })
+    .catch(function () { clearTimeout(timer); done(); });
+}
+function renderEngineBadge() {
+  var el = document.getElementById('engineBadge');
+  if (!el) return;
+  if (engineInfo.online) {
+    el.className = 'cb act';
+    el.textContent = '☁️ AI 已连接 · ' + engineInfo.model;
+  } else {
+    el.className = 'cb';
+    el.textContent = '🔌 离线模式 · 本地规则引擎';
+  }
+}
+
+/* ============ 页面级小工具 ============ */
+var CATS = [['food', '🍜 餐饮'], ['transport', '🚗 交通'], ['hotel', '🏨 住宿'], ['ticket', '🎫 门票'], ['shopping', '🛍️ 购物'], ['other', '📦 其他']];
+
+function catLabel(cat) {
+  for (var i = 0; i < CATS.length; i++) { if (CATS[i][0] === cat) return CATS[i][1]; }
+  return '📦 其他';
+}
+function curSym(code) {
+  return { CNY: '¥', JPY: '¥', USD: '$', KRW: '₩', THB: '฿', EUR: '€', HKD: 'HK$' }[code] || '¥';
+}
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function getCatIcon2(cat) {
+  for (var i = 0; i < CATS.length; i++) { if (CATS[i][0] === cat) return CATS[i][1].split(' ')[0]; }
+  return '📦';
+}
+
+function renderPhones(){
+  var stage=document.getElementById('phonesStage');stage.innerHTML='';
+  for(var i=0;i<State.phoneCount;i++){
+    var user=USERS[i];var phone=document.createElement('div');
+    phone.className='pu';phone.id='phone-'+user.id;
+    phone.innerHTML='<div class="pl"><div><div class="pn" style="color:'+user.color+'">'+user.name+'</div><div class="pr2">'+user.role+'</div></div></div><div class="pf"><div class="pn2"></div><div class="pbt pw"></div><div class="pbt vu"></div><div class="pbt vd"></div><div class="ps"><div class="app" id="app-'+user.id+'"></div><div class="toast" id="toast-'+user.id+'"></div><div class="co" id="confirm-'+user.id+'"><div class="cb2"><div class="ci">🗑️</div><div class="ct" id="confirmTitle-'+user.id+'">删除账单？</div><div class="cd" id="confirmDesc-'+user.id+'">此操作不可撤销</div><div class="cbs"><button class="btn lt" onclick="cancelConfirm(\''+user.id+'\')">取消</button><button class="btn dg" onclick="doConfirm(\''+user.id+'\')">删除</button></div></div></div><div class="hi"></div></div></div>';
+    stage.appendChild(phone);renderApp(user);
+  }
+}
+
+function renderApp(user){
+  var app=document.getElementById('app-'+user.id);if(!app)return;
+  var myRooms=State.rooms.filter(function(r){return r.members.some(function(m){return m.id===user.id})});
+  var cp=user._page||'home';var crid=user._roomId||null;
+  var titles={home:'TravelAA',room:'房间详情',add:'记一笔',capture:'记账方式',settle:'一键结算',stats:'消费统计'};
+  /* 导航闭环：左侧返回（非首页时始终存在）· 中间标题（点按回首页）· 右侧 STATS（首页/房间页） */
+  var backBtn=(cp==='home')?'<div style="width:44px;"></div>':'<div class="an-b" onclick="phoneGoBack(\''+user.id+'\')" title="返回上一页">←</div>';
+  var rightBtn=(cp==='home'||cp==='room')
+    ? '<div class="an-b" onclick="phoneGoStats(\''+user.id+'\',\''+(crid||'')+'\')">STATS</div>'
+    : '<div style="width:44px;"></div>';
+  var html='<div class="an">'+backBtn+'<div class="an-t" style="flex:1;text-align:center;cursor:pointer;" onclick="phoneGoHome(\''+user.id+'\')" title="回到首页">'+(titles[cp]||'TravelAA')+'</div>'+rightBtn+'</div><div class="ab">';
+  if(cp==='home')html+=renderHome(user,myRooms);
+  else if(cp==='room')html+=renderRoomDetail(user.id,crid);
+  else if(cp==='add')html+=renderAddBill(user.id,crid);
+  else if(cp==='capture')html+=renderCapture(user.id,crid);
+  else if(cp==='settle')html+=renderSettle(user.id,crid);
+  else if(cp==='stats')html+=renderStats(user.id,crid);
+  html+='</div>';
+  if(cp==='room')html+='<div class="abb"><button class="btn lt" onclick="phoneGoAdd(\''+user.id+'\',\''+crid+'\')">＋ 记一笔</button><button class="btn or" onclick="phoneGoCapture(\''+user.id+'\',\''+crid+'\')">📷 拍照</button><button class="btn dk" onclick="phoneGoSettle(\''+user.id+'\',\''+crid+'\')">结算</button></div>';
+  else if(cp==='add')html+='<div class="abb"><button class="btn dk" style="flex:1;" onclick="submitBill(\''+user.id+'\',\''+crid+'\')">确认记账</button></div>';
+  html+='<div class="mo" id="modal-'+user.id+'"><div class="mm2" onclick="event.stopPropagation()"><div class="mh"></div><div class="mhd"><div class="mt" id="modalTitle-'+user.id+'">创建旅行房间</div><div class="mc" onclick="closeModal(\''+user.id+'\')">✕</div></div><div class="mb" id="modalBody-'+user.id+'"></div></div></div>';
+  app.innerHTML=html;
+  var overlay=document.getElementById('modal-'+user.id);
+  if(overlay)overlay.addEventListener('click',function(e){if(e.target===overlay)closeModal(user.id)});
+}
+
+function renderHome(user,myRooms){
+  var html='<div class="hs"><div class="hl">TRAVEL EXPENSE SPLITTER</div><div class="ht ht-hero">旅行结束<br><span>一键清账</span></div></div>';
+  html+='<div class="ag"><button class="btn dk" onclick="openCreateModal(\''+user.id+'\')">＋ 创建房间</button><button class="btn lt" onclick="openJoinModal(\''+user.id+'\')">↳ 加入房间</button></div>';
+  html+='<div class="sh"><div class="st">我的旅行</div><div class="sc">'+myRooms.length+' ROOMS</div></div>';
+  if(myRooms.length===0){html+='<div class="em"><div class="ei">✈️</div><div class="et">还没有旅行房间</div><div class="es">点击上方「创建房间」开始</div></div>';}
+  else{myRooms.forEach(function(room){
+    var bills=State.bills.filter(function(b){return b.roomId===room.id});
+    var total=bills.reduce(function(s,b){return s+billCNY(b)},0);
+    html+='<div class="rc" onclick="openRoom(\''+user.id+'\',\''+room.id+'\')"><div class="rt"><div class="rn">'+room.name+'</div><div class="rco"><small>房间号</small>'+room.code+'</div></div><div class="rs"><div><div class="rsv">'+room.members.length+'</div><div class="rsl">成员</div></div><div><div class="rsv">'+bills.length+'</div><div class="rsl">账单</div></div><div><div class="rsv" style="color:var(--pri)">¥'+total.toFixed(0)+'</div><div class="rsl">总消费</div></div></div></div>';
+  });}
+  return html;
+}
+
+function renderRoomDetail(userId,roomId){
+  var room=State.rooms.find(function(r){return r.id===roomId});
+  if(!room)return emBack('房间不存在',userId);
+  var bills=State.bills.filter(function(b){return b.roomId===roomId});
+  var totalSpent=roomTotalCNY(roomId);
+  var hasForeign=bills.some(function(b){return b.currency&&b.currency!=='CNY'});
+  var html='<div class="hs" style="padding:8px 0 14px;"><div class="hl">ROOM DETAIL</div><div class="ht">'+esc(room.name)+'</div></div>';
+  var totalBudget=(room.budgetPerPerson||0)*room.members.length;
+  if(totalBudget>0){
+    var bs=AI?AI.budgetStatus(bills,room.members,totalBudget,{room:room}):null;
+    var pct=bs?bs.percent:Math.min(totalSpent/totalBudget*100,100);var level=bs?(bs.alert==='danger'?'over':bs.alert==='warn'?'warn':'safe'):(pct>=90?'over':pct>=70?'warn':'safe');
+    var pp=room.members.length>0?totalSpent/room.members.length:0;
+    html+='<div class="bbw"><div class="bh"><div class="bl">BUDGET / 预算</div><div class="bnum"><strong>¥'+money(pp,0)+'</strong> / ¥'+room.budgetPerPerson+' 人均</div></div><div class="bbg"><div class="bf '+level+'" style="width:'+Math.min(100,pct)+'%"></div></div></div>';
+    if(level==='over')html+='<div class="bal over">🚨 已超预算 ¥'+money(totalSpent-totalBudget,0)+'，注意控制消费</div>';
+    else if(level==='warn')html+='<div class="bal warn">⚠️ 已用 '+(pct||0).toFixed(0)+'%'+(bs&&bs.willExceed?'，按当前速度将超支':'，注意控制消费')+'</div>';
+    else html+='<div class="bal safe">✅ 预算内'+(bs&&bs.safeDaily&&bs.days?((' · 剩余 '+bs.days+' 天，日均可用 ¥'+money(bs.safeDaily,0))):(' · 剩余 ¥'+money(totalBudget-totalSpent,0)))+'</div>';
+  }
+  html+='<div class="og"><div class="oi"><div class="ol">TOTAL / 合计</div><div class="ov">¥'+money(totalSpent,0)+'</div></div><div class="oi"><div class="ol">BILLS</div><div class="ov sm">'+bills.length+'</div></div><div class="oi"><div class="ol">MEMBERS</div><div class="ov sm">'+room.members.length+'</div></div><div class="oi"><div class="ol">CODE</div><div class="ov sm">'+room.code+'</div></div></div>';
+  if(hasForeign)html+='<div class="os" style="margin-top:-12px;"><span>💱</span><span>含外币账单，已按记账时汇率快照折算为人民币</span></div>';
+  html+='<div class="sh"><div class="st">成员</div><div class="sc">'+room.members.length+' PEOPLE</div></div><div class="mnames">';
+  room.members.forEach(function(m){html+='<div class="mname '+(m.id===userId?'ac':'')+'">'+esc(m.name)+(m.id===userId?' · 我':'')+'</div>';});
+  html+='</div>';
+  /* ---- AI 账单审计（会复盘）---- */
+  if(AI&&bills.length){
+    var audit=AI.auditBills(bills,room.members);
+    var aLevel=audit.score>=90?'safe':audit.score>=70?'warn':'over';
+    html+='<div class="sh" style="margin-top:16px;"><div class="st">AI 账单审计</div><div class="sc">HEALTH '+audit.score+'</div></div>';
+    html+='<div class="bal '+aLevel+'" style="display:block;line-height:1.6;">'+esc(audit.summary)+'</div>';
+    audit.issues.slice(0,3).forEach(function(x){
+      html+='<div class="mbi" style="margin-bottom:8px;"><div style="font-size:12px;font-weight:600;">⚠️ '+esc(x.message)+'</div><div style="font-size:10px;color:var(--g400);margin-top:4px;">建议：'+esc(x.suggestion)+'</div></div>';
+    });
+  }
+  html+='<div class="sh" style="margin-top:16px;"><div class="st">账单记录</div><div class="sc">'+bills.length+' ITEMS</div></div>';
+  if(bills.length===0){html+='<div class="em"><div class="ei">📝</div><div class="et">还没有账单</div></div>';}
+  else{bills.slice().reverse().forEach(function(b){
+    var amountHtml='¥'+money(b.amount,0);
+    if(b.currency&&b.currency!=='CNY')amountHtml=b.currency+' '+money(b.amount,0)+'<div style="font-size:9px;color:var(--g400);font-weight:500;">≈¥'+money(b.cnyAmount,0)+'</div>';
+    html+='<div class="br"><div class="bi">'+getCatIcon2(b.category)+'</div><div class="bin"><div class="bn">'+esc(b.description)+'</div><div class="bm">'+esc(b.payerName)+' · '+(b.timeStr||'刚刚')+' · '+sourceLabel(b.source)+'</div></div><div class="ba">'+amountHtml+'</div><div class="bd" onclick="askDeleteBill(\''+userId+'\',\''+b.id+'\',\''+esc(b.description)+'\')">✕</div></div>';
+  });}
+  return html;
+}
+
+function sourceLabel(src){
+  return {manual:'✍️ 手动',ai:'🤖 AI 记账',ocr:'📷 识别',ctrip:'🧳 携程订单'}[src]||'✍️ 手动';
+}
+
+/* ============================================================
+   消费统计（会复盘）：分类占比 + 每日消费 + AI 洞察 + 入账方式
+   ============================================================ */
+function renderStats(userId,roomId){
+  var room=State.rooms.find(function(r){return r.id===roomId});
+  var bills=room?State.bills.filter(function(b){return b.roomId===roomId}):State.bills;
+  var scopeName=room?room.name:'全部旅行';
+  if(!bills.length)return '<div class="em"><div class="ei">📊</div><div class="et">还没有数据</div><div class="es">先记几笔账再来看统计</div></div>';
+  var total=bills.reduce(function(s,b){return s+billCNY(b)},0);
+  var html='<div class="hs" style="padding:8px 0 14px;"><div class="hl">SPENDING REPORT</div><div class="ht">消费统计</div><div style="font-size:10.5px;color:var(--g400);margin-top:4px;">'+esc(scopeName)+'</div></div>';
+  html+='<div class="og"><div class="oi"><div class="ol">TOTAL / 总消费</div><div class="ov">¥'+money(total,0)+'</div></div><div class="oi"><div class="ol">BILLS / 笔数</div><div class="ov sm">'+bills.length+'</div></div></div>';
+
+  /* 分类占比 */
+  var byCat={};bills.forEach(function(b){var c=b.category||'other';byCat[c]=(byCat[c]||0)+billCNY(b);});
+  var catList=Object.keys(byCat).map(function(k){return{cat:k,amount:byCat[k]};}).sort(function(a,b){return b.amount-a.amount;});
+  html+='<div class="sh"><div class="st">分类占比</div><div class="sc">BY CATEGORY</div></div>';
+  catList.forEach(function(c){
+    var pct=total>0?c.amount/total*100:0;
+    html+='<div style="margin-bottom:14px;"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;"><div style="font-family:Space Grotesk,sans-serif;font-size:13px;font-weight:600;">'+catLabel(c.cat)+'</div><div style="font-family:Space Grotesk,sans-serif;font-size:13px;font-weight:700;">¥'+money(c.amount,0)+' <span style="font-size:10px;color:var(--g400);font-weight:500;">'+pct.toFixed(1)+'%</span></div></div><div class="bbg" style="height:6px;"><div class="bf" style="width:'+pct+'%;background:#18181b;"></div></div></div>';
+  });
+
+  if(AI){
+    /* 每日消费（内核 dailyStats） */
+    var d=AI.dailyStats(bills);
+    if(d.days&&d.days.length){
+      var trendLabel=d.trend==='up'?'📈 越花越多':d.trend==='down'?'📉 越花越省':'➡️ 比较平稳';
+      html+='<div class="sh" style="margin-top:18px;"><div class="st">每日消费</div><div class="sc">'+trendLabel+'</div></div>';
+      html+='<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--g500);margin-bottom:10px;"><span>日均 ¥'+money(d.dailyAvg,0)+'</span>'+(d.maxDay?('<span>最贵 '+d.maxDay.date.slice(5)+' · ¥'+money(d.maxDay.total,0)+'</span>'):'')+'</div>';
+      var maxTotal=d.maxDay?d.maxDay.total:0;
+      d.days.forEach(function(day){
+        var pct=maxTotal>0?day.total/maxTotal*100:0;
+        html+='<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--g100);"><div style="width:74px;font-size:10px;color:var(--g500);font-weight:600;">'+day.date.slice(5)+' '+day.weekday+'</div><div class="bbg" style="flex:1;height:6px;"><div class="bf" style="width:'+pct+'%;background:#18181b;"></div></div><div style="width:76px;text-align:right;font-family:Space Grotesk,sans-serif;font-size:11px;font-weight:700;">¥'+money(day.total,0)+'</div></div>';
+      });
+    }
+    /* AI 消费洞察 */
+    if(room){
+      var insight=AI.generateInsight({room:room,bills:bills,members:room.members});
+      html+='<div class="sh" style="margin-top:18px;"><div class="st">AI 消费洞察</div><div class="sc">INSIGHT</div></div>';
+      html+='<div class="mbi" style="margin-bottom:10px;"><div style="font-size:12px;line-height:1.7;">'+esc(insight.summary)+'</div></div>';
+      (insight.tips||[]).slice(0,3).forEach(function(t){
+        html+='<div style="font-size:11px;color:var(--g500);padding:7px 0;border-bottom:1px solid var(--g100);">💡 '+esc(t)+'</div>';
+      });
+    }
+  }
+
+  /* 入账方式统计 */
+  var bySrc={};bills.forEach(function(b){var s=b.source||'manual';bySrc[s]=(bySrc[s]||0)+1;});
+  html+='<div class="sh" style="margin-top:18px;"><div class="st">入账方式</div><div class="sc">'+bills.length+' ITEMS</div></div>';
+  Object.keys(bySrc).forEach(function(s){
+    html+='<div class="mbr"><span>'+sourceLabel(s)+'</span><span>'+bySrc[s]+' 笔</span></div>';
+  });
+  return html;
+}
+function phoneGoStats(userId,roomId){
+  var user=USERS.find(function(u){return u.id===userId});if(!user)return;
+  user._page='stats';if(roomId)user._roomId=roomId;
+  renderApp(user);
+}
+
+function renderAddBill(userId,roomId){
+  var room=State.rooms.find(function(r){return r.id===roomId});
+  if(!room)return emBack('房间不存在',userId);
+  var u=USERS.find(function(x){return x.id===userId});
+  if(!u)return '<div class="em">用户不存在</div>';
+  var form=u._form||(u._form={amount:'',desc:'',category:'food',payer:userId,splitType:'equal',currency:'CNY'});
+  if(!form.currency)form.currency='CNY';
+  var ai=u._ai;var aiText=u._aiText||'';
+  var html='';
+
+  /* ---- AI 一句话记账 ---- */
+  html+='<div class="amb"><div class="aml">AI 一句话记账 / SAY IT</div>';
+  html+='<input class="fi" placeholder="如：打车去机场86块，我垫的，和小红平分" value="'+esc(aiText)+'" oninput="updateAiText(\''+userId+'\',this.value)" onkeydown="aiKeydown(event,\''+userId+'\')">';
+  html+='<div style="display:flex;gap:6px;margin-top:10px;">';
+  html+='<button class="btn lt" style="flex:1;" onclick="startVoiceInput(\''+userId+'\')">'+(u._listening?'🎙️ 聆听中…':'🎙️ 语音')+'</button>';
+  html+='<button class="btn lt" style="flex:1;" onclick="aiUseSample(\''+userId+'\')">💡 换个例子</button>';
+  html+='<button class="btn dk" style="flex:1.3;" onclick="aiParseBill(\''+userId+'\')">🤖 AI 识别</button>';
+  html+='</div>';
+  if(ai&&ai.parsed){
+    var p=ai.parsed;
+    html+='<div class="mbi" style="margin-top:12px;">';
+    html+='<div class="mbt">'+(p.success?'✅ 已解析为账单':'⚠️ 仅识别到部分字段')+'</div>';
+    html+='<div class="mbs">可信度 '+p.confidence+'%'+(p.currency&&p.currency!=='CNY'?' · 币种 '+p.currency:'')+'</div>';
+    html+='<div class="mbr"><span>金额</span><span>'+(p.amount==null?'—':'¥'+money(p.amount))+'</span></div>';
+    html+='<div class="mbr"><span>说明</span><span>'+(p.description||'—')+'</span></div>';
+    html+='<div class="mbr"><span>分类</span><span>'+catLabel(p.category)+'</span></div>';
+    html+='<div class="mbr"><span>付款人</span><span>'+(p.payerName||'—')+'</span></div>';
+    html+='<div class="mbr"><span>分摊</span><span>'+(p.splitType==='treat'?'请客':'AA · '+p.splitWith.length+'人')+'</span></div>';
+    html+='</div>';
+  }
+  html+='</div>';
+
+  /* ---- 金额 + 币种 ---- */
+  html+='<div class="amb"><div class="aml">消费金额 / AMOUNT</div><div class="air"><span class="acu">'+curSym(form.currency)+'</span><input class="ain" type="text" placeholder="0.00" value="'+esc(form.amount)+'" oninput="updateForm(\''+userId+'\',\'amount\',this.value)"></div>';
+  if(form.currency!=='CNY'){
+    html+='<div style="margin-top:10px;font-family:Space Grotesk,sans-serif;font-size:11px;color:var(--g400);">≈ ¥'+money((Number(form.amount)||0)*rateOf(form.currency))+' · 按记账时汇率快照 '+rateOf(form.currency)+' 折算</div>';
+  }
+  html+='<div class="fl" style="margin-top:16px;">币种 / CURRENCY</div><div class="pm">';
+  CURRENCIES.forEach(function(c){
+    html+='<div class="pi '+(form.currency===c.code?'act':'')+'" onclick="selectCurrency(\''+userId+'\',\''+c.code+'\')">'+c.label+'</div>';
+  });
+  html+='</div></div>';
+
+  /* ---- 说明 / 分类 / 付款人 / 分摊 ---- */
+  html+='<div class="fg"><div class="fl">消费说明</div><input class="fi" placeholder="如：晚餐、打车、门票" value="'+esc(form.desc)+'" oninput="updateForm(\''+userId+'\',\'desc\',this.value)"></div>';
+  html+='<div class="fg"><div class="fl">消费分类</div><div class="pm">';
+  CATS.forEach(function(c){
+    html+='<div class="pi '+(form.category===c[0]?'act':'')+'" onclick="updateForm(\''+userId+'\',\'category\',\''+c[0]+'\');renderApp(USERS.find(function(u){return u.id==\''+userId+'\'}))">'+c[1]+'</div>';
+  });
+  html+='</div></div><div class="fg"><div class="fl">付款人</div><div class="pm">';
+  room.members.forEach(function(m){
+    html+='<div class="pi '+(form.payer===m.id?'act':'')+'" onclick="updateForm(\''+userId+'\',\'payer\',\''+m.id+'\');renderApp(USERS.find(function(u){return u.id==\''+userId+'\'}))">'+esc(m.name)+'</div>';
+  });
+  html+='</div></div><div class="fg"><div class="fl">分摊方式</div><div class="pm">';
+  [['equal','⚖️ 均分'],['treat','🎁 请客']].forEach(function(c){
+    html+='<div class="pi '+(form.splitType===c[0]?'act':'')+'" onclick="updateForm(\''+userId+'\',\'splitType\',\''+c[0]+'\');renderApp(USERS.find(function(u){return u.id==\''+userId+'\'}))">'+c[1]+'</div>';
+  });
+  html+='</div></div>';
+  return html;
+}
+
+/* ---- AI 记账交互 ---- */
+function updateAiText(userId,val){
+  var u=USERS.find(function(x){return x.id===userId});if(!u)return;
+  u._aiText=val;if(u._ai&&u._ai.text!==val)u._ai=null;
+}
+function aiKeydown(e,userId){
+  if(e&&e.key==='Enter'){if(e.preventDefault)e.preventDefault();aiParseBill(userId);}
+}
+function aiUseSample(userId){
+  var u=USERS.find(function(x){return x.id===userId});if(!u)return;
+  var idx=Math.floor(Math.random()*AI_SAMPLES.length);
+  if(u._sampleIdx!=null&&AI_SAMPLES.length>1){idx=(u._sampleIdx+1)%AI_SAMPLES.length}
+  u._sampleIdx=idx;u._aiText=AI_SAMPLES[idx];u._ai=null;
+  renderApp(u);showToast(userId,'💡 已填入示例，点「AI 识别」试试');
+}
+function aiParseBill(userId){
+  var u=USERS.find(function(x){return x.id===userId});if(!u)return;
+  var room=State.rooms.find(function(r){return r.id===u._roomId});if(!room)return;
+  var text=(u._aiText||'').trim();
+  if(!text){showToast(userId,'请先输入一句话，或点「换个例子」');return}
+  var members=membersOf(room);
+  var parsed, engine='本地规则引擎';
+  if(AI&&AI.parseBillText){
+    parsed=AI.parseBillText(text,members,{meName:u.name});
+  }else{
+    showToast(userId,'内核未加载，无法解析');return;
+  }
+  u._ai={text:text,parsed:parsed,engine:engine};
+  if(parsed&&parsed.success){
+    if(!u._form)u._form={amount:'',desc:'',category:'food',payer:userId,splitType:'equal',currency:'CNY'};
+    u._form.amount=String(parsed.amount);
+    if(parsed.description)u._form.desc=parsed.description;
+    if(parsed.category)u._form.category=parsed.category;
+    var payer=room.members.find(function(m){return m.name===parsed.payerName});
+    if(payer)u._form.payer=payer.id;
+    u._form.splitType=parsed.splitType==='treat'?'treat':'equal';
+    if(parsed.currency&&parsed.currency!=='CNY')u._form.currency=parsed.currency;
+    showToast(userId,'🤖 解析完成 · 可信度 '+parsed.confidence+'%');
+  }else{
+    showToast(userId,'没识别出金额，试试「打车去机场86块」这类说法');
+  }
+  renderApp(u);
+}
+function selectCurrency(userId,code){
+  var u=USERS.find(function(x){return x.id===userId});if(!u||!u._form)return;
+  u._form.currency=code;renderApp(u);
+}
+/* 语音输入：Web Speech API（浏览器能力，无网络与密钥依赖；不支持时给出明确提示） */
+function startVoiceInput(userId){
+  var u=USERS.find(function(x){return x.id===userId});if(!u)return;
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){showToast(userId,'当前浏览器不支持语音输入，请用文字输入');return}
+  try{
+    var rec=new SR();rec.lang='zh-CN';rec.interimResults=false;rec.maxAlternatives=1;
+    u._listening=true;renderApp(u);
+    rec.onresult=function(e){
+      var t=e.results[0][0].transcript;
+      u._listening=false;u._aiText=((u._aiText||'')+t).trim();u._ai=null;
+      renderApp(u);showToast(userId,'🎙️ 听到：'+t);
+    };
+    rec.onerror=function(){u._listening=false;renderApp(u);showToast(userId,'语音识别失败，请重试或改用文字')};
+    rec.onend=function(){if(u._listening){u._listening=false;renderApp(u)}};
+    rec.start();
+  }catch(e){
+    u._listening=false;renderApp(u);showToast(userId,'无法启动麦克风');
+  }
+}
+//JS1_END
+var MOCK_OCR={wechat_single:{type:'single',typeLabel:'微信支付',badge:'single',source:'微信支付截图 · 单笔交易',items:[{desc:'海底捞火锅',amount:268,category:'food',merchant:'海底捞',time:'10-02 18:32',confidence:97}]},alipay_single:{type:'single',typeLabel:'支付宝',badge:'single',source:'支付宝账单截图 · 单笔交易',items:[{desc:'东京迪士尼门票',amount:380,category:'ticket',merchant:'东京迪士尼',time:'10-03 09:15',confidence:95}]},wechat_list:{type:'list',typeLabel:'微信账单列表',badge:'list',source:'微信支付账单列表 · 检测到4笔交易',items:[{desc:'出租车费',amount:45,category:'transport',merchant:'东京出租车',time:'10-02 08:20',confidence:93},{desc:'午餐 · 一兰拉面',amount:88,category:'food',merchant:'一兰拉面',time:'10-02 12:35',confidence:96},{desc:'便利店购物',amount:32.5,category:'shopping',merchant:'7-Eleven',time:'10-02 15:10',confidence:91},{desc:'药妆店',amount:256,category:'shopping',merchant:'松本清',time:'10-02 16:45',confidence:94}]},paper_receipt:{type:'receipt',typeLabel:'纸质小票',badge:'receipt',source:'纸质小票扫描 · 热敏纸识别',items:[{desc:'MUJI 购物',amount:178,category:'shopping',merchant:'MUJI 無印良品',time:'10-02 14:20',confidence:88}]},invoice:{type:'invoice',typeLabel:'电子发票',badge:'invoice',source:'电子发票识别 · OCR高精度',items:[{desc:'酒店住宿 4晚',amount:3200,category:'hotel',merchant:'新宿格拉斯丽酒店',time:'10-01',confidence:98}]}};
+
+function renderCapture(userId,roomId){
+  var room=State.rooms.find(function(r){return r.id===roomId});
+  if(!room)return emBack('房间不存在',userId);
+  var st=ocrState[userId]||(ocrState[userId]={step:'select',billType:null,selected:new Set()});
+  var tab=st.tab||'ocr';
+  var html='<div class="cts">';
+  html+='<div class="ct2 '+(tab==='ocr'?'act':'')+'" onclick="captureTab(\''+userId+'\',\'ocr\')"><div class="cti">📷</div><div class="ctl">票据识别</div></div>';
+  html+='<div class="ct2 '+(tab==='order'?'act':'')+'" onclick="captureTab(\''+userId+'\',\'order\')"><div class="cti">🧳</div><div class="ctl">携程订单</div></div>';
+  html+='</div>';
+  if(tab==='order')return html+renderOrderTab(userId,roomId,st);
+  if(st.step==='select'){
+    html+='<div class="fl" style="margin-bottom:10px;">选择账单类型</div><div class="cts">';
+    [['wechat_single','💬','微信截图'],['alipay_single','🔵','支付宝'],['wechat_list','📋','账单列表'],['paper_receipt','🧾','纸质小票'],['invoice','📄','发票']].forEach(function(t){
+      html+='<div class="ct2 '+(st.billType===t[0]?'act':'')+'" onclick="ocrSelectType(\''+userId+'\',\''+t[0]+'\')"><div class="cti">'+t[1]+'</div><div class="ctl">'+t[2]+'</div></div>';
+    });
+    html+='</div>';
+    if(st.billType){
+      html+='<div class="ca" onclick="ocrStartScan(\''+userId+'\')"><div class="cai">📸</div><div class="cat">点击拍照或选择图片<br><span style="font-size:10px;color:var(--g300)">支持 JPG / PNG / HEIC</span></div></div>';
+      var md=MOCK_OCR[st.billType];
+      html+='<div class="fl">示例账单预览</div><div class="mbi">';
+      if(md.items.length===1){var item=md.items[0];html+='<div class="mbt">'+md.typeLabel+'</div><div class="mbs">'+item.time+'</div><div class="mbr"><span>商户</span><span>'+item.merchant+'</span></div><div class="mbr"><span>商品</span><span>'+item.desc+'</span></div><div class="mbr tot"><span>实付金额</span><span>¥'+item.amount.toFixed(2)+'</span></div>';}
+      else{html+='<div class="mbt">'+md.typeLabel+'</div><div class="mbs">'+md.items.length+' 笔交易</div>';md.items.forEach(function(item){html+='<div class="mbr"><span>'+item.desc+'</span><span>¥'+item.amount.toFixed(2)+'</span></div>';});html+='<div class="mbr tot"><span>合计</span><span>¥'+md.items.reduce(function(s,i){return s+i.amount},0).toFixed(2)+'</span></div>';}
+      html+='</div>';
+    }
+  }else if(st.step==='scanning'){
+    html+='<div class="sp"><div class="sl"></div><div class="spc"><div style="text-align:center;padding:20px;"><div style="font-size:26px;margin-bottom:8px;">🔍</div><div style="font-family:Space Grotesk;font-size:11.5px;color:var(--g400);">正在智能识别账单...</div></div></div></div><div class="ss">⏳ AI识别中 · '+MOCK_OCR[st.billType].source+'</div>';
+  }else if(st.step==='results'){
+    var md2=MOCK_OCR[st.billType];
+    html+='<div class="os"><span>🤖</span><span>AI识别完成 · '+md2.source+'</span></div>';
+    if(md2.items.length>1)html+='<div class="fl" style="margin-bottom:10px;">识别到 '+md2.items.length+' 笔消费，点击选择要导入的</div>';
+    html+='<div class="ors">';
+    md2.items.forEach(function(item,idx){
+      html+='<div class="orc '+(st.selected.has(idx)?'sel':'')+'" onclick="ocrToggleItem(\''+userId+'\','+idx+')"><div class="ort"><div class="ord">'+item.desc+'</div><div class="ora">¥'+item.amount.toFixed(2)+'</div></div><div class="orm"><span class="orb '+md2.badge+'">'+md2.typeLabel+'</span> <span class="oc">✓ '+item.confidence+'%</span> &nbsp;'+item.merchant+' · '+item.time+'</div></div>';
+    });
+    html+='</div>';
+    var selCount=st.selected.size;
+    if(selCount>0){var selTotal=md2.items.filter(function(_,i){return st.selected.has(i)}).reduce(function(s,i){return s+i.amount},0);html+='<button class="btn dk" style="width:100%;margin-top:8px;" onclick="ocrImport(\''+userId+'\',\''+roomId+'\')">导入 '+selCount+' 笔 · 共 ¥'+selTotal.toFixed(2)+'</button>';}
+    html+='<div style="text-align:center;margin-top:12px;"><span style="font-family:Space Grotesk;font-size:10px;color:var(--g300);cursor:pointer;" onclick="ocrReset(\''+userId+'\')">重新识别</span></div>';
+  }
+  return html;
+}
+
+function ocrSelectType(userId,type){var st=ocrState[userId]||(ocrState[userId]={});st.billType=type;st.step='select';st.selected=new Set();renderApp(USERS.find(function(u){return u.id===userId}))}
+function ocrStartScan(userId){var st=ocrState[userId];if(!st||!st.billType)return;st.step='scanning';renderApp(USERS.find(function(u){return u.id===userId}));setTimeout(function(){var md=MOCK_OCR[st.billType];st.step='results';st.selected=new Set(md.items.map(function(_,i){return i}));renderApp(USERS.find(function(u){return u.id===userId}))},2000)}
+function ocrToggleItem(userId,idx){var st=ocrState[userId];if(!st)return;if(st.selected.has(idx))st.selected.delete(idx);else st.selected.add(idx);renderApp(USERS.find(function(u){return u.id===userId}))}
+function ocrImport(userId,roomId){
+  var st=ocrState[userId];var room=State.rooms.find(function(r){return r.id===roomId});if(!st||!room)return;
+  var u=USERS.find(function(x){return x.id===userId});var md=MOCK_OCR[st.billType];
+  md.items.forEach(function(item,idx){
+    if(!st.selected.has(idx))return;
+    State.bills.push(makeBill(room,{
+      payer:userId,
+      payerName:u?u.name:'',
+      amount:item.amount,
+      description:item.desc,
+      category:item.category,
+      source:'ocr',
+      timeStr:item.time
+    }));
+  });
+  showToast(userId,'✅ 已导入 '+st.selected.size+' 笔账单');
+  ocrReset(userId);u._page='room';u._roomId=roomId;syncAll();
+}
+function ocrReset(userId){ocrState[userId]={step:'select',billType:null,selected:new Set()};renderApp(USERS.find(function(u){return u.id===userId}))}
+function phoneGoCapture(userId,roomId){var user=USERS.find(function(u){return u.id===userId});if(!user)return;user._page='capture';user._roomId=roomId;user._form=null;ocrState[userId]={tab:'ocr',step:'select',billType:null,selected:new Set()};renderApp(user)}
+
+/* ============================================================
+   携程订单导入（订单文本 → AA 账单）
+   说明：解析与入账全部由本地内核 TravelCTrip 完成（离线可用）；
+   正式版经携程开放平台授权后可自动拉单，此处演示同一条数据管线。
+   ============================================================ */
+function captureTab(userId,tab){
+  var st=ocrState[userId]||(ocrState[userId]={step:'select',billType:null,selected:new Set()});
+  st.tab=tab;if(tab==='order'&&!st.orderSel)st.orderSel=new Set();
+  renderApp(USERS.find(function(u){return u.id===userId}));
+}
+function renderOrderTab(userId,roomId,st){
+  var html='';
+  html+='<div class="os"><span>🧳</span><span>粘贴携程订单确认短信/邮件，自动变成 AA 账单</span></div>';
+  html+='<div class="fl" style="margin-bottom:8px;">试试内置订单</div><div class="pm" style="margin-bottom:14px;">';
+  var samples=(CTRIP&&CTRIP.CTrip_SAMPLES)||[];
+  samples.forEach(function(s,i){
+    html+='<div class="pi" onclick="orderUseSample(\''+userId+'\','+i+')">'+s.label+'</div>';
+  });
+  html+='</div>';
+  html+='<div class="fl" style="margin-bottom:8px;">订单文本</div>';
+  html+='<textarea class="fi" style="height:120px;padding:12px 16px;line-height:1.55;resize:none;font-size:12px;" placeholder="【携程旅行】订单支付成功\n订单号：1034567890\n上海浦东T2 → 东京成田T1 往返机票\n实付金额：¥6240.00" oninput="updateOrderText(\''+userId+'\',this.value)">'+esc(st.orderText||'')+'</textarea>';
+  html+='<div style="display:flex;gap:6px;margin-top:10px;">';
+  html+='<button class="btn lt" style="flex:1;" onclick="orderClear(\''+userId+'\')">清空</button>';
+  html+='<button class="btn dk" style="flex:1.6;" onclick="orderParse(\''+userId+'\')">🔍 解析订单</button>';
+  html+='</div>';
+  /* ---- 订单截图识别（会看）---- */
+  var vs = window.VISION_SAMPLES || null;
+  if (vs) {
+    html += '<div class="fl" style="margin:18px 0 8px;">订单截图识别 / SCREENSHOT</div>';
+    html += '<div class="mbi" style="text-align:center;">';
+    html += '<img src="' + (vs.hotel || '') + '" alt="携程酒店订单截图样例" style="width:100%;border-radius:10px;border:1px solid var(--g200);display:block;">';
+    html += '<div style="font-family:Space Grotesk,sans-serif;font-size:9px;color:var(--g400);margin-top:8px;">内置样例：携程酒店订单截图</div>';
+    html += '<button class="btn ' + (engineInfo.online ? 'dk' : 'lt') + '" style="width:100%;margin-top:10px;" onclick="visionRecognize(\'' + userId + '\',\'' + roomId + '\',\'hotel\')">' + (st.visionLoading ? '🔍 识别中…' : '🔍 识别这张截图') + '</button>';
+    html += '<div style="font-size:10px;color:var(--g400);margin-top:8px;line-height:1.6;text-align:left;">' + (engineInfo.online ? 'AI 通道已连接：将调用多模态模型实时识别截图内容。' : '未连接 AI 通道：截图识别需要多模态模型（自建服务配置 Key 后自动启用），当前展示内置样例的识别结果。') + '</div>';
+    if (st.visionResult) {
+      var vo = st.visionResult.order || {};
+      html += '<div style="text-align:left;margin-top:12px;border-top:1px solid var(--g200);padding-top:10px;">';
+      html += '<div class="mbs">' + (st.visionResult.source === 'ai' ? '☁️ 模型实时识别结果' : '📋 内置样例识别结果（离线）') + '</div>';
+      html += '<div class="mbr"><span>订单号</span><span>' + esc(vo.orderNo || '—') + '</span></div>';
+      html += '<div class="mbr"><span>内容</span><span>' + esc(vo.title || '—') + '</span></div>';
+      html += '<div class="mbr"><span>金额</span><span>' + (vo.amount != null ? ('¥' + money(vo.amount)) : '—') + '</span></div>';
+      html += '<div class="mbr"><span>日期</span><span>' + esc(vo.date || '—') + '</span></div>';
+      if (vo.travelers && vo.travelers.length) html += '<div class="mbr"><span>出行人</span><span>' + esc(vo.travelers.join('、')) + '</span></div>';
+      html += '</div>';
+      if (vo.amount != null) html += '<button class="btn dk" style="width:100%;margin-top:10px;" onclick="visionImport(\'' + userId + '\',\'' + roomId + '\')">入账这笔订单</button>';
+      if (!engineInfo.online) html += '<div style="font-size:9px;color:var(--g300);margin-top:6px;">离线样例仅用于演示识别流水线，不代表模型实时输出</div>';
+    }
+    html += '</div>';
+  }
+
+  var orders=st.orders;
+  if(orders&&orders.length){
+    html+='<div class="fl" style="margin:18px 0 10px;">识别到 '+orders.length+' 笔订单，选择要入账的</div><div class="ors">';
+    orders.forEach(function(o,i){
+      var sel=st.orderSel&&st.orderSel.has(i);
+      html+='<div class="orc '+(sel?'sel':'')+'" onclick="orderToggle(\''+userId+'\','+i+')">';
+      html+='<div class="ort"><div class="ord">'+esc(o.title||o.typeMeta.name)+'</div><div class="ora">¥'+money(o.amount)+'</div></div>';
+      html+='<div class="orm"><span class="orb '+(o.type==='other'?'single':'list')+'">'+o.typeMeta.icon+' '+o.typeMeta.name+'</span> <span class="oc">✓ '+o.confidence+'%</span> &nbsp;'+(o.orderNo?('单号 '+o.orderNo):'')+(o.date?(' · '+o.date):'')+'</div>';
+      if(o.travelers&&o.travelers.length)html+='<div class="orm" style="margin-top:3px;">出行人：'+o.travelers.join('、')+'</div>';
+      html+='</div>';
+    });
+    html+='</div>';
+    var selCount=st.orderSel?st.orderSel.size:0;
+    if(selCount>0){
+      var selTotal=0;orders.forEach(function(o,i){if(st.orderSel.has(i))selTotal+=o.amount;});
+      html+='<button class="btn dk" style="width:100%;" onclick="orderImport(\''+userId+'\',\''+roomId+'\')">导入 '+selCount+' 笔 · 共 ¥'+money(selTotal)+'</button>';
+    }
+  }
+  return html;
+}
+function updateOrderText(userId,val){
+  var st=ocrState[userId];if(!st)return;st.orderText=val;st.orders=null;st.orderSel=new Set();
+}
+function orderUseSample(userId,idx){
+  var st=ocrState[userId];if(!st)return;
+  var samples=(CTRIP&&CTRIP.CTrip_SAMPLES)||[];if(!samples[idx])return;
+  st.orderText=samples[idx].text;st.orders=null;st.orderSel=new Set();
+  renderApp(USERS.find(function(u){return u.id===userId}));
+  showToast(userId,'已填入示例订单，点「解析订单」');
+}
+function orderClear(userId){
+  var st=ocrState[userId];if(!st)return;
+  st.orderText='';st.orders=null;st.orderSel=new Set();st.visionResult=null;
+  renderApp(USERS.find(function(u){return u.id===userId}));
+}
+/* 截图识别：连接了自建 AI 服务则实时识别；未连接则展示内置样例结果（明确标注，不冒充模型输出） */
+function visionRecognize(userId,roomId,which){
+  var st=ocrState[userId];if(!st)return;
+  var samples=window.VISION_SAMPLES||{};
+  var dataUri=samples[which];
+  var render=function(){renderApp(USERS.find(function(u){return u.id===userId}))};
+  if(engineInfo.online&&dataUri&&typeof fetch==='function'){
+    st.visionLoading=true;render();
+    fetch('http://localhost:3000/api/ai/vision',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({image:dataUri})
+    }).then(function(r){return r.json()}).then(function(d){
+      st.visionLoading=false;
+      var order=d&&(d.order||d.data||d);
+      if(order&&order.amount!=null){st.visionResult={source:'ai',order:order};showToast(userId,'☁️ 识别完成');}
+      else{st.visionResult={source:'ai',order:{}};showToast(userId,'未识别到有效字段');}
+      render();
+    }).catch(function(){
+      st.visionLoading=false;showToast(userId,'AI 通道调用失败，已切换内置样例');render();
+    });
+    return;
+  }
+  st.visionResult={source:'builtin',order:{
+    orderNo:'H9876543210',type:'hotel',title:'东京新宿格拉斯丽酒店 高级大床房 4晚',
+    amount:3200,currency:'CNY',date:'2024-10-01',travelers:['小明']
+  }};
+  render();
+  showToast(userId,'📋 已展示内置样例识别结果（离线）');
+}
+/* 把识别出的订单入账 */
+function visionImport(userId,roomId){
+  var st=ocrState[userId];var room=State.rooms.find(function(r){return r.id===roomId});
+  if(!st||!st.visionResult||!room)return;
+  var o=st.visionResult.order||{};if(o.amount==null)return;
+  var u=USERS.find(function(x){return x.id===userId});
+  State.bills.push(makeBill(room,{
+    payer:userId,payerName:u?u.name:'',amount:o.amount,
+    description:o.title||'携程订单',category:(CTRIP&&CTRIP.TYPE_META[o.type]?CTRIP.TYPE_META[o.type].category:'other'),
+    source:'ctrip',timeStr:o.date||'订单截图',
+    createdAt:o.date?new Date(o.date).toISOString():new Date().toISOString()
+  }));
+  st.visionResult=null;
+  u._page='room';u._roomId=roomId;
+  showToast(userId,'🧳 已入账 ¥'+money(o.amount));
+  syncAll();
+}
+function orderParse(userId){
+  var st=ocrState[userId];if(!st)return;
+  var text=(st.orderText||'').trim();
+  if(!text){showToast(userId,'请先粘贴订单文本或选择示例');return}
+  if(!CTRIP||!CTRIP.parseOrders){showToast(userId,'订单模块未加载');return}
+  var orders=CTRIP.parseOrders(text).filter(function(o){return o.amount!==null});
+  if(!orders.length){showToast(userId,'没识别到金额，检查是否含"实付金额：¥xxx"');return}
+  st.orders=orders;st.orderSel=new Set(orders.map(function(_,i){return i;}));
+  renderApp(USERS.find(function(u){return u.id===userId}));
+  showToast(userId,'🔍 解析出 '+orders.length+' 笔订单');
+}
+function orderToggle(userId,idx){
+  var st=ocrState[userId];if(!st||!st.orderSel)return;
+  if(st.orderSel.has(idx))st.orderSel.delete(idx);else st.orderSel.add(idx);
+  renderApp(USERS.find(function(u){return u.id===userId}));
+}
+function orderImport(userId,roomId){
+  var st=ocrState[userId];var room=State.rooms.find(function(r){return r.id===roomId});
+  if(!st||!st.orders||!room)return;
+  var u=USERS.find(function(x){return x.id===userId});
+  var count=0;
+  st.orders.forEach(function(o,i){
+    if(!st.orderSel||!st.orderSel.has(i))return;
+    var draft=CTRIP.orderToBill(o,membersOf(room),{payerId:userId});
+    var currency=draft.currency&&draft.currency!=='CNY'?draft.currency:'CNY';
+    State.bills.push(makeBill(room,{
+      payer:draft.payer||userId,
+      payerName:draft.payerName||(u?u.name:''),
+      amount:draft.amount,
+      currency:currency,
+      description:draft.description,
+      category:draft.category,
+      splits:(draft.splits||[]).map(function(s){return{memberId:s.memberId,memberName:s.memberName,amount:s.amount}}),
+      source:'ctrip',
+      timeStr:o.date||'携程订单',
+      createdAt:o.date?new Date(o.date).toISOString():new Date().toISOString()
+    }));
+    count++;
+  });
+  st.orderText='';st.orders=null;st.orderSel=new Set();
+  u._page='room';u._roomId=roomId;
+  showToast(userId,'🧳 已从携程订单入账 '+count+' 笔');
+  syncAll();
+}
+//JS2_END
+function renderSettle(userId,roomId){
+  var room=State.rooms.find(function(r){return r.id===roomId});
+  if(!room)return emBack('房间不存在',userId);
+  var bills=State.bills.filter(function(b){return b.roomId===roomId});
+  var settlement=calcSettlement(room,bills);
+  var totalSpent=settlement.totalExpense;
+  var html='<div class="shm"><div class="aml">旅行总消费</div><div class="svm">¥'+money(totalSpent)+'</div></div>';
+  if(settlement.hasForeign)html+='<div class="os"><span>💱</span><span>含外币账单，已按记账时汇率快照折算为人民币</span></div>';
+  var totalBudget=(room.budgetPerPerson||0)*room.members.length;
+  if(totalBudget>0){
+    var pct=Math.min(totalSpent/totalBudget*100,100);var level=pct>=90?'over':pct>=70?'warn':'safe';
+    html+='<div class="bbw"><div class="bh"><div class="bl">BUDGET</div><div class="bnum"><strong>¥'+money(totalSpent,0)+'</strong> / ¥'+totalBudget+' 总预算</div></div><div class="bbg"><div class="bf '+level+'" style="width:'+pct+'%"></div></div></div>';
+    if(level==='over')html+='<div class="bal over">🚨 总预算超出 ¥'+money(totalSpent-totalBudget,0)+'</div>';
+    else if(level==='warn')html+='<div class="bal warn">⚠️ 已用 '+pct.toFixed(0)+'% 预算</div>';
+    else html+='<div class="bal safe">✅ 预算内，剩余 ¥'+money(totalBudget-totalSpent,0)+'</div>';
+  }
+  html+='<div class="og" style="grid-template-columns:1fr 1fr 1fr;"><div class="oi"><div class="ol">MEMBERS</div><div class="ov sm">'+room.members.length+'</div></div><div class="oi"><div class="ol">BILLS</div><div class="ov sm">'+bills.length+'</div></div><div class="oi"><div class="ol">MIN TX</div><div class="ov sm" style="color:var(--grn)">'+settlement.transfers.length+'</div></div></div>';
+  html+='<div class="sh"><div class="st">各人收支</div></div>';
+  settlement.balances.forEach(function(b){
+    var sign=b.amount>=0?'+':'-';
+    var label=b.amount>=0?'应收到此金额':'需支付此金额';
+    html+='<div class="brm"><div class="bin2"><div class="bnn">'+esc(b.name)+'</div><div class="bnt">'+label+'</div></div><div class="bam '+(b.amount>=0?'pos':'neg')+'">'+sign+'¥'+money(Math.abs(b.amount))+'</div></div>';
+  });
+  html+='<div class="sh" style="margin-top:18px;"><div class="st">最简转账</div><div class="sc">'+settlement.transfers.length+' STEPS</div></div>';
+  settlement.transfers.forEach(function(t,i){
+    html+='<div class="trm"><div class="tsm">'+(i+1)+'</div><div class="ttm"><div class="tnm">'+esc(t.fromName)+'</div><div class="tam">→ ¥'+money(t.amount)+' →</div><div class="tnm">'+esc(t.toName)+'</div></div></div>';
+  });
+  if(settlement.transfers.length>0)html+='<div style="margin-top:18px;display:flex;gap:8px;"><button class="btn lt" style="flex:1;" onclick="copySettle(\''+userId+'\',\''+roomId+'\')">📋 复制方案</button><button class="btn dk" style="flex:1;" onclick="copyReport(\''+userId+'\',\''+roomId+'\')">📄 旅行报告</button></div>';
+
+  /* ---- AI 旅行小作文（内核模板保底，离线可生成） ---- */
+  var u=USERS.find(function(x){return x.id===userId});
+  html+='<div class="sh" style="margin-top:20px;"><div class="st">AI 旅行小作文</div><div class="sc">NARRATIVE</div></div>';
+  if(u&&u._narr){
+    html+='<div class="mbi" style="margin-bottom:10px;"><div style="font-size:12px;line-height:1.75;">'+esc(u._narr)+'</div></div>';
+    html+='<div style="display:flex;gap:8px;"><button class="btn lt" style="flex:1;" onclick="genNarrative(\''+userId+'\',\''+roomId+'\')">🔄 重新生成</button><button class="btn dk" style="flex:1;" onclick="copyNarrative(\''+userId+'\')">📋 复制小作文</button></div>';
+  }else{
+    html+='<button class="btn lt" style="width:100%;" onclick="genNarrative(\''+userId+'\',\''+roomId+'\')">'+(u&&u._narrLoading?'✍️ 生成中…':'✍️ 生成这次旅行的小作文')+'</button>';
+  }
+  return html;
+}
+function genNarrative(userId,roomId){
+  var u=USERS.find(function(x){return x.id===userId});var room=State.rooms.find(function(r){return r.id===roomId});
+  if(!u||!room)return;
+  if(!AI||!AI.generateNarrative){showToast(userId,'内核未加载');return}
+  var bills=State.bills.filter(function(b){return b.roomId===roomId});
+  u._narrLoading=true;renderApp(u);
+  Promise.resolve(AI.generateNarrative({room:room,bills:bills,members:room.members,currency:'CNY'},{}))
+    .then(function(text){u._narr=String(text||'');u._narrLoading=false;renderApp(u);showToast(userId,'🤖 小作文已生成');})
+    .catch(function(){u._narrLoading=false;renderApp(u);showToast(userId,'生成失败，请重试');});
+}
+function copyNarrative(userId){
+  var u=USERS.find(function(x){return x.id===userId});
+  if(!u||!u._narr)return;
+  if(navigator.clipboard)navigator.clipboard.writeText(u._narr);
+  showToast(userId,'📋 已复制小作文');
+}
+function copyReport(userId,roomId){
+  var room=State.rooms.find(function(r){return r.id===roomId});if(!room||!AI)return;
+  var bills=State.bills.filter(function(b){return b.roomId===roomId});
+  var text=AI.generateTripReport(room,bills,room.members);
+  if(navigator.clipboard)navigator.clipboard.writeText(text);
+  showToast(userId,'📄 旅行报告已复制');
+}
+
+function calcSettlement(room,bills){
+  var balMap={};room.members.forEach(function(m){balMap[m.id]={id:m.id,name:m.name,amount:0}});
+  var hasForeign=false;
+  var totalCNY=0;
+  bills.forEach(function(bill){
+    var cny=billCNY(bill);var raw=Number(bill.amount)||0;var scale=raw>0?cny/raw:1;
+    if(bill.currency&&bill.currency!=='CNY')hasForeign=true;
+    totalCNY+=cny;
+    if(balMap[bill.payer])balMap[bill.payer].amount+=cny;
+    (bill.splits||[]).forEach(function(s){if(balMap[s.memberId])balMap[s.memberId].amount-=s.amount*scale});
+  });
+  var balances=Object.values(balMap).map(function(b){return{id:b.id,name:b.name,amount:Math.round(b.amount*100)/100}}).filter(function(b){return Math.abs(b.amount)>0.01}).sort(function(a,b){return b.amount-a.amount});
+  var transfers=[];var debtors=balances.filter(function(b){return b.amount<-0.01}).map(function(b){return{id:b.id,name:b.name,amount:b.amount}});var creditors=balances.filter(function(b){return b.amount>0.01}).map(function(b){return{id:b.id,name:b.name,amount:b.amount}});
+  var i=0,j=0;
+  while(i<debtors.length&&j<creditors.length){var amt=Math.min(-debtors[i].amount,creditors[j].amount);if(amt>0.01)transfers.push({from:debtors[i].id,fromName:debtors[i].name,to:creditors[j].id,toName:creditors[j].name,amount:Math.round(amt*100)/100});debtors[i].amount+=amt;creditors[j].amount-=amt;if(Math.abs(debtors[i].amount)<0.01)i++;if(Math.abs(creditors[j].amount)<0.01)j++}
+  return{balances:balances,transfers:transfers,totalExpense:Math.round(totalCNY*100)/100,hasForeign:hasForeign};
+}
+
+function getCatIcon(cat){return({food:'🍜',transport:'🚗',hotel:'🏨',ticket:'🎫',shopping:'🛍️'})[cat]||'📦'}
+function genCode(){var code;do{code=String(Math.floor(100000+Math.random()*900000))}while(State.rooms.some(function(r){return r.code===code}));return code}
+function showToast(userId,msg){var t=document.getElementById('toast-'+userId);if(!t)return;t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},1800)}
+function syncAll(){USERS.slice(0,State.phoneCount).forEach(function(u){renderApp(u);var phone=document.getElementById('phone-'+u.id);if(phone){var frame=phone.querySelector('.pf');frame.classList.remove('sf');void frame.offsetHeight;frame.classList.add('sf')}})}
+
+function askDeleteBill(userId,billId,desc){
+  pendingDelete[userId]={userId:userId,billId:billId};
+  var title=document.getElementById('confirmTitle-'+userId);var d=document.getElementById('confirmDesc-'+userId);
+  if(title)title.textContent='删除账单？';if(d)d.textContent='「'+desc+'」将被永久删除';
+  var overlay=document.getElementById('confirm-'+userId);if(overlay)overlay.classList.add('show');
+}
+function cancelConfirm(userId){delete pendingDelete[userId];var overlay=document.getElementById('confirm-'+userId);if(overlay)overlay.classList.remove('show')}
+function doConfirm(userId){
+  if(pendingDelete[userId]){var idx=State.bills.findIndex(function(b){return b.id===pendingDelete[userId].billId});if(idx>=0){State.bills.splice(idx,1);showToast(userId,'🗑️ 已删除账单')}delete pendingDelete[userId]}
+  var overlay=document.getElementById('confirm-'+userId);if(overlay)overlay.classList.remove('show');syncAll();
+}
+
+function openCreateModal(userId){
+  var body=document.getElementById('modalBody-'+userId);document.getElementById('modalTitle-'+userId).textContent='创建旅行房间';
+  body.innerHTML='<div class="fg"><div class="fl">旅行名称</div><input class="fi" placeholder="如：国庆东京行" id="createName-'+userId+'"></div><div class="fg"><div class="fl">目的地</div><input class="fi" placeholder="如：东京" id="createDest-'+userId+'"></div><div class="fg"><div class="fl">出发 / 返程（可选，用于预算燃烧率）</div><div style="display:flex;gap:8px;"><input class="fi" type="date" id="createStart-'+userId+'" style="flex:1;"><input class="fi" type="date" id="createEnd-'+userId+'" style="flex:1;"></div></div><div class="fg"><div class="fl">人均预算（可选）</div><input class="fi" placeholder="如：5000" id="createBudget-'+userId+'" type="number"></div><button class="btn dk" style="width:100%;margin-top:4px;" onclick="doCreateRoom(\''+userId+'\')">创建房间</button>';
+  document.getElementById('modal-'+userId).classList.add('show');
+}
+function doCreateRoom(userId){
+  var user=USERS.find(function(u){return u.id===userId});
+  var name=document.getElementById('createName-'+userId).value.trim()||'新旅行';
+  var dest=document.getElementById('createDest-'+userId).value.trim();
+  var budget=parseFloat(document.getElementById('createBudget-'+userId).value)||0;
+  var startEl=document.getElementById('createStart-'+userId);var endEl=document.getElementById('createEnd-'+userId);
+  var room={id:'room_'+State.nextRoomId++,name:name,destination:dest,code:genCode(),creator:userId,members:[{id:userId,name:user.name}],totalExpense:0,budgetPerPerson:budget,startDate:startEl?startEl.value:'',endDate:endEl?endEl.value:'',createdAt:new Date().toISOString()};
+  State.rooms.push(room);closeModal(userId);showToast(userId,'✅ 房间 '+room.code+' 创建成功');user._page='room';user._roomId=room.id;user._form=null;syncAll();
+}
+function openJoinModal(userId){
+  var body=document.getElementById('modalBody-'+userId);document.getElementById('modalTitle-'+userId).textContent='加入旅行房间';
+  body.innerHTML='<div class="fg"><div class="fl">房间号</div><input class="fi" placeholder="输入6位房间号" maxlength="6" id="joinCode-'+userId+'" style="text-align:center;font-size:18px;letter-spacing:8px;font-weight:700;"></div><button class="btn dk" style="width:100%;margin-top:4px;" onclick="doJoinRoom(\''+userId+'\')">加入房间</button>';
+  document.getElementById('modal-'+userId).classList.add('show');
+}
+function doJoinRoom(userId){
+  var user=USERS.find(function(u){return u.id===userId});
+  var code=document.getElementById('joinCode-'+userId).value.trim();
+  var room=State.rooms.find(function(r){return r.code===code});
+  if(!room){showToast(userId,'❌ 房间不存在');return}
+  if(room.members.some(function(m){return m.id===userId})){showToast(userId,'已在房间中');return}
+  room.members.push({id:userId,name:user.name});closeModal(userId);showToast(userId,'✅ 已加入 '+room.name);user._form=null;user._page='room';user._roomId=room.id;syncAll();
+}
+function openRoom(userId,roomId){var user=USERS.find(function(u){return u.id===userId});if(!user)return;user._page='room';user._roomId=roomId;user._form=null;renderApp(user)}
+/* 导航：始终能一路返回首页，绝不产生死角 */
+function phoneGoBack(userId){
+  var user=USERS.find(function(u){return u.id===userId});if(!user)return;
+  var page=user._page||'home';
+  var roomOK=!!(user._roomId&&State.rooms.find(function(r){return r.id===user._roomId}));
+  if(page==='room'){user._page='home';user._roomId=null;user._form=null;}
+  else if(page==='home'){/* 已在首页，保持不变 */}
+  else if(roomOK){user._page='room';user._form=null;}
+  else{user._page='home';user._roomId=null;user._form=null;}
+  renderApp(user);
+}
+function phoneGoHome(userId){
+  var user=USERS.find(function(u){return u.id===userId});if(!user)return;
+  user._page='home';user._roomId=null;user._form=null;
+  renderApp(user);
+}
+/* 房间缺失等异常态：给出明确出口，避免卡死 */
+function emBack(msg,userId){
+  return '<div class="em"><div class="ei">🧭</div><div class="et">'+esc(msg)+'</div>'+
+    '<div class="es">房间可能已被重置</div>'+
+    '<button class="btn dk" style="margin-top:18px;" onclick="phoneGoHome(\''+userId+'\')">返回首页</button></div>';
+}
+function phoneGoAdd(userId,roomId){var user=USERS.find(function(u){return u.id===userId});if(!user)return;user._page='add';user._roomId=roomId;user._form={amount:'',desc:'',category:'food',payer:userId,splitType:'equal',currency:'CNY'};user._aiText='';user._ai=null;renderApp(user)}
+function phoneGoSettle(userId,roomId){var user=USERS.find(function(u){return u.id===userId});if(!user)return;user._page='settle';user._roomId=roomId;user._form=null;renderApp(user)}
+function updateForm(userId,field,value){var user=USERS.find(function(u){return u.id===userId});if(!user||!user._form)return;user._form[field]=value}
+function submitBill(userId,roomId){
+  var user=USERS.find(function(u){return u.id===userId});if(!user||!user._form)return;
+  var form=user._form;var rid=user._roomId||roomId;var room=State.rooms.find(function(r){return r.id===rid});
+  if(!room){showToast(userId,'房间不存在，请先创建或加入房间');return}
+  var amount=parseFloat(form.amount);if(!amount||amount<=0){showToast(userId,'请输入金额');return}
+  var payerMember=room.members.find(function(m){return m.id===form.payer});
+  var fromAI=!!(user._ai&&user._ai.parsed&&String(user._ai.parsed.amount)===String(form.amount));
+  var bill=makeBill(room,{
+    payer:form.payer,
+    payerName:payerMember?payerMember.name:'',
+    amount:amount,
+    currency:form.currency||'CNY',
+    description:form.desc||'消费',
+    category:form.category,
+    splitType:form.splitType,
+    source:fromAI?'ai':'manual'
+  });
+  State.bills.push(bill);
+  user._form=null;user._ai=null;user._aiText='';user._page='room';
+  var extra=bill.currency!=='CNY'?('（'+bill.currency+' ≈ ¥'+money(bill.cnyAmount)+'）'):'';
+  showToast(userId,'✅ 记账成功 '+extra);
+  syncAll();
+}
+function copySettle(userId,roomId){
+  var room=State.rooms.find(function(r){return r.id===roomId});if(!room)return;
+  var bills=State.bills.filter(function(b){return b.roomId===roomId});var settlement=calcSettlement(room,bills);
+  var text='【TravelAA 结算方案】\n'+room.name+' · 总消费 ¥'+settlement.totalExpense.toFixed(2)+'\n\n';
+  settlement.transfers.forEach(function(t,i){text+=(i+1)+'. '+t.fromName+' → '+t.toName+' ¥'+t.amount.toFixed(2)+'\n'});
+  if(navigator.clipboard)navigator.clipboard.writeText(text);showToast(userId,'📋 已复制结算方案');
+}
+function closeModal(userId){var m=document.getElementById('modal-'+userId);if(m)m.classList.remove('show')}
+function addPhone(){if(State.phoneCount>=4){showToast('u1','最多 4 台手机（4 位成员）');return}State.phoneCount++;document.getElementById('phoneCountLabel').textContent=State.phoneCount;renderPhones()}
+function removePhone(){if(State.phoneCount<=1){showToast('u1','至少保留 1 台手机');return}State.phoneCount--;document.getElementById('phoneCountLabel').textContent=State.phoneCount;renderPhones()}
+function resetAll(){State.rooms=[];State.bills=[];State.nextRoomId=1;State.nextBillId=1;USERS.forEach(function(u){u._page='home';u._roomId=null;u._form=null;u._ai=null;u._aiText='';u._narr=null;u._narrLoading=false;u._listening=false;u._sampleIdx=null;u._visionResult=null});ocrState={};pendingDelete={};tourExit();closeSelfTest();renderPhones()}
+
+/* ============================================================
+   自动演示：分镜脚本（每一步都真实切页面，顶部字幕同步解说）
+   不是"后台加数据"，而是把 u1/u2/u3 当真人在操作来演
+   ============================================================ */
+var autoRunning = false;
+async function autoDemo() {
+  if (autoRunning) return;
+  autoRunning = true;
+  var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+  var say = function (t) { var el = document.getElementById('hdrSub'); if (el) el.textContent = t; };
+  var has = function (uid) { var i = USERS.findIndex(function (u) { return u.id === uid; }); return i >= 0 && i < State.phoneCount; };
+  var HOME_SUB = '每个手机 = 一个真实用户 · 操作实时同步 · 展示多人AA完整流程';
+  try {
+    resetAll();
+    USERS.slice(0, State.phoneCount).forEach(function (u) { u._page = 'home'; u._roomId = null; });
+    say('① 每台手机 = 一个真实用户 · 操作实时同步');
+    await sleep(1200);
+
+    /* ② 创建房间 → u1 切到房间详情页 */
+    var demoRoomId = 'room_' + State.nextRoomId++;
+    State.rooms.push({ id: demoRoomId, name: '国庆东京行', destination: '东京', code: '888666', creator: 'u1', members: [{ id: 'u1', name: '小明' }], totalExpense: 0, budgetPerPerson: 5000, startDate: '2024-10-01', endDate: '2024-10-05' });
+    goPhone('u1', 'room');
+    say('② u1 创建房间 888666 → 直接进入房间详情');
+    showToast('u1', '✅ 创建房间 888666');
+    syncAll();
+    await sleep(1600);
+
+    /* ③ 其他手机输房间号加入 → 各自切到房间页 */
+    var rm = State.rooms.find(function (r) { return r.id === demoRoomId; });
+    var joiners = [['u2', '小红'], ['u3', '小李'], ['u4', '小王']];
+    for (var i = 0; i < joiners.length; i++) {
+      if (!has(joiners[i][0])) continue;
+      rm.members.push({ id: joiners[i][0], name: joiners[i][1] });
+      goPhone(joiners[i][0], 'room');
+      say('③ ' + joiners[i][1] + ' 输入房间号加入 → 全员账本实时同步');
+      showToast(joiners[i][0], '✅ 已加入「国庆东京行」');
+      syncAll();
+      await sleep(1100);
+    }
+
+    /* ④ AI 一句话记账：切到记一笔 → 展示解析结果 → 提交 → 回房间 */
+    say('④ u1 说一句话记账：「打车去机场86块，我垫的，和小红小李平分」');
+    goPhone('u1', 'add');
+    USERS[0]._aiText = '打车去机场86块，我垫的，和小红小李平分';
+    aiParseBill('u1');
+    await sleep(1700);
+    submitBill('u1', demoRoomId);
+    await sleep(1200);
+
+    /* ⑤ 携程订单入账 */
+    say('⑤ u1 粘贴携程订单 → 机票 ¥6240 直接变成 AA 账单（行程即账本）');
+    goPhone('u1', 'capture');
+    var st1 = ocrState['u1'];
+    st1.tab = 'order';
+    st1.orderText = (CTRIP && CTRIP.CTrip_SAMPLES[0]) ? CTRIP.CTrip_SAMPLES[0].text : '';
+    st1.orderSel = new Set();
+    renderApp(USERS[0]);
+    await sleep(1000);
+    orderParse('u1');
+    await sleep(1500);
+    orderImport('u1', demoRoomId);
+    await sleep(1200);
+
+    /* ⑥ 票据识别（含扫描动画） */
+    if (has('u2')) {
+      say('⑥ 小红上传微信账单截图 → AI 识别多笔消费并批量入账');
+      goPhone('u2', 'capture');
+      ocrState['u2'].tab = 'ocr';
+      ocrSelectType('u2', 'wechat_list');
+      await sleep(900);
+      ocrStartScan('u2');
+      await sleep(2700);
+      ocrImport('u2', demoRoomId);
+      await sleep(1200);
+    }
+
+    /* ⑦ 多币种：日元消费按汇率快照折算 */
+    if (has('u3')) {
+      say('⑦ 小李在京都记一笔 12000 日元 → 按记账时汇率快照折算人民币');
+      goPhone('u3', 'add');
+      var u3 = USERS.find(function (u) { return u.id === 'u3'; });
+      u3._form = { amount: '12000', desc: '京都一日游交通', category: 'transport', payer: 'u3', splitType: 'equal', currency: 'JPY' };
+      renderApp(u3);
+      await sleep(1500);
+      submitBill('u3', demoRoomId);
+      await sleep(1200);
+    }
+
+    /* ⑧ 一键结算 + AI 小作文 */
+    say('⑧ u1 一键结算：贪心最少转账笔数 + 外币折算，账恒平');
+    goPhone('u1', 'settle');
+    await sleep(1700);
+    genNarrative('u1', demoRoomId);
+    say('⑨ AI 生成这次旅行的小作文，可一键复制分享');
+    await sleep(1600);
+
+    /* ⑩ 消费复盘 */
+    say('⑩ 消费复盘：分类占比 · 每日趋势 · AI 洞察');
+    goPhone(has('u2') ? 'u2' : 'u1', 'stats');
+    await sleep(1900);
+
+    say('演示结束 · 点「🎬 导览」听逐步讲解，点「🔄 重置」可重播');
+    showToast('u1', '🎬 自动演示完成');
+  } catch (e) {
+    say('演示中断：' + (e && e.message));
+  } finally {
+    setTimeout(function () { say(HOME_SUB); }, 6000);
+    autoRunning = false;
+  }
+}
+
+/* ============================================================
+   一键导览（演讲者模式）：高亮 + 讲解词，答辩/路演直接照着念
+   ============================================================ */
+var TOUR_STEPS = [
+  { sel: '.hdr-r', title: '多机联动演示台', script: '右上角可加减手机：每台手机 = 一个真实用户，操作实时同步。建议先加到 3~4 台，多人 AA 的效果最直观。',
+    before: function () { if (State.phoneCount < 3) { State.phoneCount = 3; document.getElementById('phoneCountLabel').textContent = '3'; renderPhones(); } } },
+  { sel: '#phonesStage', title: '每台手机就是一个真实用户', script: '每位成员用自己的手机记账，其他手机立刻同步——这正是现实中"垫付分散、事后对不上账"的场景。',
+    before: function () { ensureDemoRoom(); } },
+  { sel: '#app-u1', title: '创建 / 加入旅行房间', script: '发起人创建房间拿到 6 位房间号，其他人输入房间号加入，全员共享一本账；未结清前不能移除成员。',
+    before: function () { ensureDemoRoom(); goPhone('u1', 'room'); } },
+  { sel: '#app-u1 .amb', title: '会听：说一句话就能记账', script: '"打车去机场86块，我垫的，和小红小李平分"——口语数字自动归一化，金额、分类、付款人、分摊对象一次填好，还支持语音输入。',
+    before: function () { ensureDemoRoom(); goPhone('u1', 'add'); var u = USERS[0]; u._aiText = AI_SAMPLES[0]; u._ai = null; } },
+  { sel: '#app-u1 .cts', title: '会看：票据识别入账', script: '微信/支付宝截图、纸质小票、电子发票都能识别；离线环境用内置样例演示同一条识别流水线，联网后接真实多模态识别。',
+    before: function () { ensureDemoRoom(); goPhone('u1', 'capture'); var st = ocrState['u1']; st.tab = 'ocr'; } },
+  { sel: '#app-u1 .ors', title: '会读单：携程订单直接变成账单', script: '粘贴携程订单确认信息，机票/酒店/门票订单自动解析成 AA 账单——"行程即账本"，这是旅行场景最省事的一步。',
+    before: function () { ensureDemoRoom(); goPhone('u1', 'capture'); var st = ocrState['u1']; st.tab = 'order'; if (CTRIP && CTRIP.CTrip_SAMPLES[0]) { st.orderText = CTRIP.CTrip_SAMPLES[0].text; orderParse('u1'); } } },
+  { sel: '#app-u1 .svm', title: '会算账：一键清账 + 多币种', script: '贪心算法给出最少转账笔数（转账次数最少 = 社交尴尬最少）；外币按记账时的汇率快照折算人民币，结算账恒平。',
+    before: function () { ensureDemoRoom(); goPhone('u1', 'settle'); } },
+  { sel: '#app-u1 .og', title: '会复盘：统计与 AI 洞察', script: '分类占比、每日趋势、AI 账单审计（重复记账/账不平/异常大额）、消费洞察，还能一键生成旅行小作文和分享报告。',
+    before: function () { ensureDemoRoom(); goPhone('u1', 'stats'); } }
+];
+var tourState = { idx: 0, auto: false, timer: null };
+
+function goPhone(uid, page) {
+  var u = USERS.find(function (x) { return x.id === uid; }); if (!u) return;
+  u._page = page;
+  if (!u._roomId && State.rooms[0]) u._roomId = State.rooms[0].id;
+  if (page === 'add' && !u._form) u._form = { amount: '', desc: '', category: 'food', payer: uid, splitType: 'equal', currency: 'CNY' };
+  if (page === 'capture') { if (!ocrState[uid]) ocrState[uid] = { step: 'select', billType: null, selected: new Set() }; ocrState[uid].tab = ocrState[uid].tab || 'ocr'; }
+  renderApp(u);
+}
+/* 导览/自检前保证有演示数据（同步版本，无动画） */
+function ensureDemoRoom() {
+  if (State.rooms.length) return State.rooms[0];
+  var room = { id: 'room_' + State.nextRoomId++, name: '国庆东京行', destination: '东京', code: '888666', creator: 'u1', members: [], totalExpense: 0, budgetPerPerson: 5000, startDate: '2024-10-01', endDate: '2024-10-05' };
+  State.rooms.push(room);
+  USERS.slice(0, Math.max(3, State.phoneCount)).forEach(function (u) { room.members.push({ id: u.id, name: u.name }); });
+  var seed = [
+    { desc: '上海浦东→东京成田 往返机票', amount: 6240, cat: 'transport', payer: 'u1', source: 'ctrip', day: '2024-10-01' },
+    { desc: '东京新宿格拉斯丽酒店 4晚', amount: 3200, cat: 'hotel', payer: 'u1', source: 'ctrip', day: '2024-10-01' },
+    { desc: '晚餐 · 一兰拉面', amount: 680, cat: 'food', payer: 'u2', source: 'ai', day: '2024-10-02' },
+    { desc: '东京迪士尼一日票 x4', amount: 2800, cat: 'ticket', payer: 'u3', source: 'ctrip', day: '2024-10-03' },
+    { desc: '京都一日游交通', amount: 12000, cat: 'transport', payer: 'u1', source: 'ai', day: '2024-10-04', currency: 'JPY' }
+  ];
+  seed.forEach(function (s) {
+    var u = USERS.find(function (x) { return x.id === s.payer; });
+    State.bills.push(makeBill(room, {
+      payer: s.payer, payerName: u ? u.name : '', amount: s.amount, currency: s.currency || 'CNY',
+      description: s.desc, category: s.cat, source: s.source, timeStr: s.day,
+      createdAt: new Date(s.day + 'T09:00:00').toISOString()
+    }));
+  });
+  syncAll();
+  return room;
+}
+
+function ensureTourDom() {
+  if (document.getElementById('tourCard')) return;
+  var mask = document.createElement('div');
+  mask.className = 'tour-mask'; mask.id = 'tourMask';
+  document.body.appendChild(mask);
+  var card = document.createElement('div');
+  card.className = 'tour-card'; card.id = 'tourCard';
+  card.innerHTML = '<div class="tour-step" id="tourStepLabel"></div>' +
+    '<div class="tour-title" id="tourTitle"></div>' +
+    '<div class="tour-script" id="tourScript"></div>' +
+    '<div class="tour-dots" id="tourDots"></div>' +
+    '<div class="tour-ctrl">' +
+      '<button class="btn lt" onclick="tourPrev()">← 上一步</button>' +
+      '<button class="btn lt" id="tourAutoBtn" onclick="toggleTourAuto()">▶ 自动</button>' +
+      '<button class="btn dk" id="tourNextBtn" onclick="tourNext()">下一步 →</button>' +
+      '<button class="btn lt" style="flex:0 0 56px;" onclick="tourExit()">退出</button>' +
+    '</div>';
+  document.body.appendChild(card);
+}
+function startTour() {
+  ensureTourDom();
+  tourState.idx = 0; tourState.auto = false;
+  document.getElementById('tourCard').style.display = 'block';
+  document.getElementById('tourMask').style.display = 'block';
+  renderTourStep();
+  showToast('u1', '🎬 导览开始 · 共 ' + TOUR_STEPS.length + ' 步');
+}
+function renderTourStep() {
+  var step = TOUR_STEPS[tourState.idx];
+  if (!step) return tourExit();
+  if (typeof step.before === 'function') { try { step.before(); } catch (e) { } }
+  setTimeout(function () {
+    var mask = document.getElementById('tourMask');
+    var el = step.sel ? document.querySelector(step.sel) : null;
+    if (!mask) return;
+    if (el) {
+      var r = el.getBoundingClientRect();
+      mask.style.display = 'block';
+      mask.style.left = Math.max(4, r.left - 8) + 'px';
+      mask.style.top = Math.max(4, r.top - 8) + 'px';
+      mask.style.width = Math.min(window.innerWidth - 8, r.width + 16) + 'px';
+      mask.style.height = (r.height + 16) + 'px';
+      if (r.top > window.innerHeight * 0.55) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    } else {
+      mask.style.display = 'none';
+    }
+    var lbl = document.getElementById('tourStepLabel');
+    var ttl = document.getElementById('tourTitle');
+    var scr = document.getElementById('tourScript');
+    var dots = document.getElementById('tourDots');
+    var nextBtn = document.getElementById('tourNextBtn');
+    var autoBtn = document.getElementById('tourAutoBtn');
+    if (lbl) lbl.textContent = 'STEP ' + (tourState.idx + 1) + ' / ' + TOUR_STEPS.length;
+    if (ttl) ttl.textContent = step.title;
+    if (scr) scr.textContent = step.script;
+    if (dots) {
+      var d = '';
+      TOUR_STEPS.forEach(function (_, i) { d += '<div class="tour-dot ' + (i === tourState.idx ? 'on' : '') + '"></div>'; });
+      dots.innerHTML = d;
+    }
+    if (nextBtn) nextBtn.textContent = (tourState.idx === TOUR_STEPS.length - 1) ? '完成 ✓' : '下一步 →';
+    if (autoBtn) autoBtn.textContent = tourState.auto ? '⏸ 暂停' : '▶ 自动';
+  }, 260);
+}
+function tourNext() {
+  if (tourState.idx >= TOUR_STEPS.length - 1) { showToast('u1', '🎉 导览结束，轮到你了'); return tourExit(); }
+  tourState.idx++; renderTourStep();
+}
+function tourPrev() {
+  if (tourState.idx <= 0) return;
+  tourState.idx--; renderTourStep();
+}
+function toggleTourAuto() {
+  tourState.auto = !tourState.auto;
+  if (tourState.timer) { clearInterval(tourState.timer); tourState.timer = null; }
+  if (tourState.auto) {
+    tourState.timer = setInterval(function () {
+      if (tourState.idx >= TOUR_STEPS.length - 1) { toggleTourAuto(); return; }
+      tourNext();
+    }, 6500);
+  }
+  renderTourStep();
+}
+function tourExit() {
+  tourState.auto = false;
+  if (tourState.timer) { clearInterval(tourState.timer); tourState.timer = null; }
+  var mask = document.getElementById('tourMask'); if (mask) mask.style.display = 'none';
+  var card = document.getElementById('tourCard'); if (card) card.style.display = 'none';
+}
+
+/* ============================================================
+   演示自检：开讲前 1 秒确认"演示不会翻车"
+   ============================================================ */
+function runSelfTest() {
+  var checks = [];
+  var add = function (name, ok, extra) { checks.push({ name: name, ok: !!ok, extra: extra || '' }); };
+
+  add('共享 AI 内核已加载', !!(AI && AI.parseBillText));
+  add('携程订单内核已加载', !!(CTRIP && CTRIP.parseOrders));
+  if (AI) {
+    var members = [{ id: 'u1', name: '小明' }, { id: 'u2', name: '小红' }, { id: 'u3', name: '小李' }];
+    var p = AI.parseBillText('打车去机场86块，我垫的，和小红小李平分', members, { meName: '小明' });
+    add('一句话记账解析（86 元）', p && p.amount === 86, p ? ('金额 ' + p.amount + ' · 分类 ' + p.category + ' · 可信度 ' + p.confidence + '%') : '解析失败');
+    var parts = AI.allocateEvenly(100, 3);
+    var sum = Math.round(parts.reduce(function (s, v) { return s + v; }, 0) * 100) / 100;
+    add('均分尾差安全（100/3）', sum === 100, parts.join(' + ') + ' = ' + sum);
+    add('多币种折算（12000 日元 ≈ ¥576）', Math.abs(AI.toCNY(12000, 'JPY') - 576) < 0.01, '¥' + AI.toCNY(12000, 'JPY'));
+    var room = ensureDemoRoom();
+    var bills = roomBills(room.id);
+    var st = calcSettlement(room, bills);
+    var balSum = Math.round(st.balances.reduce(function (s, b) { return s + b.amount; }, 0) * 100) / 100;
+    add('结算账恒平（净余额合计为 0）', Math.abs(balSum) < 0.05, '合计 ' + balSum + ' · ' + st.transfers.length + ' 笔转账');
+    add('外币账单已按快照折算', bills.some(function (b) { return b.currency && b.currency !== 'CNY' && b.cnyAmount > 0; }));
+  }
+  if (CTRIP && CTRIP.CTrip_SAMPLES && CTRIP.CTrip_SAMPLES[0]) {
+    var orders = CTRIP.parseOrders(CTRIP.CTrip_SAMPLES[0].text);
+    add('携程订单解析（机票 ¥6240）', orders.length > 0 && orders[0].amount === 6240, orders.length ? ('识别 ' + orders.length + ' 笔 · ' + orders[0].typeMeta.name) : '未识别');
+  }
+  add('页面挂载点完整', !!document.getElementById('phonesStage') && !!document.getElementById('engineBadge'));
+  add('手机渲染正常', !!document.querySelector('#app-u1 .an'));
+  add('导览步骤齐备（≥8 步）', TOUR_STEPS.length >= 8, TOUR_STEPS.length + ' 步');
+
+  /* ---- 导航闭环：不能出现"进得去出不来" ---- */
+  (function () {
+    var u = USERS[0];
+    var keep = { p: u._page, r: u._roomId };
+    var title = function () { var el = document.querySelector('#app-u1 .an-t'); return el ? el.textContent.trim() : ''; };
+    ensureDemoRoom();
+
+    goPhone('u1', 'home');
+    var atHome = title() === 'TravelAA';
+    goPhone('u1', 'room');
+    var atRoom = title() === '房间详情';
+    phoneGoBack('u1');
+    add('导航闭环：首页 ↔ 房间（可进可出）', atHome && atRoom && title() === 'TravelAA',
+      atHome ? (atRoom ? '返回后回到首页' : '房间页标题异常') : '首页标题异常');
+
+    goPhone('u1', 'room'); goPhone('u1', 'stats');
+    var atStats = title() === '消费统计';
+    phoneGoBack('u1');
+    add('导航闭环：房间 → 统计 → 返回房间', atStats && title() === '房间详情');
+
+    goPhone('u1', 'add');
+    var atAdd = title() === '记一笔';
+    phoneGoBack('u1');
+    add('导航闭环：记一笔 → 返回房间', atAdd && title() === '房间详情');
+
+    goPhone('u1', 'capture');
+    var atCap = title() === '记账方式';
+    phoneGoBack('u1');
+    add('导航闭环：记账方式 → 返回房间', atCap && title() === '房间详情');
+
+    goPhone('u1', 'settle');
+    var atSettle = title() === '一键结算';
+    phoneGoBack('u1');
+    add('导航闭环：结算 → 返回房间', atSettle && title() === '房间详情');
+
+    /* 首页 → 统计（无房间时的兜底）→ 必须能退回首页 */
+    goPhone('u1', 'home');
+    var savedRoomId = u._roomId, savedRooms = State.rooms.slice();
+    State.rooms = []; u._roomId = null;
+    phoneGoStats('u1', '');
+    var statsNoRoom = title() === '消费统计';
+    phoneGoBack('u1');
+    var backFromStats = title() === 'TravelAA';
+    State.rooms = savedRooms; u._roomId = savedRoomId;
+    add('导航兜底：无房间时统计页也能退回首页', statsNoRoom && backFromStats);
+
+    /* 房间失效（被重置）时不卡死 */
+    State.rooms = []; u._roomId = 'ghost_room'; u._page = 'stats';
+    renderApp(u);
+    phoneGoBack('u1');
+    var escaped = title() === 'TravelAA';
+    State.rooms = savedRooms;
+    add('导航兜底：房间失效时不卡死', escaped);
+
+    u._page = keep.p; u._roomId = keep.r; renderApp(u);
+  })();
+
+  /* ---- 端到端：AI 一句话 → 账单入账（校验后回滚现场，不留痕迹） ---- */
+  if (AI && CTRIP) {
+    var e2eRoom = ensureDemoRoom();
+    var e2eU = USERS[0];
+    var keepPage = e2eU._page, keepRoom = e2eU._roomId, keepForm = e2eU._form, keepAi = e2eU._ai, keepAiText = e2eU._aiText;
+    var beforeId = State.bills.length;
+    e2eU._roomId = e2eRoom.id; e2eU._page = 'add';
+    e2eU._form = { amount: '', desc: '', category: 'food', payer: e2eU.id, splitType: 'equal', currency: 'CNY' };
+    e2eU._aiText = '打车去机场86块，我垫的，和小红小李平分';
+    e2eU._ai = null;
+    aiParseBill(e2eU.id);
+    var filled = e2eU._form && String(e2eU._form.amount) === '86';
+    submitBill(e2eU.id, e2eRoom.id);
+    var aiBill = State.bills[State.bills.length - 1];
+    add('端到端：AI 记账写入账单', filled && State.bills.length === beforeId + 1 && aiBill.source === 'ai',
+      filled ? ('金额 ¥' + aiBill.amount + ' · 来源 ' + sourceLabel(aiBill.source)) : '未填入金额');
+
+    var before2 = State.bills.length;
+    ocrState[e2eU.id] = { tab: 'order', step: 'select', billType: null, selected: new Set(), orderText: CTRIP.CTrip_SAMPLES[0].text };
+    orderParse(e2eU.id);
+    orderImport(e2eU.id, e2eRoom.id);
+    var ctripBill = State.bills[State.bills.length - 1];
+    add('端到端：携程订单入账', State.bills.length === before2 + 1 && ctripBill.source === 'ctrip',
+      '¥' + (ctripBill ? ctripBill.amount : 0) + ' · ' + (ctripBill ? ctripBill.description : ''));
+
+    /* 回滚自检产生的数据与页面状态 */
+    State.bills = State.bills.filter(function (b) { return b.id !== aiBill.id && b.id !== ctripBill.id; });
+    delete ocrState[e2eU.id];
+    e2eU._page = keepPage; e2eU._roomId = keepRoom; e2eU._form = keepForm; e2eU._ai = keepAi; e2eU._aiText = keepAiText;
+    syncAll();
+  }
+
+  showTestPanel('演示自检', 'SELFTEST', checks);
+}
+/* 复用的自检结果面板：同时把结论写进 document.title，便于无头验收 */
+function showTestPanel(title, titleKey, checks) {
+  var passed = checks.filter(function (c) { return c.ok; }).length;
+  var allPass = passed === checks.length;
+  var old = document.getElementById('testPanel');
+  if (old&&old.parentNode) old.parentNode.removeChild(old);
+  var panel = document.createElement('div');
+  panel.className = 'test-panel'; panel.id = 'testPanel';
+  var rows = checks.map(function (c) {
+    return '<div class="test-row"><span>' + c.name + (c.extra ? ' <span style="color:var(--g400);">' + esc(c.extra) + '</span>' : '') + '</span><span class="' + (c.ok ? 'test-ok' : 'test-no') + '">' + (c.ok ? 'PASS' : 'FAIL') + '</span></div>';
+  }).join('');
+  panel.innerHTML = '<div class="test-card"><div class="test-hd"><div class="test-tt">' + title + '</div><div style="font-family:Space Grotesk,sans-serif;font-size:13px;font-weight:700;color:' + (allPass ? 'var(--grn)' : 'var(--red)') + ';">' + passed + ' / ' + checks.length + '</div></div>' +
+    '<div class="test-sum">' + (allPass ? '✅ 一切就绪，可以开讲' : '⚠️ 有项目未通过，请检查后再演示') + '</div>' + rows +
+    '<button class="btn dk" style="width:100%;margin-top:18px;" onclick="closeSelfTest()">关闭</button></div>';
+  panel.addEventListener('click', function (e) { if (e.target === panel) closeSelfTest(); });
+  document.body.appendChild(panel);
+  document.title = allPass ? (titleKey + ' ' + passed + '/' + checks.length + ' ALL-PASS') : (titleKey + ' ' + passed + '/' + checks.length + ' FAIL');
+}
+/* 导览自动验收：逐步执行导览并检查每步高亮目标是否存在 */
+function runTourTest() {
+  ensureDemoRoom();
+  var checks = TOUR_STEPS.map(function (step, i) {
+    var beforeOK = true;
+    try { if (typeof step.before === 'function') step.before(); } catch (e) { beforeOK = false; }
+    var el = step.sel ? document.querySelector(step.sel) : null;
+    return { name: 'STEP ' + (i + 1) + ' · ' + step.title, ok: beforeOK && !!el, extra: step.sel + (el ? '' : '（目标缺失）') };
+  });
+  showTestPanel('导览自检', 'TOURTEST', checks);
+}
+function closeSelfTest() {
+  var p = document.getElementById('testPanel');
+  if (p) p.parentNode.removeChild(p);
+}
+
+/* ============================================================
+   交互验收（#uitest）：用真实点击驱动，专查"点了没反应 / 进得去出不来"
+   ============================================================ */
+function clickByText(scope, text) {
+  var nodes = document.querySelectorAll(scope + ' button, ' + scope + ' .btn, ' + scope + ' .bd, ' + scope + ' .rc, ' + scope + ' .pi, ' + scope + ' .ct2, ' + scope + ' .mi, ' + scope + ' .an-b, ' + scope + ' .an-t, ' + scope + ' .ca, ' + scope + ' .orc');
+  for (var i = 0; i < nodes.length; i++) {
+    if ((nodes[i].textContent || '').indexOf(text) !== -1) { nodes[i].click(); return nodes[i]; }
+  }
+  return null;
+}
+/* 真实输入事件：触发页面上的 oninput 处理器（等价于用户敲键盘） */
+function setInput(selector, val) {
+  var el = document.querySelector(selector);
+  if (!el) return null;
+  el.value = val;
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+  return el;
+}
+function uiTitle(uid) {
+  var el = document.querySelector('#app-' + uid + ' .an-t');
+  return el ? el.textContent.trim() : '';
+}
+function runUITest() {
+  var checks = [];
+  var add = function (n, ok, extra) { checks.push({ name: n, ok: !!ok, extra: extra || '' }); };
+  var wait = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+  return (async function () {
+  try {
+    resetAll();
+    State.phoneCount = 3; document.getElementById('phoneCountLabel').textContent = '3'; renderPhones();
+
+    /* 1. 工具栏：加/减手机 */
+    addPhone(); var threePhones = !!document.querySelector('#phone-u3');
+    add('工具栏：＋ 加手机生效', threePhones && State.phoneCount === 4);
+    removePhone();
+    add('工具栏：− 减手机生效', State.phoneCount === 3 && !document.querySelector('#phone-u4'));
+
+    /* 2. 创建房间（走真实弹窗） */
+    var clickCreate = clickByText('#app-u1', '创建房间');
+    var modalOpen = document.querySelector('#modal-u1').classList.contains('show');
+    if (clickCreate && modalOpen) {
+      document.getElementById('createName-u1').value = '交互测试之旅';
+      document.getElementById('createDest-u1').value = '大阪';
+      document.getElementById('createBudget-u1').value = '6000';
+      clickByText('#modalBody-u1', '创建房间');
+    }
+    var roomCreated = State.rooms.length === 1 && uiTitle('u1') === '房间详情';
+    add('创建房间：弹窗 → 填写 → 进入房间', modalOpen && roomCreated,
+      modalOpen ? (roomCreated ? State.rooms[0].name : '未进入房间页') : '弹窗未打开');
+
+    /* 3. 其他手机加入房间 */
+    goPhone('u2', 'home');
+    clickByText('#app-u2', '加入房间');
+    document.getElementById('joinCode-u2').value = State.rooms[0].code;
+    clickByText('#modalBody-u2', '加入房间');
+    add('加入房间：输入房间号后成功加入', State.rooms[0].members.length === 2 && uiTitle('u2') === '房间详情',
+      '成员数 ' + State.rooms[0].members.length);
+
+    /* 4. 记一笔（真实点击提交 + 真实输入事件） */
+    goPhone('u1', 'room');
+    clickByText('#app-u1 .abb', '记一笔');
+    var atAdd = uiTitle('u1') === '记一笔';
+    setInput('#app-u1 .ain', '123.45');
+    setInput('#app-u1 .fg .fi', '交互测试账单');
+    clickByText('#app-u1 .abb', '确认记账');
+    var billAdded = State.bills.length === 1 && State.bills[0].description === '交互测试账单' && State.bills[0].amount === 123.45;
+    add('记一笔：输入 → 提交 → 回房间', atAdd && billAdded && uiTitle('u1') === '房间详情',
+      atAdd ? (billAdded ? ('¥' + State.bills[0].amount) : '账单未写入或金额错误') : '未进入记一笔页');
+
+    /* 4+. AI 一句话记账：真实点击「AI 识别」 */
+    goPhone('u1', 'add');
+    USERS[0]._aiText = '打车去机场86块，我垫的，和小红平分';
+    setInput('#app-u1 .amb .fi', '打车去机场86块，我垫的，和小红平分');
+    clickByText('#app-u1 .amb', 'AI 识别');
+    var aiFilled = USERS[0]._form && String(USERS[0]._form.amount) === '86';
+    add('AI 记账：输入一句话 → 点识别 → 自动填表', aiFilled,
+      aiFilled ? ('金额 ¥' + USERS[0]._form.amount + ' · 分类 ' + USERS[0]._form.category) : '未填入金额');
+
+    /* 4++. 首页房间卡片点按进入房间 */
+    goPhone('u1', 'home');
+    var card = document.querySelector('#app-u1 .rc');
+    if (card) card.click();
+    add('首页：点房间卡片进入房间', !!card && uiTitle('u1') === '房间详情');
+
+    /* 5. 携程订单：切页签 → 选样例 → 解析 → 导入 */
+    goPhone('u1', 'room');
+    clickByText('#app-u1 .abb', '拍照');
+    var atCapture = uiTitle('u1') === '记账方式';
+    clickByText('#app-u1 .cts', '携程订单');
+    clickByText('#app-u1 .pm', '机票');
+    var parsedListed = !!document.querySelector('#app-u1 .ors .orc');
+    clickByText('#app-u1', '解析订单');
+    parsedListed = parsedListed || !!document.querySelector('#app-u1 .ors .orc');
+    clickByText('#app-u1', '导入');
+    var orderImported = State.bills.length === 2 && State.bills[1].source === 'ctrip';
+    add('携程订单：切页签 → 样例 → 解析 → 一键入账', atCapture && parsedListed && orderImported,
+      atCapture ? (parsedListed ? (orderImported ? ('¥' + State.bills[1].amount) : '未入账') : '未解析出订单') : '未进入记账方式页');
+
+    /* 6. 结算页与返回 */
+    goPhone('u1', 'room');
+    clickByText('#app-u1 .abb', '结算');
+    var atSettle = uiTitle('u1') === '一键结算';
+    clickByText('#app-u1 .an', '←');
+    add('结算页：进入 → ← 返回房间', atSettle && uiTitle('u1') === '房间详情');
+
+    /* 7. 统计页与返回（房间内 + 首页） */
+    clickByText('#app-u1 .an', 'STATS');
+    var atStats = uiTitle('u1') === '消费统计';
+    clickByText('#app-u1 .an', '←');
+    var backToRoom = uiTitle('u1') === '房间详情';
+    clickByText('#app-u1 .an', '←');
+    var backToHome = uiTitle('u1') === 'TravelAA';
+    add('导航：房间 → 统计 → 返回房间 → 返回首页', atStats && backToRoom && backToHome,
+      '统计' + (atStats ? '✓' : '✗') + ' 房间' + (backToRoom ? '✓' : '✗') + ' 首页' + (backToHome ? '✓' : '✗'));
+
+    /* 8. 首页标题点按回首页 */
+    clickByText('#app-u1 .an', 'STATS');
+    clickByText('#app-u1 .an', '消费统计');
+    add('导航：点标题回首页', uiTitle('u1') === 'TravelAA');
+
+    /* 9. 删除账单（二次确认弹窗：先取消，再确认） */
+    goPhone('u1', 'room');
+    var beforeDel = State.bills.length;
+    var delBtn = document.querySelector('#app-u1 .bd');
+    if (delBtn) delBtn.click();
+    var confirmOpen = document.querySelector('#confirm-u1').classList.contains('show');
+    clickByText('#confirm-u1', '取消');
+    var cancelOK = !document.querySelector('#confirm-u1').classList.contains('show') && State.bills.length === beforeDel;
+    add('删除账单：二次确认可取消', confirmOpen && cancelOK, '取消后仍 ' + State.bills.length + ' 笔');
+    var delBtn2 = document.querySelector('#app-u1 .bd');
+    if (delBtn2) delBtn2.click();
+    clickByText('#confirm-u1', '删除');
+    add('删除账单：确认后真的删掉', State.bills.length === beforeDel - 1, '剩余 ' + State.bills.length + ' 笔');
+
+    /* 9+. 弹窗：点背景可关闭 */
+    goPhone('u1', 'home');
+    clickByText('#app-u1', '创建房间');
+    var opened = document.querySelector('#modal-u1').classList.contains('show');
+    var overlay = document.querySelector('#modal-u1');
+    if (overlay) overlay.click();
+    add('弹窗：点背景关闭', opened && !document.querySelector('#modal-u1').classList.contains('show'));
+
+    /* 10. 票据识别全流程（含 2 秒扫描动画） */
+    goPhone('u1', 'room');
+    clickByText('#app-u1 .abb', '拍照');
+    clickByText('#app-u1 .cts', '微信截图');
+    var beforeOcr = State.bills.length;
+    clickByText('#app-u1', '点击拍照或选择图片');
+    await wait(2400);
+    var ocrResults = !!document.querySelector('#app-u1 .ors .orc');
+    clickByText('#app-u1', '导入');
+    add('票据识别：选类型 → 拍照 → 出结果 → 导入', ocrResults && State.bills.length === beforeOcr + 1,
+      ocrResults ? ('入账后共 ' + State.bills.length + ' 笔') : '未出现识别结果');
+
+    /* 11. 订单截图识别（离线态：必须明确标注为内置样例） */
+    goPhone('u1', 'capture');
+    clickByText('#app-u1 .cts', '携程订单');
+    var visionBtn = clickByText('#app-u1', '识别这张截图');
+    var abText = (document.querySelector('#app-u1 .ab') || {}).textContent || '';
+    var labeled = /内置样例识别结果/.test(abText);
+    add('订单截图识别：离线时明确标注样例结果', !!visionBtn && labeled,
+      labeled ? '已标注"内置样例识别结果"' : '未标注（有冒充模型输出风险）');
+
+    /* 12. 导览：走完 8 步后自动收起 */
+    startTour();
+    await wait(340);
+    var tourVisible = document.getElementById('tourCard').style.display !== 'none';
+    for (var ti = 0; ti < TOUR_STEPS.length; ti++) tourNext();
+    await wait(340);
+    var tourClosed = document.getElementById('tourCard').style.display === 'none';
+    add('导览：可开启并走完全部步骤后收起', tourVisible && tourClosed,
+      tourVisible ? (tourClosed ? TOUR_STEPS.length + ' 步走完' : '结束未收起') : '未开启');
+
+    /* 13. 全页面横向溢出审查 */
+    var overflowPages = [];
+    ['home', 'room', 'add', 'capture', 'settle', 'stats'].forEach(function (p) {
+      goPhone('u1', p);
+      var appEl = document.querySelector('#app-u1');
+      if (appEl && appEl.scrollWidth - appEl.clientWidth > 2) overflowPages.push(p + ' +' + (appEl.scrollWidth - appEl.clientWidth) + 'px');
+    });
+    add('布局：全部页面无横向溢出', overflowPages.length === 0, overflowPages.join(', ') || '6 个页面均正常');
+
+    /* 15. 排版体检：正文循真机阶梯，主视觉标题保留冲击力 */
+    var limits = { '.ht': 26, '.ht-hero': 36, '.svm': 32, '.ain': 30, '.ov': 22, '.st': 17, '.an-t': 17, '.rn': 17, '.ba': 16 };
+    var viol = [];
+    var heroFs = 0;
+    var maxFs = 0, maxWhere = '';
+    var isEmojiOnly = function (t) { try { return /^[\p{Extended_Pictographic}\s·]+$/u.test(t); } catch (e) { return t.length <= 3; } };
+    ['home', 'room', 'add', 'capture', 'settle', 'stats'].forEach(function (p) {
+      goPhone('u1', p);
+      Object.keys(limits).forEach(function (sel) {
+        var els = document.querySelectorAll('#app-u1 ' + sel);
+        for (var k = 0; k < els.length; k++) {
+          var el = els[k];
+          if (sel === '.ht' && el.classList.contains('ht-hero')) continue; // 主视觉标题另用阈值
+          var fs = parseFloat(getComputedStyle(el).fontSize);
+          if (fs > limits[sel]) viol.push(p + ' ' + sel + ' ' + fs.toFixed(1) + 'px');
+        }
+      });
+      var nodes = document.querySelectorAll('#app-u1 *');
+      for (var i = 0; i < nodes.length; i++) {
+        var el2 = nodes[i];
+        var txt = (el2.textContent || '').trim();
+        if (!txt || isEmojiOnly(txt)) continue;
+        var fs2 = parseFloat(getComputedStyle(el2).fontSize) || 0;
+        if (el2.classList && el2.classList.contains('ht-hero')) heroFs = Math.max(heroFs, fs2);
+        if (fs2 > maxFs) { maxFs = fs2; maxWhere = p + ' · ' + (el2.className || el2.tagName); }
+      }
+    });
+    add('排版：正文/标签字号在真机范围内', viol.length === 0, viol.join(', ') || '全部合规');
+    add('排版：主视觉标题保持冲击力（≥30px）', heroFs >= 30, heroFs.toFixed(1) + 'px');
+    add('排版：手机内最大字号不超过海报级（≤ 36px）', maxFs <= 36, maxFs.toFixed(1) + 'px（' + maxWhere + '）');
+
+    /* 16. 成员展示：无头像设计（姓名胶囊） */
+    goPhone('u1', 'room');
+    var avatarLeft = document.querySelectorAll('#app-u1 .ma, #app-u1 .bav, #app-u1 .mi, .pa').length;
+    var namePills = document.querySelectorAll('#app-u1 .mname').length;
+    add('成员展示：无头像设计（姓名胶囊）', avatarLeft === 0 && namePills > 0,
+      avatarLeft === 0 ? (namePills + ' 个姓名胶囊') : ('残留头像 ' + avatarLeft + ' 处'));
+    goPhone('u1', 'add');
+    var payerChips = document.querySelectorAll('#app-u1 .fg .pm .pi').length;
+    add('付款人选择：改为姓名胶囊（无头像）', payerChips > 0 && document.querySelectorAll('#app-u1 .ma').length === 0,
+      payerChips + ' 个可选项');
+
+    /* 14. 页面布局：无横向溢出、导航按钮在可视区内 */
+    goPhone('u1', 'room');
+    var app = document.querySelector('#app-u1');
+    var overflow = app.scrollWidth - app.clientWidth;
+    var backEl = document.querySelector('#app-u1 .an .an-b');
+    var frame = document.querySelector('#phone-u1 .pf').getBoundingClientRect();
+    var backRect = backEl ? backEl.getBoundingClientRect() : null;
+    var inView = backRect && backRect.left >= frame.left - 1 && backRect.right <= frame.right + 1;
+    add('布局：页面无横向溢出', overflow <= 2, '溢出 ' + overflow + 'px');
+    add('布局：导航按钮在手机可视区内', !!inView);
+    /* 17. 自动演示：必须真的切页面（不是"后台默默加数据"） */
+    var seenPages = {};
+    var origRender = renderApp;
+    renderApp = function (u) { if (u && u._page) seenPages[u.id + ':' + u._page] = 1; return origRender.apply(null, arguments); };
+    await autoDemo();
+    renderApp = origRender;
+    var pairs = Object.keys(seenPages);
+    add('自动演示：过程中真实切换页面（≥6 种页面状态）', pairs.length >= 6,
+      pairs.length + ' 种 · ' + pairs.slice(0, 6).join(' , '));
+    var srcs = {}; State.bills.forEach(function (b) { srcs[b.source || 'manual'] = 1; });
+    add('自动演示：覆盖 AI / 票据 / 订单 三类入账', !!(srcs.ai && srcs.ocr && srcs.ctrip), Object.keys(srcs).join(' / '));
+    add('自动演示：产生外币账单（多币种链路）', State.bills.some(function (b) { return b.currency && b.currency !== 'CNY'; }),
+      State.bills.length + ' 笔账单');
+    var finalPages = {}; USERS.slice(0, State.phoneCount).forEach(function (u) { finalPages[u._page] = 1; });
+    add('自动演示：各手机停在不同页面（多人视角）', Object.keys(finalPages).length >= 2,
+      USERS.slice(0, State.phoneCount).map(function (u) { return u.id + ':' + u._page; }).join(' '));
+  } catch (e) {
+    add('交互测试执行异常', false, e && e.message);
+  }
+  resetAll();
+  showTestPanel('交互验收', 'UITEST', checks);
+  })();
+}
+
+renderPhones();
+probeEngine();
+if (location.hash === '#selftest') setTimeout(runSelfTest, 300);
+if (location.hash === '#tourtest') setTimeout(runTourTest, 400);
+if (location.hash === '#uitest') setTimeout(runUITest, 400);
+</script>
+</body>
+</html>

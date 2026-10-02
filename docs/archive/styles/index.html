@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TravelAA - 前端风格选择</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* 动态渐变背景 */
+    .bg-gradient {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 0;
+      background: 
+        radial-gradient(ellipse 80% 50% at 20% 40%, rgba(255, 107, 53, 0.15) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 60% at 80% 20%, rgba(120, 80, 255, 0.12) 0%, transparent 55%),
+        radial-gradient(ellipse 50% 70% at 50% 80%, rgba(0, 200, 150, 0.1) 0%, transparent 50%);
+    }
+
+    .noise {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 0;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    }
+
+    .content {
+      position: relative;
+      z-index: 1;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 60px 40px;
+    }
+
+    /* 顶部 */
+    .header {
+      text-align: center;
+      margin-bottom: 80px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 8px 20px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 100px;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.6);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 30px;
+      backdrop-filter: blur(10px);
+    }
+
+    h1 {
+      font-size: clamp(48px, 8vw, 88px);
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: -3px;
+      margin-bottom: 24px;
+      background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.7) 50%, #FF6B35 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      font-size: 20px;
+      color: rgba(255, 255, 255, 0.5);
+      font-weight: 300;
+      max-width: 600px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* 风格网格 */
+    .styles-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 30px;
+      margin-bottom: 80px;
+    }
+
+    .style-card {
+      position: relative;
+      border-radius: 28px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .style-card:hover {
+      transform: translateY(-12px) scale(1.02);
+      border-color: rgba(255, 255, 255, 0.2);
+      box-shadow: 0 40px 80px rgba(0, 0, 0, 0.4);
+    }
+
+    .style-preview {
+      height: 340px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .style-preview iframe {
+      width: 200%;
+      height: 200%;
+      transform: scale(0.5);
+      transform-origin: top left;
+      border: none;
+      pointer-events: none;
+    }
+
+    .style-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.8) 100%);
+    }
+
+    .style-info {
+      padding: 32px;
+      position: relative;
+    }
+
+    .style-number {
+      position: absolute;
+      top: -30px;
+      right: 32px;
+      font-size: 80px;
+      font-weight: 900;
+      color: rgba(255, 255, 255, 0.04);
+      line-height: 1;
+      pointer-events: none;
+    }
+
+    .style-name {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .style-tag {
+      font-size: 11px;
+      padding: 4px 12px;
+      border-radius: 100px;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+
+    .style-desc {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    .style-features {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .feature-tag {
+      font-size: 12px;
+      padding: 6px 14px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 100px;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .style-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 24px;
+      padding: 14px 32px;
+      border-radius: 100px;
+      font-weight: 600;
+      font-size: 15px;
+      transition: all 0.3s;
+    }
+
+    .style-cta:hover {
+      transform: translateX(8px);
+    }
+
+    .arrow {
+      transition: transform 0.3s;
+    }
+
+    .style-card:hover .arrow {
+      transform: translateX(4px);
+    }
+
+    /* 颜色变体 */
+    .card-a .style-tag { background: rgba(0, 0, 0, 0.06); color: #1a1a1a; }
+    .card-a .style-cta { background: #1a1a1a; color: #fff; }
+    .card-a .style-name { color: #1a1a1a; }
+    .card-a .style-desc { color: rgba(0,0,0,0.5); }
+    .card-a .feature-tag { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.08); color: rgba(0,0,0,0.5); }
+    .card-a .style-info { background: #fafafa; }
+    .card-a .style-number { color: rgba(0,0,0,0.03); }
+
+    .card-b .style-tag { background: rgba(120, 80, 255, 0.15); color: #c4b5fd; }
+    .card-b .style-cta { background: linear-gradient(135deg, #8b5cf6, #6366f1); color: #fff; }
+
+    .card-c .style-tag { background: rgba(255, 230, 0, 0.15); color: #fbbf24; }
+    .card-c .style-cta { background: #ffe600; color: #000; border: 3px solid #000; box-shadow: 6px 6px 0 #000; }
+    .card-c .style-cta:hover { box-shadow: 3px 3px 0 #000; }
+
+    .card-d .style-tag { background: rgba(180, 120, 80, 0.15); color: #d4a574; }
+    .card-d .style-cta { background: #c4704f; color: #fff; }
+
+    /* 底部信息 */
+    .footer {
+      text-align: center;
+      padding: 40px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .footer p {
+      color: rgba(255, 255, 255, 0.3);
+      font-size: 14px;
+    }
+
+    .footer strong {
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    @media (max-width: 768px) {
+      .styles-grid { grid-template-columns: 1fr; }
+      .content { padding: 40px 20px; }
+    }
+
+    /* 加载动画 */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(40px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate { animation: fadeUp 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards; opacity: 0; }
+    .delay-1 { animation-delay: 0.1s; }
+    .delay-2 { animation-delay: 0.2s; }
+    .delay-3 { animation-delay: 0.3s; }
+    .delay-4 { animation-delay: 0.4s; }
+  </style>
+</head>
+<body>
+  <div class="bg-gradient"></div>
+  <div class="noise"></div>
+  
+  <div class="content">
+    <!-- 头部 -->
+    <div class="header animate">
+      <div class="badge">✈️ TravelAA · 旅行AA记账</div>
+      <h1>选择你喜欢的<br>视觉风格</h1>
+      <p class="subtitle">4套精心打磨的设计方案，每套都是完整的可交互Demo。点击卡片进入体验。</p>
+    </div>
+
+    <!-- 风格网格 -->
+    <div class="styles-grid">
+      <!-- 风格A -->
+      <div class="style-card card-a animate delay-1" onclick="location.href='swiss.html'">
+        <div class="style-preview">
+          <iframe src="swiss.html" loading="lazy"></iframe>
+          <div class="style-overlay" style="background: linear-gradient(180deg, transparent 50%, rgba(250,250,250,0.9) 100%);"></div>
+        </div>
+        <div class="style-info">
+          <div class="style-number">01</div>
+          <div class="style-name">
+            极简瑞士风
+            <span class="style-tag">MINIMAL</span>
+          </div>
+          <p class="style-desc">纯粹的留白之美。精确的排版层级、克制的色彩运用，让数据说话。适合追求专业感和高效阅读的用户。</p>
+          <div class="style-features">
+            <span class="feature-tag">黑白极简</span>
+            <span class="feature-tag">大数字排版</span>
+            <span class="feature-tag">极致留白</span>
+            <span class="feature-tag">专业质感</span>
+          </div>
+          <div class="style-cta">
+            进入体验 <span class="arrow">→</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 风格B -->
+      <div class="style-card card-b animate delay-2" onclick="location.href='glass.html'">
+        <div class="style-preview">
+          <iframe src="glass.html" loading="lazy"></iframe>
+          <div class="style-overlay"></div>
+        </div>
+        <div class="style-info">
+          <div class="style-number">02</div>
+          <div class="style-name">
+            玻璃拟态
+            <span class="style-tag">GLASS</span>
+          </div>
+          <p class="style-desc">梦幻的毛玻璃效果。流动的渐变背景、通透的玻璃卡片，充满未来感和科技感。年轻用户的最爱。</p>
+          <div class="style-features">
+            <span class="feature-tag">毛玻璃效果</span>
+            <span class="feature-tag">渐变背景</span>
+            <span class="feature-tag">流动光影</span>
+            <span class="feature-tag">未来科技</span>
+          </div>
+          <div class="style-cta">
+            进入体验 <span class="arrow">→</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 风格C -->
+      <div class="style-card card-c animate delay-3" onclick="location.href='brutal.html'">
+        <div class="style-preview">
+          <iframe src="brutal.html" loading="lazy"></iframe>
+          <div class="style-overlay"></div>
+        </div>
+        <div class="style-info">
+          <div class="style-number">03</div>
+          <div class="style-name">
+            新粗野主义
+            <span class="style-tag">BOLD</span>
+          </div>
+          <p class="style-desc">大胆撞色、粗边框、硬阴影。充满活力与个性，过目不忘。最适合Hackathon展示的吸睛风格！</p>
+          <div class="style-features">
+            <span class="feature-tag">撞色设计</span>
+            <span class="feature-tag">粗黑边框</span>
+            <span class="feature-tag">硬阴影</span>
+            <span class="feature-tag">个性十足</span>
+          </div>
+          <div class="style-cta">
+            进入体验 <span class="arrow">→</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 风格D -->
+      <div class="style-card card-d animate delay-4" onclick="location.href='journal.html'">
+        <div class="style-preview">
+          <iframe src="journal.html" loading="lazy"></iframe>
+          <div class="style-overlay"></div>
+        </div>
+        <div class="style-info">
+          <div class="style-number">04</div>
+          <div class="style-name">
+            旅行手账风
+            <span class="style-tag">WARM</span>
+          </div>
+          <p class="style-desc">温暖的纸质感、手绘元素、旅行邮票。像翻开一本旅行日记，温馨治愈。突出旅行场景的情感价值。</p>
+          <div class="style-features">
+            <span class="feature-tag">纸张质感</span>
+            <span class="feature-tag">手绘元素</span>
+            <span class="feature-tag">温暖配色</span>
+            <span class="feature-tag">旅行日记</span>
+          </div>
+          <div class="style-cta">
+            进入体验 <span class="arrow">→</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部 -->
+    <div class="footer animate delay-4">
+      <p>🏆 <strong>携程Hackathon 2024</strong> · Team 爆能器已部署 · TravelAA 旅行AA记账小程序</p>
+    </div>
+  </div>
+</body>
+</html>

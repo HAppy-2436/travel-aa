@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  travel-aa:
+    build: .
+    container_name: travel-aa-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      # 持久化数据库
+      - ./data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      # 腾讯云OCR配置（可选）
+      - TENCENT_SECRET_ID=${TENCENT_SECRET_ID}
+      - TENCENT_SECRET_KEY=${TENCENT_SECRET_KEY}
+    # 资源限制（1核1G完全够）
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'

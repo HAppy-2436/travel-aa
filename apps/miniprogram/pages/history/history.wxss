@@ -1,0 +1,88 @@
+/* pages/history/history.wxss */
+.stat-bar-item {
+  margin-bottom: 24rpx;
+}
+
+.stat-bar-label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8rpx;
+  font-size: 26rpx;
+}
+
+.stat-bar-value {
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.stat-bar-track {
+  height: 24rpx;
+  background: var(--bg-page);
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+
+.stat-bar-fill {
+  height: 100%;
+  border-radius: 12rpx;
+  transition: width 0.5s ease;
+  min-width: 4rpx;
+}
+
+.stat-bar-fill.tag-food { background: #FF9800; }
+.stat-bar-fill.tag-transport { background: #2196F3; }
+.stat-bar-fill.tag-hotel { background: #9C27B0; }
+.stat-bar-fill.tag-ticket { background: #4CAF50; }
+.stat-bar-fill.tag-shopping { background: #E91E63; }
+.stat-bar-fill.tag-other { background: #9E9E9E; }
+
+.stat-bar-percent {
+  font-size: 22rpx;
+  color: var(--text-hint);
+  display: block;
+  text-align: right;
+  margin-top: 4rpx;
+}
+
+.bill-item {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid var(--border-color);
+}
+
+.bill-item:last-child {
+  border-bottom: none;
+}
+
+.bill-icon {
+  font-size: 36rpx;
+  margin-right: 16rpx;
+}
+
+.bill-info {
+  flex: 1;
+}
+
+.bill-desc {
+  font-size: 28rpx;
+  display: block;
+}
+
+.bill-meta {
+  font-size: 22rpx;
+  color: var(--text-hint);
+  display: block;
+}
+
+.bill-amount {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.empty-icon-small {
+  font-size: 80rpx;
+  display: block;
+  margin-bottom: 16rpx;
+}

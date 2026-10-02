@@ -1,0 +1,19 @@
+/* pages/settle/settle.wxss */
+
+.settle-hero {
+  text-align: center;
+  padding: 60rpx 0 72rpx;
+}
+
+.settle-value {
+  font-size: 100rpx;
+  font-weight: 700;
+  letter-spacing: -5rpx;
+  line-height: 1.1;
+  display: block;
+  margin-top: 16rpx;
+}
+
+.overview-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}

@@ -1,0 +1,29 @@
+{
+  "miniprogramRoot": "apps/miniprogram/",
+  "cloudfunctionRoot": "apps/cloudfunctions/",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "newFeature": true,
+    "autoAudits": false,
+    "checkInvalidKey": true,
+    "checkSiteMap": true,
+    "uploadWithSourceMap": true,
+    "compileHotReLoad": false,
+    "useMultiFrameRuntime": true,
+    "useApiHook": true,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
+  },
+  "appid": "touristappid",
+  "projectname": "travel-aa",
+  "libVersion": "2.25.4",
+  "compileType": "miniprogram",
+  "condition": {}
+}
