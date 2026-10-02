@@ -21,6 +21,7 @@ const ROOT = path.resolve(__dirname, '..');
 const SUITES = [
   { name: '算法内核单测', file: 'tests/ai.test.js', hint: '中文数字/分类/分摊/洞察/LLM 修复' },
   { name: 'V2 能力单测', file: 'tests/v2.test.js', hint: '语音归一/多币种/审计/预算/订单' },
+  { name: 'V3 旅行记账语义', file: 'tests/v3.test.js', hint: '抹零/代购/多退少补/暂估改价/占位/会说话' },
   { name: '同步内核单测', file: 'tests/sync.test.js', hint: '多窗口合并/墓碑/rev/uid 唯一性' },
   { name: '相对路径检查', file: 'tests/requires.check.js', hint: 'require 与 script src 是否可解析' },
   { name: '交付物可打开性', file: 'tests/resource.check.js', hint: 'file:// 下外部脚本/渲染/挂钩是否齐备' },
