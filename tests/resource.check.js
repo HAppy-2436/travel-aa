@@ -102,9 +102,10 @@ function ok(name, cond, extra) {
   console.log('     若字体加载失败，界面会回退到系统无衬线字体 —— 排版仍正常，观感略有差异。');
 
   /* 5. 自检挂钩存在（用户可用 #selftest 自验） */
-  ok('提供 #selftest 挂钩', /location\.hash === '#selftest'/.test(html));
-  ok('提供 #uitest 挂钩', /location\.hash === '#uitest'/.test(html));
-  ok('提供 #tourtest 挂钩', /location\.hash === '#tourtest'/.test(html));
+  ok('提供 #selftest 挂钩', /#selftest/.test(html));
+  ok('提供 #uitest 挂钩', /#uitest/.test(html));
+  ok('提供 #tourtest 挂钩', /#tourtest/.test(html));
+  ok('提供 ?n= 手机台数参数（多人开场）', /\[\?&#\]n=\(\\d\+\)/.test(html));
 
   dom.window.close();
 

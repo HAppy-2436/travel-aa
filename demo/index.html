@@ -19,6 +19,9 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:#ff
 .cb:hover{background:rgba(255,255,255,0.08);color:#fff;transform:translateY(-1px)}
 .cb.pr{background:var(--pri);border-color:var(--pri);color:#fff;box-shadow:0 4px 16px rgba(255,107,53,.25)}
 .cb.act{border-color:rgba(255,107,53,.3);color:var(--pri)}
+/* 「＋ 加手机」首次进入时的呼吸高亮：多人场景最容易被忽略的一步 */
+@keyframes nud{0%,100%{box-shadow:0 0 0 0 rgba(255,107,53,0);border-color:rgba(255,255,255,.08)}50%{box-shadow:0 0 0 5px rgba(255,107,53,.18);border-color:var(--pri)}}
+.cb.nudge{animation:nud 1.6s ease-in-out infinite;color:var(--pri)}
 .stage{display:flex;gap:40px;justify-content:center;align-items:flex-start;padding:16px 0 40px;min-height:calc(100vh - 200px)}
 .pu{display:flex;flex-direction:column;align-items:center;gap:18px;transition:transform .4s cubic-bezier(.4,0,.2,1)}
 .pu:hover{transform:translateY(-6px)}
@@ -166,7 +169,8 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:#ff
 @keyframes sp2{0%{box-shadow:0 0 0 0 rgba(255,107,53,.5),0 30px 80px rgba(0,0,0,.6)}40%{box-shadow:0 0 0 12px rgba(255,107,53,.08),0 30px 80px rgba(0,0,0,.6)}100%{box-shadow:0 0 0 1.5px rgba(255,255,255,.1),0 30px 80px rgba(0,0,0,.6)}}
 .ab>div{animation:pg .35s cubic-bezier(.4,0,.2,1)}
 @keyframes pg{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-.fh{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);font-size:11px;color:rgba(255,255,255,.15);z-index:0}
+.fh{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);font-size:11px;color:rgba(255,255,255,.45);z-index:5;text-align:center;max-width:92vw}
+.fh b{color:var(--pri);font-weight:700}
 /* ===== 导览（演讲者模式） ===== */
 .tour-mask{position:fixed;z-index:200;pointer-events:none;border-radius:14px;box-shadow:0 0 0 9999px rgba(8,8,12,.74);transition:all .35s cubic-bezier(.4,0,.2,1)}
 .tour-card{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);width:min(560px,92vw);background:#fff;color:#18181b;border-radius:20px;padding:20px 22px;z-index:210;box-shadow:0 24px 64px rgba(0,0,0,.5);animation:pg .3s cubic-bezier(.4,0,.2,1)}
@@ -286,14 +290,14 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:#ff
       <button class="cb" onclick="startTour()">🎬 导览</button>
       <button class="cb" onclick="removePhone()">−</button>
       <button class="cb act">📱 <span id="phoneCountLabel">1</span>人</button>
-      <button class="cb" onclick="addPhone()">＋</button>
+      <button class="cb" id="addPhoneBtn" onclick="addPhone()">＋</button>
       <button class="cb" onclick="resetAll()">🔄 重置</button>
       <button class="cb pr" onclick="autoDemo()">▶ 自动演示</button>
     </div>
   </div>
   <div class="stage" id="phonesStage"></div>
 </div>
-<div class="fh">💡 点击任意手机操作 · 所有手机实时同步 · ▶ 一键自动演示完整流程</div>
+<div class="fh">💡 这是<b>多人 AA</b>演示：点工具栏 <b>＋</b> 加到 3~4 台手机（每台 = 一个真实用户）· 所有手机实时同步 · 或点 <b>▶ 自动演示</b> 看完整流程</div>
 
 <!-- 共享算法内核（与小程序、服务端同一份代码，UMD 三端复用；纯本地计算，无网络依赖） -->
 <script src="../apps/miniprogram/utils/ai.js"></script>
@@ -1837,9 +1841,32 @@ function runUITest() {
 
 renderPhones();
 probeEngine();
-if (location.hash === '#selftest') setTimeout(runSelfTest, 300);
-if (location.hash === '#tourtest') setTimeout(runTourTest, 400);
-if (location.hash === '#uitest') setTimeout(runUITest, 400);
+
+/* ============================================================
+   演示起点：默认 1 台手机，但第一眼要能看出这是"多人"产品
+   ------------------------------------------------------------
+   - ?n=3 或 #n=3 可直接以 N 台手机开场（如 index.html?n=4#selftest 同时生效）
+   - 首次进入时高亮 ＋ 按钮，提示"可以加人"（这是最常被忽略的一步）
+   ============================================================ */
+(function initPhoneCount() {
+  var m = /[?&#]n=(\d+)/.exec(location.href);
+  if (m) {
+    var n = Math.max(1, Math.min(4, parseInt(m[1], 10) || 1));
+    State.phoneCount = n;
+    var lbl0 = document.getElementById('phoneCountLabel');
+    if (lbl0) lbl0.textContent = n;
+    renderPhones();
+  }
+  /* 只在"没有房间、还没有任何账单"的初始态提示，演示/自检时不打扰 */
+  if (State.rooms.length === 0 && State.phoneCount < 2) {
+    var btn = document.getElementById('addPhoneBtn');
+    if (btn) btn.classList.add('nudge');
+  }
+})();
+
+if (location.hash.indexOf('#selftest') === 0) setTimeout(runSelfTest, 300);
+if (location.hash.indexOf('#tourtest') === 0) setTimeout(runTourTest, 400);
+if (location.hash.indexOf('#uitest') === 0) setTimeout(runUITest, 400);
 </script>
 </body>
 </html>
