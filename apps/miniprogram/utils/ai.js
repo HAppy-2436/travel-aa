@@ -1326,6 +1326,138 @@
   }
 
   /**
+   * 多退少补（通用原语）：重新指定"这笔账该由谁承担"。
+   *
+   * ============ 用户视角的语义（决定了实现） ============
+   * 小明垫 480 房租、三人均摊各 160。小李说"我其实没住"要退出。
+   * 直觉是：**房租还是 480，只是不再算小李的份，改由剩下两人分**
+   *   → 小明 240、小红 240、小李 0
+   *   → 垫付人小明替小李垫的 160 要收回来
+   * 所以「剔除某人」= 把他从分摊人里拿掉后**重新等分**，而不是简单清零。
+   * 反过来"后来小王也住进来了"（追加分摊人）同理，重新等分即可。
+   *
+   * ============ 与 buildAdjustmentForExclusion 的区别 ============
+   *   buildAdjustmentForExclusion：只把退出者的欠款清零、其余人份额**不变**
+   *     —— 适合"这笔本来就不该算他"
+   *   buildAdjustmentForReshare：按新的参与人名单**重新等分**（本函数）
+   *     —— 适合"他不该摊，你们几个多担点"
+   * 两者都产出零和调整单（总额不变、历史留痕）。
+   *
+   * @param {Object} bill     原账单（需含 id / payer / amount / splits）
+   * @param {Array}  keepIds  新的分摊参与人 id 列表（至少 1 人）
+   * @param {Object} [opts]   { ts, reason }
+   * @returns {Object|null} 零和调整单；无变化时返回 null
+   */
+  function buildAdjustmentForReshare(bill, keepIds, opts) {
+    opts = opts || {};
+    if (!bill) return null;
+    var base = (bill.splits || []).filter(function (s) { return s && s.memberId; });
+    if (!base.length) return null;
+
+    var keep = (keepIds || []).filter(function (id, i, arr) { return id && arr.indexOf(id) === i; });
+    if (!keep.length) return null;
+
+    var amount = round2(Number(bill.amount) || 0);
+    var baseMap = {};
+    base.forEach(function (s) { baseMap[s.memberId] = s; });
+
+    // 新份额：按参与人**等分**（沿用原账单的币种口径）
+    var parts = allocateEvenly(amount, keep.length);
+    var target = {};
+    keep.forEach(function (id, i) { target[id] = parts[i]; });
+
+    var payer = bill.payer;
+    var names = [];
+    var removed = [];
+    var allIds = [];
+    base.forEach(function (s) { if (allIds.indexOf(s.memberId) < 0) allIds.push(s.memberId); });
+    keep.forEach(function (id) { if (allIds.indexOf(id) < 0) allIds.push(id); });
+
+    var has = function (obj, k) { return Object.prototype.hasOwnProperty.call(obj, k); };
+    var oldOf = function (id) { return baseMap[id] ? round2(Number(baseMap[id].amount) || 0) : 0; };
+    var newOf = function (id) { return has(target, id) ? target[id] : 0; };
+
+    allIds.forEach(function (id) {
+      if (newOf(id) === 0 && oldOf(id) !== 0) removed.push((baseMap[id] && baseMap[id].memberName) || id);
+      if (newOf(id) !== 0) names.push((baseMap[id] && baseMap[id].memberName) || id);
+    });
+
+    // 各人调整额：adj[i] = target[i] − old[i]，对非垫付人直接如此
+    //   （被剔除者 target=0 ⇒ adj = −old，即退还原份额）
+    // 垫付人的调整额由"零和"反解，不凭直觉写：
+    //   设 othersAdj = Σ_{i≠payer} adj[i]，零和要求 adj[payer] = −othersAdj。
+    //   代入 480 三人各 160 / 小明垫付 / 剔除小李：
+    //     othersAdj = adj[小红] + adj[小李] = 80 + (−160) = −80
+    //     adj[小明] = +80 ⇒ eff = {小明 240, 小红 240, 小李 0} ✓（正是 target）
+    //   ⚠️ 曾写成 (新_p−旧_p) + Σ_{i≠p}(旧_i−新_i)，把垫付人自己的变化算了两次，
+    //      得到 adj[小明]=+160、eff[小明]=320（错误）。以零和反解是唯一可靠写法。
+    var othersAdj = round2(allIds.reduce(function (s, id) {
+      return id === payer ? s : s + (newOf(id) - oldOf(id));
+    }, 0));
+    var payerAdj = round2(-othersAdj);
+
+    var splits = [];
+    allIds.forEach(function (id) {
+      if (id === payer) return;                       // 垫付人单独一行
+      var v = round2(newOf(id) - oldOf(id));
+      if (has(target, id)) {
+        if (Math.abs(v) > 0.004) splits.push({
+          memberId: id, memberName: (baseMap[id] && baseMap[id].memberName) || id, amount: v
+        });
+      } else {
+        splits.push({
+          memberId: id, memberName: (baseMap[id] && baseMap[id].memberName) || id,
+          amount: v, isRefund: true
+        });
+      }
+    });
+    if (payer) {
+      splits.push({
+        memberId: payer, memberName: bill.payerName || '垫付人',
+        amount: payerAdj, isPayerSettle: true
+      });
+    }
+
+    // 零和兜底：浮点误差吸收到绝对值最大的一行，保证 Σadj 严格为 0
+    var total = round2(splits.reduce(function (s, x) { return s + (Number(x.amount) || 0); }, 0));
+    if (Math.abs(total) > 0.004 && splits.length) {
+      var maxIdx = 0;
+      splits.forEach(function (s, i) {
+        if (Math.abs(s.amount) > Math.abs(splits[maxIdx].amount)) maxIdx = i;
+      });
+      splits[maxIdx].amount = round2(splits[maxIdx].amount - total);
+    }
+
+    // 没有任何变化就不产生调整单（避免"点一下没反应却多一笔空账"）
+    if (splits.every(function (s) { return Math.abs(Number(s.amount) || 0) < 0.005; })) return null;
+
+    var per = (Math.round((Number(parts[0]) || 0) * 100) / 100).toFixed(2);
+    return {
+      isAdjustment: true,
+      adjustsBillId: bill.id || bill._id || null,
+      reason: opts.reason || 'reshare',
+      kind: 'adjust',
+      zeroSum: true,                       // 总额不变，纯再分配 → 必须零和
+      amount: 0,
+      currency: bill.currency || 'CNY',
+      rate: Number(bill.rate) > 0 ? Number(bill.rate) : 1,
+      cnyAmount: 0,
+      description: '分摊调整 · ' + (bill.description || '消费') +
+        (removed.length ? '（' + removed.join('、') + '退出）' : '（重新分摊）'),
+      category: bill.category || 'other',
+      source: 'adjust',
+      splits: splits,
+      delta: 0,
+      totalDelta: 0,
+      keepIds: keep.slice(),
+      summary: removed.length
+        ? '把 ' + removed.join('、') + ' 移出分摊，由 ' + names.join('、') + ' 重新等分（各 ¥' + per + '）'
+        : '由 ' + names.join('、') + ' 重新等分（各 ¥' + per + '）',
+      createdAt: opts.ts || new Date().toISOString()
+    };
+  }
+
+  /**
    * 暂估改价 / 二次分摊：金额变动时生成**零和**补偿单。
    *
    * ============ 统一公式（看懂这一条就懂全部调整单） ============
@@ -1909,6 +2041,7 @@
     personalSpend: personalSpend,
     groupSpend: groupSpend,
     buildAdjustmentForExclusion: buildAdjustmentForExclusion,
+    buildAdjustmentForReshare: buildAdjustmentForReshare,
     buildAdjustmentForReestimate: buildAdjustmentForReestimate,
     validateAdjustments: validateAdjustments,
     netBalances: netBalances,

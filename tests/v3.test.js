@@ -589,6 +589,92 @@ function mb(bills) { return AI.netBalances(bills, MEMBERS); }
     ok('占位单不计入私账', AI.personalSpend([AI.buildPlaceholder({})], 'u1').count === 0);
   })();
 
+  /* ---------- A10 多退少补（重新分摊 · 通用原语） ---------- */
+  section('A10 多退少补：重新指定"这笔该由谁摊"');
+  (function () {
+    const M3 = MEMBERS.slice(0, 3);
+    const rent = { id: 'r_rent', payer: 'u1', payerName: '小明', amount: 480, currency: 'CNY', rate: 1,
+      category: 'hotel', description: '房租', splits: equalSplits(480, M3) };
+    const effOf = (bill, adj) => {
+      const m = {};
+      AI.effectiveShares(bill, [bill, adj]).forEach((s) => { m[s.memberId] = s.amount; });
+      return m;
+    };
+
+    /* 剔除一人：房租仍 480，改由剩两人分 */
+    const cut = AI.buildAdjustmentForReshare(rent, ['u1', 'u2']);
+    ok('剔除小李 → 产生调整单', !!cut && cut.isAdjustment === true);
+    ok('★ 调整单严格零和', sum(cut.splits.map((x) => x.amount)) === 0, JSON.stringify(cut.splits));
+    ok('调整单关联原账单', cut.adjustsBillId === 'r_rent');
+    ok('zeroSum 标记为 true（总额没变）', cut.zeroSum === true);
+    ok('调整单沿用原账单汇率口径', cut.rate === 1);
+
+    const e1 = effOf(rent, cut);
+    ok('★ 剔除后有效份额 = 小明240 / 小红240 / 小李0',
+      e1.u1 === 240 && e1.u2 === 240 && Math.abs(e1.u3) < 0.005, JSON.stringify(e1));
+    ok('★ 有效份额合计仍 = 480（账恒平）', sum(Object.values(e1)) === 480, String(sum(Object.values(e1))));
+
+    const nb1 = AI.netBalances([rent, cut], M3);
+    const n1 = {};
+    nb1.balances.forEach((b) => { n1[b.memberId] = b.amount; });
+    ok('★ 结算：垫付人应收 240、小红欠 240、小李 0',
+      Math.abs(n1.u1 - 240) < 0.01 && Math.abs(n1.u2 + 240) < 0.01 && Math.abs(n1.u3 || 0) < 0.01, JSON.stringify(n1));
+    ok('★ 结算账恒平', nb1.balanced === true);
+
+    /* 追加分摊人：两人 → 三人 */
+    const meal = { id: 'r_meal', payer: 'u1', payerName: '小明', amount: 400, currency: 'CNY', rate: 1,
+      category: 'food', description: '晚餐', splits: equalSplits(400, MEMBERS.slice(0, 2)) };
+    const add = AI.buildAdjustmentForReshare(meal, ['u1', 'u2', 'u3']);
+    ok('追加第三人 → 产生调整单且零和', !!add && sum(add.splits.map((x) => x.amount)) === 0,
+      add && JSON.stringify(add.splits));
+    const e2 = effOf(meal, add);
+    ok('★ 追加后三人合计仍 = 400 且人数为 3',
+      Math.abs(sum(Object.values(e2)) - 400) < 0.01 && Object.keys(e2).length === 3, JSON.stringify(e2));
+    ok('★ 追加后账恒平', AI.netBalances([meal, add], M3).balanced === true);
+
+    /* 只留一人（其余全退出） */
+    const only = AI.buildAdjustmentForReshare(rent, ['u3']);
+    ok('只留一人时仍零和', !!only && sum(only.splits.map((x) => x.amount)) === 0, only && JSON.stringify(only.splits));
+    ok('只留一人时账仍恒平', AI.netBalances([rent, only], M3).balanced === true);
+
+    /* 无变化 → 不产生空调整单 */
+    ok('★ 参与人没变 → 返回 null（不产生空账）', AI.buildAdjustmentForReshare(rent, ['u1', 'u2', 'u3']) === null);
+    ok('空 keep 列表 → null', AI.buildAdjustmentForReshare(rent, []) === null);
+    ok('空账单 → null', AI.buildAdjustmentForReshare(null, ['u1']) === null);
+    ok('重复 id 会去重', !!AI.buildAdjustmentForReshare(rent, ['u1', 'u1', 'u2']));
+
+    /* 外币账单：调整单必须沿用外币汇率口径 */
+    const jpy = { id: 'r_jpy', payer: 'u1', payerName: '小明', amount: 9600, currency: 'JPY',
+      rate: AI.getRate('JPY'), cnyAmount: AI.toCNY(9600, 'JPY'), category: 'ticket',
+      description: '缆车票', splits: equalSplits(9600, M3) };
+    const jAdj = AI.buildAdjustmentForReshare(jpy, ['u1', 'u2']);
+    ok('外币调整单沿用 JPY 汇率（不是 1）', Math.abs(jAdj.rate - AI.getRate('JPY')) < 1e-9, String(jAdj.rate));
+    ok('★ 外币调整单零和', Math.abs(sum(jAdj.splits.map((x) => x.amount))) < 0.01, JSON.stringify(jAdj.splits));
+    ok('★ 外币重新分摊后账恒平', AI.netBalances([jpy, jAdj], M3).balanced === true,
+      JSON.stringify(AI.netBalances([jpy, jAdj], M3).balances.map((b) => b.memberName + ':' + b.amount)));
+
+    /* 与 buildAdjustmentForExclusion 的区别：
+       Exclusion 只清零退出者，其余分摊人份额**不变**（垫付人收回替其垫的，故 320） */
+    const ex = AI.buildAdjustmentForExclusion(rent, ['u3']);
+    const e3 = effOf(rent, ex);
+    ok('（对比）Exclusion：其余分摊人份额不变（小红 160）', e3.u2 === 160, JSON.stringify(e3));
+    ok('（对比）Exclusion：垫付人 320（自己160 + 收回替小李垫的160）', e3.u1 === 320, JSON.stringify(e3));
+    ok('（对比）Exclusion：退出者归 0', Math.abs(e3.u3) < 0.005, JSON.stringify(e3));
+    ok('（对比）Reshare：其余人重分为 240', e1.u1 === 240 && e1.u2 === 240, JSON.stringify(e1));
+    ok('★ 两种语义都能保持账恒平',
+      sum(Object.values(e3)) === 480 && sum(Object.values(e1)) === 480,
+      'exclusion ' + sum(Object.values(e3)) + ' / reshare ' + sum(Object.values(e1)));
+
+    /* 连续两次调整：不叠加错乱 */
+    const twice = AI.buildAdjustmentForReshare(rent, ['u1', 'u3'], {});
+    const all = [rent, cut, twice];
+    const nbAll = AI.netBalances(all, M3);
+    ok('★ 连续两次调整后账仍恒平', nbAll.balanced === true,
+      JSON.stringify(nbAll.balances.map((b) => b.memberName + ':' + b.amount)));
+    ok('★ 连续两次调整后所有调整单合规', AI.validateAdjustments(all).ok === true,
+      JSON.stringify(AI.validateAdjustments(all).bad));
+  })();
+
   /* ---------- Z 账恒平总闸 ---------- */
   section('Z 账恒平总闸（A1~A6 全部混用后仍严格为 0）');
   (function () {

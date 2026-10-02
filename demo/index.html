@@ -585,6 +585,39 @@ function renderRoomDetail(userId,roomId){
   html+='<div class="sh"><div class="st">成员</div><div class="sc">'+room.members.length+' PEOPLE</div></div><div class="mnames">';
   room.members.forEach(function(m){html+='<div class="mname '+(m.id===userId?'ac':'')+'">'+esc(m.name)+(m.id===userId?' · 我':'')+'</div>';});
   html+='</div>';
+
+  /* ---- 账单详情面板（手动「多退少补」入口） ---- */
+  var uh=USERS.filter(function(x){return x.id===userId})[0];
+  if(uh&&uh._bd){
+    var bill=State.bills.filter(function(b){return b.id===uh._bd.billId})[0];
+    if(bill){
+      var keep=uh._bd.keep||[];
+      var n=keep.length||1;
+      var parts=AI?AI.allocateEvenly(Number(bill.amount)||0,n):[];
+      html+='<div class="mbi" style="margin-top:16px;border-color:var(--pri);">';
+      html+='<div class="mbt">🧾 这笔谁该摊？</div>';
+      html+='<div class="mbs">'+esc(bill.description||'消费')+' · '+curSym(bill.currency)+money(bill.amount)+
+        ' · '+esc(bill.payerName||'')+'垫付'+(bill.currency!=='CNY'?'（≈¥'+money(bill.cnyAmount)+'）':'')+'</div>';
+      html+='<div style="margin-top:10px;font-size:10.5px;color:var(--g500);line-height:1.6;">点名字把他移出/加回分摊，剩余的人自动重新等分。原账单保留，只追加一张调整单。</div>';
+      html+='<div class="pm" style="margin-top:10px;">';
+      room.members.forEach(function(m){
+        var on=keep.indexOf(m.id)>=0;
+        html+='<div class="pi '+(on?'act':'')+'" onclick="bdToggle(\''+userId+'\',\''+m.id+'\')">'+
+          (on?'✓ ':'')+esc(m.name)+'</div>';
+      });
+      html+='</div>';
+      html+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--g200);">';
+      keep.forEach(function(id,i){
+        var m=room.members.filter(function(x){return x.id===id})[0];
+        html+='<div class="mbr"><span>'+esc(m?m.name:id)+'</span><span>'+curSym(bill.currency)+money(parts[i]||0)+'</span></div>';
+      });
+      html+='</div>';
+      html+='<div style="display:flex;gap:8px;margin-top:14px;">';
+      html+='<button class="btn lt" style="flex:1;" onclick="bdClose(\''+userId+'\')">取消</button>';
+      html+='<button class="btn dk" style="flex:1.4;" onclick="bdApply(\''+userId+'\')">应用调整</button>';
+      html+='</div></div>';
+    }
+  }
   /* ---- AI 账单审计（会复盘）---- */
   if(AI&&bills.length){
     var audit=AI.auditBills(bills,room.members);
@@ -602,13 +635,63 @@ function renderRoomDetail(userId,roomId){
     if(b.currency&&b.currency!=='CNY')amountHtml=b.currency+' '+money(b.amount,0)+'<div style="font-size:9px;color:var(--g400);font-weight:500;">≈¥'+money(b.cnyAmount,0)+'</div>';
     var isP=(b.scope||(b.splitType==='sole'?'personal':'group'))==='personal';
     var tag=isP?'<span style="display:inline-block;margin-left:5px;padding:1px 6px;border-radius:100px;background:var(--g100);color:var(--g500);font-size:8.5px;font-weight:600;vertical-align:middle;">私账</span>':'';
-    html+='<div class="br"><div class="bi">'+getCatIcon2(b.category)+'</div><div class="bin"><div class="bn">'+esc(b.description)+tag+'</div><div class="bm">'+esc(b.payerName)+' · '+(b.timeStr||'刚刚')+' · '+sourceLabel(b.source)+'</div></div><div class="ba">'+amountHtml+'</div><div class="bd" onclick="askDeleteBill(\''+userId+'\',\''+b.id+'\',\''+esc(b.description)+'\')">✕</div></div>';
+    var adjTag=b.isAdjustment?'<span style="display:inline-block;margin-left:5px;padding:1px 6px;border-radius:100px;background:var(--amb-bg);color:var(--amb);font-size:8.5px;font-weight:600;vertical-align:middle;">调整单</span>':'';
+    /* 账单行整行可点 → 打开账单详情（在那儿做「谁该摊这笔」= 多退少补） */
+    html+='<div class="br" style="cursor:pointer;" onclick="openBillDetail(\''+userId+'\',\''+b.id+'\')"><div class="bi">'+getCatIcon2(b.category)+'</div><div class="bin"><div class="bn">'+esc(b.description)+tag+adjTag+'</div><div class="bm">'+esc(b.payerName)+' · '+(b.timeStr||'刚刚')+' · '+sourceLabel(b.source)+'</div></div><div class="ba">'+amountHtml+'</div><div class="bd" onclick="event.stopPropagation();askDeleteBill(\''+userId+'\',\''+b.id+'\',\''+esc(b.description)+'\')">✕</div></div>';
   });}
   return html;
 }
 
 function sourceLabel(src){
-  return {manual:'✍️ 手动',ai:'🤖 AI 记账',ocr:'📷 识别',ctrip:'🧳 携程订单'}[src]||'✍️ 手动';
+  return {manual:'✍️ 手动',ai:'🤖 AI 记账',ocr:'📷 识别',ctrip:'🧳 携程订单',adjust:'🧾 调整'}[src]||'✍️ 手动';
+}
+
+/* ============================================================
+   账单详情（手动「多退少补」入口）
+   ------------------------------------------------------------
+   用户需求：已入账的账要能改"谁该摊这笔"。典型场景——
+     · 房租先按 3 人摊，后来发现小李没住 → 把小李移出，剩下两人重分
+     · 事后想起来某人其实也住了 → 追加进分摊
+   实现方式：不改原账单，而是生成一张**零和调整单**（历史留痕、账恒平）。
+   ============================================================ */
+function openBillDetail(userId, billId){
+  var u=USERS.find(function(x){return x.id===userId});if(!u)return;
+  var room=State.rooms.find(function(r){return r.id===u._roomId});if(!room)return;
+  var bill=State.bills.filter(function(b){return b.id===billId})[0];if(!bill)return;
+  /* 该账单当前实际参与分摊的人（叠加已有调整单） */
+  var all=roomBills(room.id);
+  var eff=AI&&AI.effectiveShares?AI.effectiveShares(bill,all):(bill.splits||[]);
+  var parts={};eff.forEach(function(s){if(Math.abs(s.amount)>0.004)parts[s.memberId]=1;});
+  u._bd={billId:billId,keep:Object.keys(parts)};
+  renderApp(u);
+}
+function bdToggle(userId,memberId){
+  var u=USERS.find(function(x){return x.id===userId});if(!u||!u._bd)return;
+  var k=u._bd.keep,i=k.indexOf(memberId);
+  if(i>=0){ if(k.length<=1){showToast(userId,'至少要留一个人分摊');return} k.splice(i,1); }
+  else k.push(memberId);
+  renderApp(u);
+}
+function bdApply(userId){
+  var u=USERS.find(function(x){return x.id===userId});if(!u||!u._bd)return;
+  var room=State.rooms.find(function(r){return r.id===u._roomId});if(!room)return;
+  var bill=State.bills.filter(function(b){return b.id===u._bd.billId})[0];if(!bill)return;
+  var adj=AI&&AI.buildAdjustmentForReshare?AI.buildAdjustmentForReshare(bill,u._bd.keep,{}):null;
+  if(!adj){showToast(userId,'分摊没有变化，无需调整');u._bd=null;renderApp(u);return}
+  State.bills.push(Object.assign(adj,{
+    id:'bill_'+State.nextBillId++, roomId:room.id,
+    payer:bill.payer, payerName:bill.payerName,
+    timeStr:'刚刚', createdAt:new Date().toISOString()
+  }));
+  var bills=roomBills(room.id);
+  var nb=AI.netBalances(bills,room.members);
+  u._bd=null;
+  syncAll();
+  showToast(userId,'🧾 已重新分摊 · 账'+(nb.balanced?'恒平 ✅':'不平 ⚠️'));
+}
+function bdClose(userId){
+  var u=USERS.find(function(x){return x.id===userId});if(!u)return;
+  u._bd=null;renderApp(u);
 }
 
 /* ============================================================
@@ -2226,6 +2309,44 @@ function runUITest() {
     var meP = AI.personalSpend(State.bills.filter(function (b) { return b.roomId === State.rooms[0].id; }), 'u1');
     add('★ 私账口径可用（能算出"我自己花了多少"）', typeof meP.total === 'number',
       '私账 ¥' + meP.total + ' · ' + meP.count + ' 笔');
+
+    /* 21. 每台手机都必须进房间（回归：曾写死前 3 人，第 4 台成孤儿） */
+    resetAll();
+    State.phoneCount = 4;
+    var lbl4 = document.getElementById('phoneCountLabel'); if (lbl4) lbl4.textContent = '4';
+    renderPhones();
+    startV3Demo();
+    var v3room = State.rooms[0];
+    var orphans = USERS.slice(0, State.phoneCount).filter(function (u) {
+      return !u._roomId || !v3room.members.some(function (m) { return m.id === u.id; });
+    });
+    add('★ 每台手机都进房间（含第 4 台，不再出现孤儿手机）', orphans.length === 0,
+      orphans.length ? ('孤儿：' + orphans.map(function (u) { return u.name; }).join('、')) :
+        (State.phoneCount + ' 台全部在房间内'));
+
+    /* 22. 多退少补手动入口：账单详情 → 移出分摊人 → 生成零和调整单 */
+    var targetBill = State.bills.filter(function (b) { return !b.isAdjustment && b.splitType === 'equal'; })[0];
+    if (targetBill) {
+      var beforeCnt = State.bills.length;
+      goPhone('u1', 'room');                     // 详情面板渲染在房间页
+      openBillDetail('u1', targetBill.id);
+      var panelShown = /这笔谁该摊/.test((document.querySelector('#app-u1 .ab') || {}).textContent || '');
+      add('★ 账单详情可打开（多退少补手动入口）', panelShown);
+      var dropId = v3room.members[2].id;
+      bdToggle('u1', dropId);
+      var stillIn = (USERS[0]._bd.keep || []).indexOf(dropId) >= 0;
+      add('★ 可把某人移出分摊名单', !stillIn, JSON.stringify(USERS[0]._bd.keep));
+      bdApply('u1');
+      var adj = State.bills.filter(function (b) { return b.isAdjustment; }).pop();
+      add('★ 应用后生成调整单并保持账恒平',
+        State.bills.length === beforeCnt + 1 && AI.netBalances(State.bills, v3room.members).balanced === true,
+        '账单 ' + beforeCnt + ' → ' + State.bills.length + ' · 账恒平 ' +
+        AI.netBalances(State.bills, v3room.members).balanced);
+      add('★ 手动调整单也是零和的', !!adj && Math.abs(adj.splits.reduce(function (s, x) { return s + x.amount; }, 0)) < 0.01,
+        adj ? JSON.stringify(adj.splits) : '(无)');
+      add('★ 调整单全部合规', AI.validateAdjustments(State.bills).ok === true,
+        JSON.stringify(AI.validateAdjustments(State.bills).bad));
+    }
   } catch (e) {
     add('交互测试执行异常', false, e && e.message);
   }
@@ -2248,17 +2369,21 @@ probeEngine();
 function startV3Demo() {
   if (!AI) { showToast('u1', '内核未加载'); return; }
   resetAll();
-  State.phoneCount = Math.max(3, State.phoneCount);
+  State.phoneCount = Math.max(3, Math.min(USERS.length, State.phoneCount || 1));
   var lbl = document.getElementById('phoneCountLabel'); if (lbl) lbl.textContent = State.phoneCount;
   renderPhones();
 
-  /* 建房间：3 人（小明 / 小红 / 小李） */
+  /* 建房间：**当前显示的所有手机都进房间**
+     ⚠️ 这里曾经写死 USERS.slice(0, 3)，导致加到 4 台时第 4 台成为"孤儿"——
+        它的 _roomId 为 null、不在成员表里，只能停在首页"还没有旅行房间"，
+        看起来就是"第 4 个人没反应"。房间成员必须跟随 State.phoneCount。 */
   var room = { id: 'room_' + State.nextRoomId++, name: '北海道滑雪行', destination: '北海道',
     code: '666888', creator: 'u1', members: [], totalExpense: 0,
     budgetPerPerson: 8000, startDate: '2024-12-20', endDate: '2024-12-25' };
   State.rooms.push(room);
-  USERS.slice(0, 3).forEach(function (u) { room.members.push({ id: u.id, name: u.name }); });
-  USERS.slice(0, 3).forEach(function (u) { u._roomId = room.id; u._page = 'room'; });
+  var active = USERS.slice(0, State.phoneCount);
+  active.forEach(function (u) { room.members.push({ id: u.id, name: u.name }); });
+  active.forEach(function (u) { u._roomId = room.id; u._page = 'room'; });
 
   function addBill(o) { State.bills.push(makeBill(room, o)); }
 
