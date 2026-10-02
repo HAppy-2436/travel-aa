@@ -735,6 +735,16 @@
     return isNaN(t) ? 0 : t;
   }
 
+  /** 账单所属自然日（YYYY-MM-DD，本地时区），用于手账/每日统计 */
+  function billDayKey(b) {
+    var t = billTime(b);
+    if (!t) return '';
+    var d = new Date(t);
+    var m = d.getMonth() + 1;
+    var day = d.getDate();
+    return d.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
+  }
+
   function simText(a, b) {
     a = String(a || '').trim(); b = String(b || '').trim();
     if (!a || !b) return false;
@@ -978,11 +988,771 @@
     return parts.join('');
   }
 
+  // ============ 13. 旅行专属记账语义（V3） ============
+  //
+  // 这一组函数是"旅行 AA"相对通用记账软件的差异化所在。全部为纯函数，
+  // 小程序 / 网页 Demo / 服务端三端复用。
+  //
+  // 核心不变量（务必保持）：**任何账单的 splits 合计必须等于账单人民币金额**。
+  // 下面这些能力（代购不摊、多退少补、暂估改价、抹零）都靠"零和补偿账单"实现，
+  // 从而在不破坏账恒平的前提下表达复杂语义。
+
+  /** 抹零/汇兑损耗 的虚拟成员 id（不计入房间成员，仅用于承载差额） */
+  var LOSS_MEMBER_ID = '__loss__';
+  var LOSS_MEMBER_NAME = '抹零损耗';
+
+  /**
+   * 各币种的"顺手凑整"台阶
+   * 出境游真实现象：日币 12780 想记成 12800、韩元动辄上万要凑到千位。
+   */
+  var ROUND_STEPS = {
+    CNY: 1,      // 凑到元（分太细，凑整到整数元）
+    JPY: 100,    // 日元最小面额感知强，凑到百位
+    KRW: 1000,   // 韩元数额大，凑到千位
+    THB: 10, VND: 1000, IDR: 1000, PHP: 10, MYR: 1,
+    USD: 1, EUR: 1, GBP: 1, HKD: 1, MOP: 1, SGD: 1, AUD: 1, CAD: 1
+  };
+
+  /** 取某币种的凑整台阶（未知币种按 1） */
+  function roundStepOf(currency) {
+    var c = String(currency || 'CNY').toUpperCase();
+    return ROUND_STEPS[c] || 1;
+  }
+
+  /**
+   * 智能凑整（抹零）
+   *
+   * @param {number} amount    原金额（原币）
+   * @param {string} currency  币种
+   * @param {Object} [opts]    { mode: 'nearest'|'up'|'down', step: 手动指定台阶 }
+   * @returns {Object} { original, rounded, loss, step, mode, changed }
+   *          loss = rounded - original（正数代表多记了，作为"损耗"由全员分摊）
+   *
+   * 注意：返回的 rounded 才是**入账金额**，loss 是差额。
+   * 两者相加恒等于 rounded 本身（loss 已含在 rounded 里），
+   * 所以分摊时把 loss 作为一笔损耗分摊即可保持账恒平。
+   */
+  function smartRound(amount, currency, opts) {
+    opts = opts || {};
+    var step = Number(opts.step) > 0 ? Number(opts.step) : roundStepOf(currency);
+    var mode = opts.mode || 'nearest';
+    var raw = Number(amount) || 0;
+    var rounded;
+    if (step <= 0 || raw === 0) {
+      rounded = raw;
+    } else if (mode === 'up') {
+      rounded = Math.ceil(raw / step) * step;
+    } else if (mode === 'down') {
+      rounded = Math.floor(raw / step) * step;
+    } else {
+      rounded = Math.round(raw / step) * step;
+    }
+    rounded = round2(rounded);
+    var loss = round2(rounded - raw);
+    return {
+      original: round2(raw),
+      rounded: rounded,
+      loss: loss,
+      step: step,
+      mode: mode,
+      changed: Math.abs(loss) > 0.004
+    };
+  }
+
+  /**
+   * 把"抹零差额"并入分摊明细，保证合计仍等于账单金额。
+   *
+   * 做法：对传入的 splits 做整体缩放，使合计等于 targetAmount；
+   * 差额单独落在 LOSS_MEMBER_ID 上，让用户能看见"这笔差额去哪了"。
+   *
+   * @param {Array}  splits       [{memberId, memberName, amount}]
+   * @param {number} targetAmount 目标合计（账单金额）
+   * @param {Object} [opts]       { lossId, lossName, distributeLoss: Boolean }
+   * @returns {Array} 新的 splits（含损耗行）
+   */
+  function applyRoundingLoss(splits, targetAmount, opts) {
+    opts = opts || {};
+    var lossId = opts.lossId || LOSS_MEMBER_ID;
+    var lossName = opts.lossName || LOSS_MEMBER_NAME;
+    var target = round2(Number(targetAmount) || 0);
+
+    var plain = (splits || []).filter(function (s) { return s && s.memberId !== lossId; });
+    if (!plain.length) return splits || [];
+
+    var sum = plain.reduce(function (s, x) { return s + (Number(x.amount) || 0); }, 0);
+    var diff = round2(target - sum);
+
+    if (Math.abs(diff) <= 0.004) {
+      // 差额可忽略：直接把尾差补在最后一个非损耗成员上，保证严格相等
+      var rest = target - plain.slice(0, -1).reduce(function (s, x) { return s + (Number(x.amount) || 0); }, 0);
+      var out0 = plain.map(function (x, i) {
+        return { memberId: x.memberId, memberName: x.memberName, amount: i === plain.length - 1 ? round2(rest) : round2(Number(x.amount) || 0) };
+      });
+      return out0;
+    }
+
+    var out = plain.map(function (x) {
+      return { memberId: x.memberId, memberName: x.memberName, amount: round2(Number(x.amount) || 0) };
+    });
+    // 损耗作为独立一行，正负都保留（正=凑多了，负=凑少了）
+    out.push({ memberId: lossId, memberName: lossName, amount: diff, isLoss: true });
+    return out;
+  }
+
+  /**
+   * 代购 / 不参与分摊：只由垫付人承担，其余人 0
+   *
+   * @param {Object} bill   账单（需含 payer / payerName / amount）
+   * @param {Array}  members 房间成员
+   * @returns {Array} splits
+   */
+  function buildSoleSplits(bill, members) {
+    members = members || [];
+    var amount = round2(Number(bill && bill.amount) || 0);
+    var payerId = bill && bill.payer;
+    // 垫付人可能已退房，兜底保证一定有一行承担全额
+    if (!members.some(function (m) { return m.id === payerId; })) {
+      return [{ memberId: payerId || LOSS_MEMBER_ID, memberName: (bill && bill.payerName) || '垫付人', amount: amount }];
+    }
+    return members.map(function (m) {
+      return {
+        memberId: m.id,
+        memberName: m.name,
+        amount: m.id === payerId ? amount : 0
+      };
+    });
+  }
+
+  /**
+   * 判断账单是否"不参与 AA 分摊"（代购 / 私人消费）
+   */
+  function isSoleBill(bill) {
+    if (!bill) return false;
+    if (bill.sole === true || bill.splitType === 'sole') return true;
+    if (bill.splits && bill.splits.length) {
+      var payer = bill.payer;
+      return bill.splits.every(function (s) {
+        return Math.abs(Number(s.amount) || 0) < 0.005 || s.memberId === payer;
+      });
+    }
+    return false;
+  }
+
+  /**
+   * 多退少补：把某账单里"并未参与"的人从分摊中剔除，并要求其退款。
+   *
+   * 语义（零和）：退出者**退还自己的那份**，钱**退给当初垫付的人**。
+   * 这与暂估改价（差额也在垫付人处冲抵）保持一致 —— 调整单的对手方永远是垫付人。
+   *
+   * 例：小明垫 480 房租，三人均摊各 160。小李退出 →
+   *     小李 -160（欠款清零），小明 +160（收回自己替小李垫的那份）
+   *     小明净额 320、小红 160、小李 0，合计 480 不变。
+   *
+   * @param {Object} bill          原账单
+   * @param {Array}  excludeIds    要剔除（退款）的成员 id
+   * @param {Object} [opts]        { ts }
+   * @returns {Object} 调整单（零和）
+   *
+   * 关键：这**不是**删除原账单，而是记一笔"调整"。历史保留，账恒平不变。
+   */
+  function buildAdjustmentForExclusion(bill, excludeIds, opts) {
+    opts = opts || {};
+    var ex = {};
+    (excludeIds || []).forEach(function (id) { if (id) ex[id] = true; });
+
+    var base = (bill && bill.splits) || [];
+    var payer = bill && bill.payer;
+    var payName = (bill && bill.payerName) || '垫付人';
+
+    // 按成员聚合（同一人可能既"被退出"又是"垫付人"，必须累加而非追加重复行）
+    var acc = {};
+    var order = [];
+    function add(memberId, memberName, amount, flags) {
+      if (!memberId) return;
+      if (!acc[memberId]) { acc[memberId] = { memberId: memberId, memberName: memberName || memberId, amount: 0 }; order.push(memberId); }
+      if (memberName) acc[memberId].memberName = memberName;
+      acc[memberId].amount = round2(acc[memberId].amount + amount);
+      if (flags) Object.keys(flags).forEach(function (k) { acc[memberId][k] = flags[k]; });
+    }
+
+    var totalBack = 0;
+    var names = [];
+    base.forEach(function (s) {
+      if (!ex[s.memberId]) return;
+      var amt = round2(Number(s.amount) || 0);
+      totalBack = round2(totalBack + amt);
+      names.push(s.memberName || s.memberId);
+      add(s.memberId, s.memberName, -amt, { isRefund: true });
+    });
+
+    // 退款给垫付人，抵消退出者的欠款（零和）
+    if (payer && totalBack > 0) add(payer, payName, totalBack, { isPayerSettle: true });
+
+    var splits = order.map(function (id) {
+      var row = acc[id];
+      // 净额归零的行没有意义（如垫付人自己也退出且恰好冲平），保留以免改变语义
+      return {
+        memberId: row.memberId,
+        memberName: row.memberName,
+        amount: row.amount,
+        isRefund: !!row.isRefund,
+        isPayerSettle: !!row.isPayerSettle
+      };
+    });
+
+    return {
+      isAdjustment: true,
+      adjustsBillId: (bill && (bill.id || bill._id)) || null,
+      reason: 'exclude',
+      amount: 0,
+      currency: (bill && bill.currency) || 'CNY',
+      rate: 1,
+      cnyAmount: 0,
+      description: '多退少补 · ' + (names.join('、') || '部分成员') + '退出分摊',
+      category: (bill && bill.category) || 'other',
+      source: 'adjust',
+      splits: splits,
+      delta: totalBack,          // 退款总额（非零！）
+      totalDelta: 0,             // 总额变化量：排除成员不改总额 → 恒为 0
+      summary: '退还 ' + (names.join('、') || '部分成员') + ' 合计 ¥' + totalBack.toFixed(2) +
+        '，退回垫付人 ' + payName,
+      createdAt: opts.ts || new Date().toISOString()
+    };
+  }
+
+  /**
+   * 暂估改价 / 二次分摊：金额变动时生成**零和**补偿单。
+   *
+   * ============ 统一公式（看懂这一条就懂全部调整单） ============
+   *   设各人在原账单里的份额为 base[i]，调整后应为 target[i]
+   *   份额变化 Δ[i] = target[i] − base[i]
+   *   垫付人的抵消额 = −Σ Δ[i]
+   *
+   * 为什么垫付人要抵消 ΣΔ：调整单只能"重新分配"，不能凭空产生消费，
+   * 所以自身必须零和；而份额变化的总和只能由当初掏钱的那个人来镜像
+   * （钱是他垫的，多退少补都经他的手）。
+   *
+   * 举例 3200 → 3560（4 人、小明垫付）：
+   *   每人 800 → 890，Δ = +90，ΣΔ = 360
+   *   小明那行 = +90（自己新增的份额）− 360（收回新增总额）= −270
+   *   净效果：小明已垫 3200，实际应收 3×890 = 2670，故本次只追加 −270 ✓
+   *
+   * @param {Object} oldBill   原账单（含 splits）
+   * @param {number} newAmount 新金额（原币）
+   * @param {Array}  members   成员（用于名称）
+   * @param {Object} [opts]    { ts }
+   * @returns {Object} 补偿单（零和）
+   */
+  function buildAdjustmentForReestimate(oldBill, newAmount, members, opts) {
+    opts = opts || {};
+    var oldAmt = Number(oldBill && oldBill.amount) || 0;
+    var newAmt = round2(Number(newAmount) || 0);
+    var delta = round2(newAmt - oldAmt);
+
+    var base = (oldBill && oldBill.splits) || [];
+    var participants = base.filter(function (s) { return Math.abs(Number(s.amount) || 0) > 0.004; });
+    var payer = oldBill && oldBill.payer;
+    var payName = (oldBill && oldBill.payerName) || '垫付人';
+
+    // 两类操作语义统一表述（实现上无需分支，见下方 wantTotal = delta）：
+    //   ① 重新分配（排除成员）：总额不变 ⇒ delta = 0 ⇒ 调整单零和
+    //   ② 金额变化（暂估改价 / 补记）：总额真变 ⇒ 调整单合计 = delta
+    var kind = opts.kind || 'adjust';
+
+    // 先算出每个人的 Δ[i]
+    var deltas = [];       // [{memberId, memberName, delta, target, base}]
+    var names = [];
+
+    if (!participants.length) {
+      // 没有分摊人（占位单，或数据残缺）→ 整笔差额都落在垫付人
+      deltas.push({ memberId: payer || LOSS_MEMBER_ID, memberName: payName, delta: delta, target: delta, base: 0 });
+    } else {
+      var oldSum = participants.reduce(function (s, x) { return s + (Number(x.amount) || 0); }, 0);
+      var running = 0;
+      participants.forEach(function (p, i) {
+        var oldShare = Number(p.amount) || 0;
+        var newShare = i === participants.length - 1
+          ? round2(newAmt - running)                                  // 尾差兜底
+          : (oldSum > 0 ? round2(newAmt * (oldShare / oldSum)) : round2(newAmt / participants.length));
+        running = round2(running + newShare);
+        names.push(p.memberName || p.memberId);
+        deltas.push({
+          memberId: p.memberId, memberName: p.memberName,
+          delta: round2(newShare - oldShare),
+          target: newShare, base: oldShare
+        });
+      });
+    }
+
+    // ============ 垫付人那一行 ============
+    //
+    // 经过穷举验证（见开发记录），这里有个**数学事实**必须先想清楚：
+    //
+    //   Σadj = Σtarget − Σbase = newAmt − oldAmt = delta
+    //
+    // 也就是说：**只要总额变了，调整单就不可能零和** —— "零和"与
+    // "eff[i] === target[i]" 在总额不变时等价，在总额变化时互斥（已穷举验证）。
+    //
+    // 因此实现上**不需要区分两类操作**，统一按 target 反解即可：
+    //   adj[i] = target[i] − base[i] = Δ[i]（对所有人，含垫付人）
+    // 于是 Σadj = delta 自动成立：
+    //   · 排除成员时 delta = 0 → 调整单自动零和
+    //   · 暂估改价 / 补记时 delta ≠ 0 → 调整单合计恰为 delta
+    // 且 eff[i] = base[i] + Δ[i] = target[i] 恒成立。
+    //
+    // ⚠️ 踩坑记录：曾强行给垫付人加"镜像行"让调整单零和，结果
+    //    (a) 等比分摊改价时垫付人应收被算成 2670 却输出 2310（符号/重复计入）
+    //    (b) 不等比改价时算出反号
+    //    根因是想同时满足两个互斥约束。现由 tests/v3.test.js 的
+    //    "Σadj === delta" 与 "eff === target" 双重断言锁死。
+
+    // 按成员聚合（垫付人通常自己也是分摊人，会出现两行同名，必须累加）
+    var acc = {};
+    var order = [];
+    function add(memberId, memberName, amount, flags) {
+      if (!memberId) return;
+      if (!acc[memberId]) { acc[memberId] = { memberId: memberId, memberName: memberName || memberId, amount: 0 }; order.push(memberId); }
+      if (memberName) acc[memberId].memberName = memberName;
+      acc[memberId].amount = round2(acc[memberId].amount + amount);
+      if (flags) Object.keys(flags).forEach(function (k) { acc[memberId][k] = flags[k]; });
+    }
+
+    // 每个人的调整额就是自己的份额变化 Δ[i]（垫付人也一样）。
+    // Σadj = ΣΔ = target 合计 − base 合计 = newAmt − oldSum = delta
+    //   → delta = 0（纯粹再分配，如排除成员）时调整单自然零和
+    //   → delta ≠ 0（金额真的变了）时调整单合计恰为 delta，结算时自动增减总额
+    deltas.forEach(function (d) { add(d.memberId, d.memberName, d.delta); });
+
+    var splits = order.map(function (id) {
+      var row = acc[id];
+      return {
+        memberId: row.memberId,
+        memberName: row.memberName,
+        amount: row.amount,
+        isPayerSettle: !!row.isPayerSettle
+      };
+    });
+
+    // 合计必须等于 delta —— 这是唯一的正确性锚点，**不需要区分 kind**：
+    //   Σadj 应 = Σtarget − Σbase = newAmt − oldAmt = delta
+    //   ⇒ eff 合计 = base 合计 + delta = newAmt ✓
+    // 排除成员时 delta 恰为 0，于是自动零和；改价/补记时 delta≠0，自动记下增量。
+    // （曾在此处写 `zeroSum ? 0 : delta` 并默认 zeroSum=true，把正确的 Δ 强行拉平到 0，
+    //   导致不等比改价算出反号结果 —— 这个 bug 由 tests/v3.test.js 的恒等断言抓出。）
+    var total = round2(splits.reduce(function (s, x) { return s + (Number(x.amount) || 0); }, 0));
+    var wantTotal = delta;
+    if (Math.abs(total - wantTotal) > 0.004 && splits.length) {
+      var maxIdx = 0;
+      splits.forEach(function (s, i) {
+        if (Math.abs(s.amount) > Math.abs(splits[maxIdx].amount)) maxIdx = i;
+      });
+      splits[maxIdx].amount = round2(splits[maxIdx].amount + (wantTotal - total));
+    }
+
+    return {
+      isAdjustment: true,
+      adjustsBillId: (oldBill && (oldBill.id || oldBill._id)) || null,
+      reason: kind === 'fill' ? 'fill' : 'reestimate',
+      kind: kind,
+      // 总额没变（纯再分配）时本单零和；改了总额时合计恰为 delta
+      zeroSum: Math.abs(delta) < 0.005,
+      amount: 0,
+      currency: (oldBill && oldBill.currency) || 'CNY',
+      rate: 1,
+      cnyAmount: 0,
+      description: (kind === 'fill' ? '补记金额 · ' : '暂估改价 · ') +
+        (oldBill && oldBill.description ? oldBill.description + ' ' : '') +
+        '¥' + oldAmt.toFixed(2) + ' → ¥' + newAmt.toFixed(2),
+      category: (oldBill && oldBill.category) || 'other',
+      source: 'adjust',
+      splits: splits,
+      delta: delta,              // 本单 splits 合计（= 总额变化量）
+      totalDelta: delta,         // 总额变化量：改价/补记真的改了总额
+      summary: (delta >= 0 ? '补收' : '退回') + ' ¥' + Math.abs(delta).toFixed(2) +
+        (names.length ? '，由 ' + names.join('、') + ' 按原比例' + (delta >= 0 ? '补' : '退') : ''),
+      createdAt: opts.ts || new Date().toISOString()
+    };
+  }
+
+  /**
+   * 结算净余额（**含调整单的正确口径**）
+   *
+   * ============ 为什么必须单独提供这个函数 ============
+   * 调整单（多退少补 / 暂估改价）的 amount 是 0，它不是一笔独立消费，
+   * 而是"对某笔已有账单的重新分配"。因此结算时必须把所有调整单的 splits
+   * **先叠加回原账单**得到 effectiveShares，再用
+   *
+   *     净余额[人] = Σ(该人实付的人民币金额) − Σ(该人有效份额)
+   *
+   * 来计算。若把调整单当成独立账单去结算（只累加 payer 的 amount），
+   * 垫付人会被少算钱 —— 这是本项目最容易算错的地方，故抽成内核函数统一三端口径。
+   *
+   * 不变量：Σ净余额 = 0（账恒平）。调用方应断言这一点。
+   *
+   * @param {Array}  bills   全部账单（含调整单）
+   * @param {Array}  members 房间成员 [{id,name}]（可空）
+   * @param {Object} [rates] 汇率覆盖
+   * @returns {Object} { balances:[{memberId,memberName,amount}], total, balanced, foreign }
+   */
+  function netBalances(bills, members, rates) {
+    var list = settleableBills(bills);
+    var adjust = list.filter(function (b) { return b.isAdjustment; });
+    var normal = list.filter(function (b) { return !b.isAdjustment; });
+
+    var paid = {};      // 实付
+    var share = {};     // 有效份额
+    var nameOf = {};
+
+    (members || []).forEach(function (m) { nameOf[m.id] = m.name; });
+
+    function touch(id, name) {
+      if (id == null) return;
+      if (!(id in paid)) paid[id] = 0;
+      if (!(id in share)) share[id] = 0;
+      if (name) nameOf[id] = name;
+    }
+
+    // 实付：只有真实消费才产生"谁掏了钱"
+    normal.forEach(function (b) {
+      touch(b.payer, b.payerName);
+      if (b.payer != null) paid[b.payer] = round2(paid[b.payer] + billCNY(b, rates));
+    });
+    // 有效份额累加器。外币账单的 splits 是**原币**金额，必须乘以记账时快照汇率
+    // 换成人人民币，否则日元账单会被当人民币计入（曾把账算歪约 12000 倍量级）。
+    function addShares(splitList, rate) {
+      var r = Number(rate);
+      if (!isFinite(r) || r <= 0) r = 1;
+      (splitList || []).forEach(function (s) {
+        touch(s.memberId, s.memberName);
+        if (s.memberId == null) return;
+        share[s.memberId] = round2((share[s.memberId] || 0) + (Number(s.amount) || 0) * r);
+      });
+    }
+
+    normal.forEach(function (b) { addShares(b.splits, b.rate); });
+
+    // 调整单：全部计入有效份额（不依赖 adjustsBillId 是否填写，避免漏算）
+    adjust.forEach(function (a) {
+      addShares(a.splits, 1);
+
+      // 只有"总额真的变了"的调整单才会改变实付：
+      //   暂估改价 3200→3560：垫付人后来又补付 360 → 实付 3560
+      //   降价 -400：那 400 是退回来的 → 实付 2800
+      //   排除成员：**总额不变**（退款只是在成员间转移），实付不动
+      //
+      // 判定用调整单自身的"总额变化量"，而不是 delta 字段 ——
+      // 排除单的 delta 表示"退款总额"（非零），若拿它当总额变化会把实付算多。
+      var netDelta = a.totalDelta != null
+        ? Number(a.totalDelta)
+        : (a.isAdjustment && a.reason === 'exclude' ? 0 : (Number(a.delta) || 0));
+      if (Math.abs(netDelta) < 0.005) return;
+
+      var base = normal.filter(function (b) { return (b.id || b._id) === a.adjustsBillId; })[0];
+      if (!base) return;                       // 无归属调整单不动实付
+      var payer = base.payer;
+      if (payer == null) return;
+      var r = Number(base.rate);
+      if (!isFinite(r) || r <= 0) r = 1;
+      touch(payer, base.payerName);
+      paid[payer] = round2(paid[payer] + netDelta * r);
+    });
+
+    var ids = Object.keys(paid).concat(Object.keys(share)).filter(function (v, i, arr) {
+      return arr.indexOf(v) === i;
+    }).filter(function (id) { return id !== LOSS_MEMBER_ID; });
+
+    var balances = ids.map(function (id) {
+      return {
+        memberId: id,
+        memberName: nameOf[id] || id,
+        amount: round2((paid[id] || 0) - (share[id] || 0))
+      };
+    }).sort(function (a, b) { return b.amount - a.amount; });
+
+    var total = round2(balances.reduce(function (s, x) { return s + x.amount; }, 0));
+    var foreign = normal.some(function (b) { return b.currency && b.currency !== 'CNY'; });
+
+    return {
+      balances: balances,
+      total: round2(normal.reduce(function (s, b) { return s + billCNY(b, rates); }, 0)),
+      paid: paid,
+      shares: share,
+      foreign: foreign,
+      balanced: Math.abs(total) < 0.05,
+      // 若有损耗行，损耗额单独说明（它不属任何成员）
+      loss: adjust.length ? null : null
+    };
+  }
+
+  /**
+   * 不变量自检：调整单（isAdjustment）必须自身零和。
+   *
+   * 为什么单独做成一个函数：调整单如果"不零和"，就会把差额当成一笔新消费
+   * 重复计入总额，最终结算净余额之和 ≠ 0。这是最容易犯且最难肉眼发现的错，
+   * 所以把它固化成可断言的检查，kernel、服务端与测试都调用它。
+   *
+   * @returns {Object} { ok, bad:[{id, sum}] }
+   */
+  function validateAdjustments(bills) {
+    var bad = [];
+    (bills || []).forEach(function (b) {
+      if (!b || !b.isAdjustment) return;
+      // 只有"总额未变"（zeroSum 为真）的调整单才应该零和；
+      // 改价/补记类调整单合计恰为 delta，不在此校验。
+      if (b.zeroSum === false) return;
+      var s = round2((b.splits || []).reduce(function (acc, x) { return acc + (Number(x.amount) || 0); }, 0));
+      if (Math.abs(s) > 0.01) bad.push({ id: b.id || b._id || '(无 id)', sum: s });
+    });
+    return { ok: bad.length === 0, bad: bad };
+  }
+
+  /**
+   * 口头占位：字段不全也能先入账，事后补齐。
+   *
+   * 状态流转（重要）：
+   *   - 字段不全 → status='draft'，needsCompletion=true  → **不参与结算/统计**
+   *   - 字段补齐（此时再调本函数）→ status='normal'，needsCompletion=false → 正常参与结算
+   * 之所以让补齐后状态变回 normal：占位只是"临时不确定"的标记，
+   * 补齐后它就该像普通账单一样算钱；若一直挂 draft 会永远算不进去。
+   *
+   * @param {Object} partial  { amount?, payer?, description?, currency? }
+   * @returns {Object} 占位/普通账单
+   */
+  function buildPlaceholder(partial) {
+    partial = partial || {};
+    var missing = [];
+    if (!(Number(partial.amount) > 0)) missing.push('amount');
+    if (!partial.payer) missing.push('payer');
+    var needs = missing.length > 0;
+    return {
+      status: needs ? 'draft' : 'normal',
+      missing: missing,
+      canSettle: !needs,
+      needsCompletion: needs,
+      amount: Number(partial.amount) || 0,
+      currency: partial.currency || 'CNY',
+      description: partial.description || '（待补：一笔没记清的消费）',
+      category: partial.category || 'other',
+      payer: partial.payer || null,
+      payerName: partial.payerName || '',
+      splits: partial.splits || []
+    };
+  }
+
+  /**
+   * 判断账单是否可参与结算：
+   * 调整单、重复标记单不单独计（调整单是零和的，计入也不会错，但避免重复展示）
+   * 占位单（字段不全）**不计入**结算，否则会把账算歪。
+   */
+  function isSettleable(bill) {
+    if (!bill) return false;
+    if (bill.status === 'draft' || bill.status === 'placeholder') return false;
+    if (bill.needsCompletion) return false;
+    if (bill.voided) return false;
+    var amt = Number(bill.amount) || 0;
+    // 占位单金额可能为 0；正常账单必须有金额
+    if (amt <= 0 && !bill.isAdjustment) return false;
+    return true;
+  }
+
+  /**
+   * 从账单集合中挑出可结算的（结算、统计都应走这个函数）
+   */
+  function settleableBills(bills) {
+    return (bills || []).filter(isSettleable);
+  }
+
+  /**
+   * 计算某账单的"实际分摊"（含其所有调整单的净效果）
+   * 用于 UI 展示"这笔账最后各人实际掏了多少"。
+   *
+   * @param {Object} bill  原账单
+   * @param {Array}  all   全部账单（用于找调整单）
+   * @returns {Array} [{memberId, memberName, amount}] amount 为净额
+   */
+  function effectiveShares(bill, all) {
+    var base = (bill && bill.splits) || [];
+    var map = {};
+    var order = [];
+    base.forEach(function (s) {
+      if (!map[s.memberId]) { map[s.memberId] = { memberId: s.memberId, memberName: s.memberName, amount: 0 }; order.push(s.memberId); }
+      map[s.memberId].amount = round2(map[s.memberId].amount + (Number(s.amount) || 0));
+    });
+    var id = bill && (bill.id || bill._id);
+    (all || []).forEach(function (b) {
+      if (!b || !b.isAdjustment || b.adjustsBillId !== id) return;
+      (b.splits || []).forEach(function (s) {
+        if (!map[s.memberId]) { map[s.memberId] = { memberId: s.memberId, memberName: s.memberName, amount: 0 }; order.push(s.memberId); }
+        map[s.memberId].amount = round2(map[s.memberId].amount + (Number(s.amount) || 0));
+      });
+    });
+    return order.map(function (k) { return map[k]; });
+  }
+
+  /**
+   * 待补清单：哪些账单还没记清
+   */
+  function pendingBills(bills) {
+    return (bills || []).filter(function (b) {
+      return b && (b.status === 'draft' || b.needsCompletion || (Number(b.amount) || 0) <= 0 && !b.isAdjustment);
+    });
+  }
+
+  /**
+   * 结算前校验：把所有"不参与结算"的账单列出来提醒用户
+   */
+  function settlementReadiness(bills) {
+    var pending = pendingBills(bills);
+    var adjustments = (bills || []).filter(function (b) { return b && b.isAdjustment; });
+    return {
+      ready: pending.length === 0,
+      pendingCount: pending.length,
+      pending: pending,
+      adjustmentCount: adjustments.length,
+      message: pending.length
+        ? '还有 ' + pending.length + ' 笔没记清（缺金额或付款人），补齐后账才算得准'
+        : '账目齐全，可以结算'
+    };
+  }
+
+  // ============ 14. 会说话：结清卡片 / 手账 / 礼貌催账（V3） ============
+
+  /**
+   * 礼貌催账话术：把"你欠我钱"说成不尴尬的话
+   * @param {Object} item { fromName, toName, amount, roomName? }
+   * @param {Object} [opts] { style: 'friendly'|'brief'|'playful' }
+   */
+  function politeReminder(item, opts) {
+    opts = opts || {};
+    var style = opts.style || 'friendly';
+    var from = (item && item.fromName) || '你';
+    var to = (item && item.toName) || '对方';
+    var amt = '¥' + (Number(item && item.amount) || 0).toFixed(2);
+    var room = (item && item.roomName) || '这次旅行';
+    var lines = {
+      friendly: '嗨 ' + from + '～ ' + room + '的账我对完啦，你这边还有 ' + amt + ' 没结，方便的时候转我就行，不着急 😊',
+      brief: room + '结算：' + from + ' → ' + to + ' ' + amt,
+      playful: '【' + room + '记账官】提醒：' + from + ' 同学，' + amt + ' 正在呼唤你～ 转账后我们就两清啦 🎉'
+    };
+    return lines[style] || lines.friendly;
+  }
+
+  /**
+   * 旅行手账：按天生成一句人话小结（而不是冷冰冰的数字表）
+   * @param {Array} bills
+   * @param {Object} [opts] { destination, members }
+   */
+  function travelJournal(bills, opts) {
+    opts = opts || {};
+    var list = settleableBills(bills);
+    var byDay = {};
+    list.forEach(function (b) {
+      var d = billDayKey(b);
+      if (!d) return;
+      if (!byDay[d]) byDay[d] = [];
+      byDay[d].push(b);
+    });
+    var days = Object.keys(byDay).sort();
+    return days.map(function (d, idx) {
+      var dayBills = byDay[d];
+      var total = round2(dayBills.reduce(function (s, b) { return s + billCNY(b); }, 0));
+      // 当日占比最高的分类
+      var cat = {};
+      dayBills.forEach(function (b) {
+        var c = b.category || 'other';
+        cat[c] = round2((cat[c] || 0) + billCNY(b));
+      });
+      var topCat = Object.keys(cat).sort(function (a, b2) { return cat[b2] - cat[a]; })[0];
+      var catName = (CATEGORIES[topCat] && CATEGORIES[topCat].name) || '其他';
+      var biggest = dayBills.slice().sort(function (a, b2) { return billCNY(b2) - billCNY(a); })[0];
+      return {
+        day: d,
+        index: idx + 1,
+        total: total,
+        count: dayBills.length,
+        topCategory: topCat,
+        text: '第 ' + (idx + 1) + ' 天：' + dayBills.length + ' 笔，共 ¥' + total.toFixed(2) +
+          '，主要在「' + catName + '」上花钱' +
+          (biggest ? '，最贵一笔是「' + (biggest.description || '消费') + '」¥' + billCNY(biggest).toFixed(2) : '') +
+          '。'
+      };
+    });
+  }
+
+  /**
+   * 结清卡片数据（可渲染成文本/图片分享）
+   * @param {Object} ctx { room, bills, members, settlement? }
+   */
+  function shareCardData(ctx) {
+    ctx = ctx || {};
+    var room = ctx.room || {};
+    var raw = ctx.bills || [];
+    var bills = settleableBills(raw);
+    var members = ctx.members || [];
+    var total = round2(bills.reduce(function (s, b) { return s + billCNY(b); }, 0));
+    var n = members.length || 1;
+    var ins = generateInsight({ room: room, bills: raw, members: members });
+
+    // generateInsight 只回 topCategory，这里补一份完整分类占比（结清卡片要展示前 3 名）
+    var catMap = {};
+    bills.forEach(function (b) {
+      var c = b.category || 'other';
+      catMap[c] = round2((catMap[c] || 0) + billCNY(b));
+    });
+    var topCategories = Object.keys(catMap)
+      .sort(function (a, b2) { return catMap[b2] - catMap[a]; })
+      .map(function (c) {
+        return {
+          category: c,
+          name: (CATEGORIES[c] && CATEGORIES[c].name) || c,
+          icon: (CATEGORIES[c] && CATEGORIES[c].icon) || '📦',
+          amount: catMap[c],
+          percent: total > 0 ? Math.round(catMap[c] / total * 100) : 0
+        };
+      });
+
+    return {
+      title: room.name || '旅行',
+      destination: room.destination || '',
+      days: ins.days,
+      people: n,
+      total: total,
+      perPerson: round2(total / n),
+      billCount: bills.length,
+      topCategories: topCategories.slice(0, 3),
+      headline: (room.name || '旅行') + ' · ' + ins.days + ' 天 · ' + n + ' 人',
+      subtitle: '总计 ¥' + total.toFixed(2) + ' · 人均 ¥' + round2(total / n).toFixed(2),
+      footer: 'TravelAA · 旅行 AA 记账'
+    };
+  }
+
+  /** 结清卡片的纯文本版本（便于复制到微信） */
+  function shareCardText(ctx) {
+    var d = shareCardData(ctx);
+    var lines = [];
+    lines.push('✈️ ' + d.headline);
+    lines.push('─'.repeat(20));
+    lines.push('总消费　¥' + d.total.toFixed(2));
+    lines.push('人均　　¥' + d.perPerson.toFixed(2));
+    lines.push('账单数　' + d.billCount + ' 笔');
+    if (d.topCategories.length) {
+      lines.push('主要花在');
+      d.topCategories.forEach(function (c) {
+        lines.push('　· ' + ((CATEGORIES[c.category] && CATEGORIES[c.category].name) || c.category) + '　¥' + (c.amount || 0).toFixed(2) + '（' + (c.percent || 0) + '%）');
+      });
+    }
+    lines.push('─'.repeat(20));
+    lines.push('由 ' + d.footer + ' 生成');
+    return lines.join('\n');
+  }
+
   // ============ 导出 ============
 
   return {
     CATEGORIES: CATEGORIES,
     CNY_RATES: CNY_RATES,
+    LOSS_MEMBER_ID: LOSS_MEMBER_ID,
+    LOSS_MEMBER_NAME: LOSS_MEMBER_NAME,
     classifyExpense: classifyExpense,
     allocateEvenly: allocateEvenly,
     parseBillText: parseBillText,
@@ -1003,6 +1773,29 @@
     auditBills: auditBills,
     budgetStatus: budgetStatus,
     dailyStats: dailyStats,
-    generateNarrative: generateNarrative
+    generateNarrative: generateNarrative,
+    // V3 旅行专属记账语义
+    LOSS_MEMBER_ID: LOSS_MEMBER_ID,
+    LOSS_MEMBER_NAME: LOSS_MEMBER_NAME,
+    roundStepOf: roundStepOf,
+    smartRound: smartRound,
+    applyRoundingLoss: applyRoundingLoss,
+    buildSoleSplits: buildSoleSplits,
+    isSoleBill: isSoleBill,
+    buildAdjustmentForExclusion: buildAdjustmentForExclusion,
+    buildAdjustmentForReestimate: buildAdjustmentForReestimate,
+    validateAdjustments: validateAdjustments,
+    netBalances: netBalances,
+    buildPlaceholder: buildPlaceholder,
+    isSettleable: isSettleable,
+    settleableBills: settleableBills,
+    effectiveShares: effectiveShares,
+    pendingBills: pendingBills,
+    settlementReadiness: settlementReadiness,
+    // V3 会说话
+    politeReminder: politeReminder,
+    travelJournal: travelJournal,
+    shareCardData: shareCardData,
+    shareCardText: shareCardText
   };
 });
