@@ -23,6 +23,7 @@ const SUITES = [
   { name: 'V2 能力单测', file: 'tests/v2.test.js', hint: '语音归一/多币种/审计/预算/订单' },
   { name: '同步内核单测', file: 'tests/sync.test.js', hint: '多窗口合并/墓碑/rev/uid 唯一性' },
   { name: '相对路径检查', file: 'tests/requires.check.js', hint: 'require 与 script src 是否可解析' },
+  { name: '交付物可打开性', file: 'tests/resource.check.js', hint: 'file:// 下外部脚本/渲染/挂钩是否齐备' },
   { name: 'Demo 完整性', file: 'tests/demo.check.js', hint: 'onclick 交叉校验/内核引用/DOM 挂载点' },
   { name: '服务器集成测试', file: 'tests/server.test.js', hint: '真实拉起后端 + 全部路由打点' },
   { name: '浏览器验收', file: 'tests/browser.check.js', hint: '#selftest / #tourtest / #uitest' },
