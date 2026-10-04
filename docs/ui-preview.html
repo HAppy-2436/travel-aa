@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>TravelAA · 排版方案前后对比</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',-apple-system,'PingFang SC',sans-serif;background:#08080c;color:#fff;
+    padding:32px 24px;display:flex;flex-direction:column;align-items:center;gap:28px}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;letter-spacing:-.6px}
+  .sub{font-size:12px;color:rgba(255,255,255,.45);text-align:center;max-width:760px;line-height:1.7}
+  .row{display:flex;gap:28px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+
+  /* ---------- 手机框（两栏共用） ---------- */
+  .col{display:flex;flex-direction:column;align-items:center;gap:12px}
+  .cap{font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;letter-spacing:.4px;
+    padding:6px 14px;border-radius:100px}
+  .cap.bad{background:rgba(250,81,81,.14);color:#FA5151;border:1px solid rgba(250,81,81,.3)}
+  .cap.good{background:rgba(7,193,96,.14);color:#07C160;border:1px solid rgba(7,193,96,.3)}
+  .pf{width:320px;height:640px;background:#0c0c0c;border-radius:44px;padding:9px;
+    box-shadow:0 0 0 1.5px rgba(255,255,255,.1),0 24px 60px rgba(0,0,0,.55)}
+  .ps{width:100%;height:100%;background:#fff;border-radius:36px;overflow:hidden;position:relative}
+  .scr{width:100%;height:100%;overflow:hidden;color:#18181b;display:flex;flex-direction:column}
+  .tbar{padding:34px 16px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #eeeef0}
+  .body{flex:1;overflow:hidden}
+
+  /* ================= 现版：12 种间距 / 15 种字号 ================= */
+  .v-now .tbar .t{font-size:15.5px;font-weight:700;font-family:'Space Grotesk',sans-serif}
+  .v-now .tbar .s{font-size:11px;color:#71717a;border:1.5px solid #eeeef0;border-radius:100px;padding:6px 13px}
+  .v-now .body{padding:16px 18px 22px}
+  .v-now .lbl{font-size:9.5px;letter-spacing:2.6px;color:#a1a1aa;font-weight:700;font-family:'Space Grotesk',sans-serif}
+  .v-now .ttl{font-size:23px;font-weight:700;font-family:'Space Grotesk',sans-serif;letter-spacing:-.8px;margin-top:5px;line-height:1.15}
+  .v-now .barwrap{margin-top:13px}
+  .v-now .barhd{display:flex;justify-content:space-between;align-items:baseline}
+  .v-now .bnum{font-size:11px;color:#71717a;font-family:'Space Grotesk',sans-serif}
+  .v-now .bnum b{font-size:15.5px;color:#18181b}
+  .v-now .track{height:8px;background:#f7f7f8;border-radius:4px;margin-top:8px;overflow:hidden}
+  .v-now .fill{height:100%;background:#07C160;border-radius:4px;width:18%}
+  .v-now .bal{font-size:10.5px;color:#07C160;background:#EDFAF3;border-radius:10px;padding:9px 12px;margin-top:9px}
+  .v-now .grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#eeeef0;border:1px solid #eeeef0;
+    border-radius:14px;overflow:hidden;margin-top:11px}
+  .v-now .cell{background:#fff;padding:13px 14px}
+  .v-now .cl{font-size:9px;letter-spacing:1.4px;color:#a1a1aa;font-weight:700;font-family:'Space Grotesk',sans-serif}
+  .v-now .cv{font-size:19px;font-weight:700;font-family:'Space Grotesk',sans-serif;letter-spacing:-.5px;margin-top:4px}
+  .v-now .cv.sm{font-size:14.5px}
+  .v-now .note{font-size:9.5px;color:#71717a;border-left:2px solid #eeeef0;padding-left:11px;margin-top:12px;line-height:1.5}
+  .v-now .mh{font-size:15px;font-weight:700;font-family:'Space Grotesk',sans-serif;border-bottom:1.5px solid #18181b;padding-bottom:9px;margin-top:18px;display:flex;justify-content:space-between;align-items:baseline}
+  .v-now .mh .c{font-size:9.5px;color:#a1a1aa;letter-spacing:1px}
+  .v-now .pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .v-now .pill{font-size:11.5px;padding:5px 12px;border:1.5px solid #eeeef0;border-radius:100px;color:#71717a;font-weight:600;font-family:'Space Grotesk',sans-serif}
+  .v-now .pill.on{background:#18181b;color:#fff;border-color:#18181b}
+  .v-now .row2{display:flex;align-items:center;padding:11px 0;border-bottom:1px solid #f7f7f8}
+  .v-now .ico{width:36px;height:36px;border-radius:10px;background:#f7f7f8;display:flex;align-items:center;justify-content:center;font-size:16px;margin-right:10px;flex:0 0 36px}
+  .v-now .nm{font-size:13.5px;font-weight:600;font-family:'Space Grotesk',sans-serif}
+  .v-now .mt{font-size:9.5px;color:#a1a1aa;margin-top:1px}
+  .v-now .amt{font-size:14px;font-weight:700;font-family:'Space Grotesk',sans-serif;margin-left:auto}
+
+  /* ================= 新版：6 档间距 / 6 级字号 ================= */
+  .v-new .tbar{padding:34px 18px 12px}
+  .v-new .tbar .t{font-size:17px;font-weight:700;font-family:'Space Grotesk',sans-serif}
+  .v-new .tbar .s{font-size:11px;color:#71717a;border:1.5px solid #eeeef0;border-radius:100px;padding:6px 14px}
+  .v-new .body{padding:20px 18px 24px}
+  .v-new .lbl{font-size:10px;letter-spacing:1.4px;color:#a1a1aa;font-weight:600;font-family:'Space Grotesk',sans-serif}
+  /* 组 1：概览（标题 + 预算 + 数据格 紧贴成一组） */
+  .v-new .ttl{font-size:32px;font-weight:700;font-family:'Space Grotesk',sans-serif;letter-spacing:-1.4px;margin-top:8px;line-height:1.08}
+  .v-new .barwrap{margin-top:16px}
+  .v-new .barhd{display:flex;justify-content:space-between;align-items:baseline}
+  .v-new .bnum{font-size:11px;color:#71717a;font-family:'Space Grotesk',sans-serif}
+  .v-new .bnum b{font-size:22px;color:#18181b;font-weight:700}
+  .v-new .track{height:6px;background:#f7f7f8;border-radius:3px;margin-top:8px;overflow:hidden}
+  .v-new .fill{height:100%;background:#07C160;border-radius:3px;width:18%}
+  .v-new .bal{font-size:11px;color:#07C160;margin-top:8px}
+  .v-new .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+  .v-new .cell{background:#f7f7f8;padding:12px;border-radius:16px}
+  .v-new .cl{font-size:10px;letter-spacing:1.4px;color:#a1a1aa;font-weight:600;font-family:'Space Grotesk',sans-serif}
+  .v-new .cv{font-size:22px;font-weight:700;font-family:'Space Grotesk',sans-serif;letter-spacing:-.8px;margin-top:4px}
+  .v-new .cv.sm{font-size:17px}
+  /* 组 2：备注（轻量，与组 1 拉开 24px） */
+  .v-new .note{font-size:11px;color:#71717a;border-left:2px solid #d4d4d8;padding-left:12px;margin-top:24px;line-height:1.6}
+  /* 组 3：成员 */
+  .v-new .mh{font-size:17px;font-weight:700;font-family:'Space Grotesk',sans-serif;padding-bottom:8px;border-bottom:1.5px solid #18181b;margin-top:24px;display:flex;justify-content:space-between;align-items:baseline}
+  .v-new .mh .c{font-size:10px;color:#a1a1aa;letter-spacing:1.4px}
+  .v-new .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .v-new .pill{font-size:13px;padding:6px 14px;border:1.5px solid #eeeef0;border-radius:100px;color:#71717a;font-weight:600;font-family:'Space Grotesk',sans-serif}
+  .v-new .pill.on{background:#18181b;color:#fff;border-color:#18181b}
+  /* 组 4：明细 */
+  .v-new .row2{display:flex;align-items:center;padding:12px 0;border-bottom:1px solid #f7f7f8}
+  .v-new .ico{width:36px;height:36px;border-radius:10px;background:#f7f7f8;display:flex;align-items:center;justify-content:center;font-size:16px;margin-right:12px;flex:0 0 36px}
+  .v-new .nm{font-size:13px;font-weight:600}
+  .v-new .mt{font-size:11px;color:#a1a1aa;margin-top:2px}
+  .v-new .amt{font-size:17px;font-weight:700;font-family:'Space Grotesk',sans-serif;margin-left:auto}
+
+  /* 度量标注 */
+  .meta{margin-top:10px;font-family:'Space Grotesk',sans-serif;font-size:10.5px;color:rgba(255,255,255,.4);
+    text-align:center;line-height:1.7}
+  .meta b{color:rgba(255,255,255,.75)}
+  .legend{margin-top:8px;display:flex;gap:16px;flex-wrap:wrap;justify-content:center;
+    font-size:11px;color:rgba(255,255,255,.5)}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .dot{width:8px;height:8px;border-radius:50%}
+</style>
+</head>
+<body>
+  <h1>排版方案 · 前后对比</h1>
+  <div class="sub">
+    同一个「房间详情」页，左右两种排版规则。<br>
+    左边是现在的实现：<b style="color:#FA5151">12 种间距值（相邻只差 1px）+ 15 种字号（9~11.5px 挤了六级）</b>。<br>
+    右边是提案：<b style="color:#07C160">6 档间距网格 + 6 级字号阶梯，相关元素成组、不相关元素拉开</b>。
+  </div>
+
+  <div class="row">
+    <!-- ============ 现版 ============ -->
+    <div class="col">
+      <div class="cap bad">现状 · 12 种间距 / 15 种字号</div>
+      <div class="pf"><div class="ps"><div class="scr v-now">
+        <div class="tbar">
+          <div class="t">房间详情</div>
+          <div class="s">STATS</div>
+        </div>
+        <div class="body">
+          <div class="lbl">ROOM DETAIL</div>
+          <div class="ttl">北海道滑雪行</div>
+          <div class="barwrap">
+            <div class="barhd"><div class="lbl">BUDGET / 预算</div><div class="bnum"><b>¥742</b> / ¥8000 人均</div></div>
+            <div class="track"><div class="fill"></div></div>
+            <div class="bal">✅ 预算内 · 剩余 6 天，日均可用 ¥20493</div>
+          </div>
+          <div class="grid">
+            <div class="cell"><div class="cl">TOTAL / 集体账</div><div class="cv">¥2227</div></div>
+            <div class="cell"><div class="cl">BILLS</div><div class="cv sm">7</div></div>
+            <div class="cell"><div class="cl">MEMBERS</div><div class="cv sm">3</div></div>
+            <div class="cell"><div class="cl">CODE</div><div class="cv sm">666888</div></div>
+          </div>
+          <div class="note">💱 外币已按记账时汇率快照折算<br>🙋 我的私账 ¥1280.00（1 笔，未计入 AA）</div>
+          <div class="mh"><span>成员</span><span class="c">3 PEOPLE</span></div>
+          <div class="pills"><div class="pill on">小明 · 我</div><div class="pill">小红</div><div class="pill">小李</div></div>
+          <div class="mh"><span>账单记录</span><span class="c">7 ITEMS</span></div>
+          <div class="row2"><div class="ico">🍜</div><div><div class="nm">札幌居酒屋晚餐</div><div class="mt">小明 · 12-20 · 🤖 AI 记账</div></div><div class="amt">¥614</div></div>
+          <div class="row2"><div class="ico">🏨</div><div><div class="nm">滑雪度假村 4 晚</div><div class="mt">小明 · 12-20 · ✍️ 手动</div></div><div class="amt">¥1152</div></div>
+          <div class="row2"><div class="ico">🎫</div><div><div class="nm">缆车票 3 张</div><div class="mt">小李 · 12-22 · ✍️ 手动</div></div><div class="amt">¥461</div></div>
+        </div>
+      </div></div></div>
+      <div class="meta">
+        间距值：<b>1,2,5,8,9,10,11,12,13,14,16,18</b><br>
+        字号值：<b>8.5,9,9.5,10,10.5,11,11.5,13.5,14,14.5,15,15.5,16,19,23</b><br>
+        区块数：<b>17 个平铺</b>
+      </div>
+    </div>
+
+    <!-- ============ 新版 ============ -->
+    <div class="col">
+      <div class="cap good">提案 · 6 档间距 / 6 级字号</div>
+      <div class="pf"><div class="ps"><div class="scr v-new">
+        <div class="tbar">
+          <div class="t">房间详情</div>
+          <div class="s">STATS</div>
+        </div>
+        <div class="body">
+          <!-- 组1 概览 -->
+          <div class="lbl">ROOM DETAIL</div>
+          <div class="ttl">北海道滑雪行</div>
+          <div class="barwrap">
+            <div class="barhd"><div class="lbl">BUDGET / 预算</div><div class="bnum"><b>¥742</b> / ¥8000 人均</div></div>
+            <div class="track"><div class="fill"></div></div>
+            <div class="bal">✅ 预算内 · 剩余 6 天，日均可用 ¥20493</div>
+          </div>
+          <div class="grid">
+            <div class="cell"><div class="cl">TOTAL / 集体账</div><div class="cv">¥2227</div></div>
+            <div class="cell"><div class="cl">BILLS</div><div class="cv sm">7</div></div>
+            <div class="cell"><div class="cl">MEMBERS</div><div class="cv sm">3</div></div>
+            <div class="cell"><div class="cl">CODE</div><div class="cv sm">666888</div></div>
+          </div>
+          <!-- 组2 备注 -->
+          <div class="note">💱 外币已按记账时汇率快照折算<br>🙋 我的私账 ¥1280.00（1 笔，未计入 AA）</div>
+          <!-- 组3 成员 -->
+          <div class="mh"><span>成员</span><span class="c">3 PEOPLE</span></div>
+          <div class="pills"><div class="pill on">小明 · 我</div><div class="pill">小红</div><div class="pill">小李</div></div>
+          <!-- 组4 明细 -->
+          <div class="mh"><span>账单记录</span><span class="c">7 ITEMS</span></div>
+          <div class="row2"><div class="ico">🍜</div><div><div class="nm">札幌居酒屋晚餐</div><div class="mt">小明 · 12-20 · 🤖 AI 记账</div></div><div class="amt">¥614</div></div>
+          <div class="row2"><div class="ico">🏨</div><div><div class="nm">滑雪度假村 4 晚</div><div class="mt">小明 · 12-20 · ✍️ 手动</div></div><div class="amt">¥1152</div></div>
+          <div class="row2"><div class="ico">🎫</div><div><div class="nm">缆车票 3 张</div><div class="mt">小李 · 12-22 · ✍️ 手动</div></div><div class="amt">¥461</div></div>
+        </div>
+      </div></div></div>
+      <div class="meta">
+        间距档位：<b>4 / 8 / 12 / 16 / 24 / 32（组内 ≤8，组间 ≥24）</b><br>
+        字号级别：<b>32 · 22 · 17 · 13 · 11 · 10（级间 ≥2px）</b><br>
+        区块数：<b>合并为 4 个语义组</b>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i class="dot" style="background:#FA5151"></i>红色 = 需要修掉的现状</span>
+    <span><i class="dot" style="background:#07C160"></i>绿色 = 提案达到的效果</span>
+    <span>正文从 9.5~11px 提到 <b>13px</b>；标题从 23px 提到 <b>32px</b>（层级拉开）</span>
+  </div>
+</body>
+</html>
