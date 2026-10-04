@@ -11,17 +11,33 @@
 body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:#fff;min-height:100vh;overflow-x:auto;-webkit-font-smoothing:antialiased}
 .bg{position:fixed;inset:0;background:radial-gradient(ellipse 60% 40% at 20% 10%,rgba(255,107,53,0.06),transparent 60%),radial-gradient(ellipse 50% 50% at 80% 80%,rgba(100,100,255,0.04),transparent 60%);z-index:0}
 .wrap{position:relative;z-index:1;max-width:1600px;margin:0 auto;padding:28px 32px}
-.hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid rgba(255,255,255,0.05)}
-.hdr h1{font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.8px;background:linear-gradient(135deg,#fff 40%,rgba(255,255,255,0.5));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.hdr p{font-size:13px;color:rgba(255,255,255,0.3);margin-top:5px}
-.hdr-r{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
-.cb{padding:9px 18px;border:1px solid rgba(255,255,255,0.08);border-radius:100px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.7);font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);white-space:nowrap}
+/* ===== 演示台（手机外面的壳）=====
+   三组语义，避免"8 个按钮等重、找不到主行动"：
+     ① 状态：引擎徽标收成小圆点
+     ② 步进器：− 3 人 ＋ 合并为一个控件（原来拆成 3 个独立按钮）
+     ③ 操作：自检/导览/重置（次级） + ▶自动演示（唯一强调，右侧固定）
+   标题与工具栏**上下分行**，避免中文标题在窄视口折行后与工具栏挤在同一水平线。 */
+.hdr{display:block;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.05)}
+.hdr-l{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;row-gap:4px}
+.hdr h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(17px,1.6vw,24px);font-weight:700;letter-spacing:-0.6px;background:linear-gradient(135deg,#fff 40%,rgba(255,255,255,0.5));-webkit-background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap}
+.hdr p{font-size:12.5px;color:rgba(255,255,255,0.4);margin:0;padding-left:10px;border-left:1px solid rgba(255,255,255,.12);line-height:1.4}
+.tbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.tsep{width:1px;height:18px;background:rgba(255,255,255,0.08)}
+.cb{padding:9px 16px;border:1px solid rgba(255,255,255,0.08);border-radius:100px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.7);font-family:'Space Grotesk',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);white-space:nowrap}
 .cb:hover{background:rgba(255,255,255,0.08);color:#fff;transform:translateY(-1px)}
-.cb.pr{background:var(--pri);border-color:var(--pri);color:#fff;box-shadow:0 4px 16px rgba(255,107,53,.25)}
+.cb.pr{background:var(--pri);border-color:var(--pri);color:#fff;box-shadow:0 4px 16px rgba(255,107,53,.25);margin-left:auto}
 .cb.act{border-color:rgba(255,107,53,.3);color:var(--pri)}
-/* 「＋ 加手机」首次进入时的呼吸高亮：多人场景最容易被忽略的一步 */
-@keyframes nud{0%,100%{box-shadow:0 0 0 0 rgba(255,107,53,0);border-color:rgba(255,255,255,.08)}50%{box-shadow:0 0 0 5px rgba(255,107,53,.18);border-color:var(--pri)}}
-.cb.nudge{animation:nud 1.6s ease-in-out infinite;color:var(--pri)}
+/* 引擎状态：收成小圆点 + 短文字，比原来省一半宽度 */
+.cb.dot{font-size:11px;padding:7px 13px;color:rgba(255,255,255,.5);border-color:rgba(255,255,255,.06)}
+/* 人数步进器：一个控件表达"减 / 当前人数 / 加" */
+.stepper{display:flex;align-items:center;border:1px solid rgba(255,255,255,0.1);border-radius:100px;overflow:hidden;background:rgba(255,255,255,0.03)}
+.stepper i{font-style:normal;font-size:14px;color:rgba(255,255,255,.6);padding:8px 14px;cursor:pointer;transition:all .15s;user-select:none}
+.stepper i:hover{background:rgba(255,255,255,.1);color:#fff}
+.stepper b{font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;color:#fff;padding:8px 12px;background:rgba(255,255,255,.06);border-left:1px solid rgba(255,255,255,.08);border-right:1px solid rgba(255,255,255,.08);white-space:nowrap}
+/* 「＋ 加手机」首次进入时的呼吸高亮：多人场景最容易被忽略的一步
+   （现在加号在步进器里，用背景呼吸代替描边呼吸） */
+@keyframes nud{0%,100%{background:rgba(255,107,53,0);color:rgba(255,255,255,.6)}50%{background:rgba(255,107,53,.28);color:var(--pri)}}
+.stepper i.nudge{animation:nud 1.6s ease-in-out infinite}
 /* 手机舞台：允许换行 + 自动收缩，避免窄窗口/投影时右侧手机被裁掉
    （曾出现 3 台手机总宽 1040px > 视口 900px，第 3 台整台看不见） */
 .stage{display:flex;gap:clamp(14px,2.4vw,40px);justify-content:center;align-items:flex-start;flex-wrap:wrap;padding:16px 0 40px;min-height:calc(100vh - 200px)}
@@ -29,15 +45,17 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:#ff
 .pu:hover{transform:translateY(-6px)}
 .pl{display:flex;align-items:center;gap:12px}
 .pn{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700}
-.pr2{font-size:10px;color:rgba(255,255,255,.3);background:rgba(255,255,255,.05);padding:3px 10px;border-radius:100px;margin-top:2px}
+.pr2{font-size:11px;color:rgba(255,255,255,.45);background:rgba(255,255,255,.05);padding:3px 10px;border-radius:100px;margin-top:6px}
 /* 演示字幕：自动演示时标出"这一步在演示哪个功能"，让观众看得懂。
    保持紧凑（不挤占舞台垂直空间，也不把工具栏顶到换行）。 */
-.cap{max-width:298px;margin:6px 0 0;padding:5px 11px;border-radius:100px;background:var(--pri);color:#fff;
+/* 字幕条：宽度对齐内屏（手机壳 320 - padding 2×10 = 300），单行省略 */
+.cap{width:300px;max-width:100%;margin:8px 0 0;padding:6px 12px;border-radius:100px;background:var(--pri);color:#fff;
   font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:600;line-height:1.35;text-align:center;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;
   box-shadow:0 3px 12px rgba(255,107,53,.28);animation:capin .3s cubic-bezier(.4,0,.2,1)}
 @keyframes capin{from{opacity:0;transform:translateY(-5px) scale(.95)}to{opacity:1;transform:none}}
-.pf{width:320px;max-width:100%;height:660px;background:#0c0c0c;border-radius:50px;padding:10px;position:relative;box-shadow:0 0 0 1.5px rgba(255,255,255,.1),0 30px 80px rgba(0,0,0,.6),0 10px 30px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.06)}
+/* 手机壳：降对比（原来底 #08080c → 壳 #0c0c0c → 屏 #fff 三层强对比 + 80px 重投影） */
+.pf{width:320px;max-width:100%;height:660px;background:#151517;border-radius:50px;padding:10px;position:relative;box-shadow:0 0 0 1.5px rgba(255,255,255,.09),0 18px 48px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.05)}
 .pn2{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:110px;height:26px;background:#0c0c0c;border-radius:0 0 16px 16px;z-index:20}
 .pn2::after{content:'';position:absolute;top:8px;right:20px;width:8px;height:8px;background:#1a1a2e;border-radius:50%}
 .pbt{position:absolute;width:2.5px;background:#222;border-radius:2px}
@@ -45,38 +63,38 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:#ff
 .ps{width:100%;height:100%;background:#fff;border-radius:42px;overflow:hidden;position:relative}
 .hi{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:100px;height:4px;background:#1a1a1a;border-radius:2px;opacity:.12;z-index:25}
 .app{width:100%;height:100%;display:flex;flex-direction:column;font-family:'Inter',sans-serif;color:#18181b}
-.an{padding:48px 22px 14px;background:rgba(255,255,255,.92);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid var(--g200);display:flex;align-items:center;justify-content:space-between}
+.an{padding:48px 24px 16px;background:rgba(255,255,255,.92);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid var(--g200);display:flex;align-items:center;justify-content:space-between}
 .an-t{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700}
 .an-b{font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:600;padding:7px 16px;border:1.5px solid var(--g200);border-radius:100px;cursor:pointer;color:var(--g500);transition:all .15s}
 .an-b:hover{border-color:var(--g300);background:var(--g100)}
-.ab{flex:1;overflow-y:auto;padding:18px 22px 24px}.ab::-webkit-scrollbar{width:0}
+.ab{flex:1;overflow-y:auto;padding:16px 24px 24px}.ab::-webkit-scrollbar{width:0}
 .hs{padding:20px 0 24px}
 .hl{font-family:'Space Grotesk',sans-serif;font-size:8px;font-weight:700;letter-spacing:3.5px;color:var(--g400);margin-bottom:10px}
 .ht{font-family:'Space Grotesk',sans-serif;font-size:34px;font-weight:700;letter-spacing:-1.8px;line-height:1.08}
 .ht span{color:var(--g300)}
 .ag{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:28px}
-.btn{display:flex;align-items:center;justify-content:center;gap:7px;padding:15px 18px;border:none;border-radius:100px;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);user-select:none}
+.btn{display:flex;align-items:center;justify-content:center;gap:7px;padding:15px 16px;border:none;border-radius:100px;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);user-select:none}
 .btn:active{transform:scale(.96)}
 .btn.dk{background:#18181b;color:#fff;box-shadow:0 2px 12px rgba(0,0,0,.12)}
 .btn.lt{background:#fff;color:#18181b;border:1.5px solid var(--g200);box-shadow:0 1px 2px rgba(0,0,0,.04)}
 .btn.or{background:var(--pri);color:#fff;box-shadow:0 2px 12px rgba(255,107,53,.2)}
 .btn.dg{background:var(--red);color:#fff;box-shadow:0 2px 12px rgba(250,81,81,.2)}
-.sh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:1.5px solid #18181b}
+.sh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px;padding-bottom:10px;border-bottom:1.5px solid #18181b}
 .st{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700}
 .sc{font-family:'Space Grotesk',sans-serif;font-size:10px;color:var(--g400);letter-spacing:1px}
-.rc{background:#fff;border:1.5px solid var(--g200);border-radius:18px;padding:18px;margin-bottom:12px;cursor:pointer;transition:all .25s cubic-bezier(.4,0,.2,1);box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.rc{background:#fff;border:1.5px solid var(--g200);border-radius:18px;padding:16px;margin-bottom:12px;cursor:pointer;transition:all .25s cubic-bezier(.4,0,.2,1);box-shadow:0 1px 2px rgba(0,0,0,.04)}
 .rc:hover{border-color:var(--g300);box-shadow:0 2px 8px rgba(0,0,0,.06),0 0 1px rgba(0,0,0,.08);transform:translateY(-2px)}
 .rt{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
 .rn{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700}
-.rco{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;letter-spacing:2.5px;color:var(--pri)}
+.rco{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;letter-spacing:2.5px;color:var(--pri)}
 .rco small{display:block;font-size:7px;letter-spacing:1.5px;color:var(--g400);text-transform:uppercase}
 .rs{display:flex;gap:24px}
-.rsv{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700}
+.rsv{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700}
 .rsl{font-size:8px;color:var(--g400);text-transform:uppercase;letter-spacing:1.2px;margin-top:1px}
 .em{text-align:center;padding:48px 20px;color:var(--g300);animation:fi .4s ease-out}
 .ei{font-size:48px;margin-bottom:10px;opacity:.6}.et{font-family:'Space Grotesk',sans-serif;font-size:13px;color:var(--g400)}.es{font-size:10px;color:var(--g300);margin-top:8px}
 @keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.og{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--g200);border:1px solid var(--g200);border-radius:16px;overflow:hidden;margin-bottom:22px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.og{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--g200);border:1px solid var(--g200);border-radius:16px;overflow:hidden;margin-bottom:24px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
 .oi{background:#fff;padding:16px 18px}
 .ol{font-family:'Space Grotesk',sans-serif;font-size:8px;font-weight:700;letter-spacing:2px;color:var(--g400);margin-bottom:5px}
 .ov{font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.8px}.ov.sm{font-size:17px}
@@ -88,7 +106,7 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:#ff
 .br{display:flex;align-items:center;padding:12px 0;border-bottom:1px solid var(--g100)}.br:last-child{border-bottom:none}
 .bi{width:40px;height:40px;border-radius:12px;background:var(--g100);display:flex;align-items:center;justify-content:center;font-size:18px;margin-right:12px}
 .bin{flex:1}.bn{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600}.bm{font-family:'Space Grotesk',sans-serif;font-size:10px;color:var(--g400);margin-top:1px}
-.ba{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700}
+.ba{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700}
 .bd{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--g200);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-left:10px;font-size:12px;color:var(--g400);transition:all .15s}
 .bd:hover{border-color:var(--red);color:var(--red);background:var(--red-bg)}
 .bbw{margin-bottom:18px}
@@ -98,9 +116,9 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:#ff
 .bbg{width:100%;height:8px;background:var(--g100);border-radius:4px;overflow:hidden}
 .bf{height:100%;border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1)}
 .bf.safe{background:linear-gradient(90deg,#07C160,#34D399)}.bf.warn{background:linear-gradient(90deg,#FF9500,#FFBB4D)}.bf.over{background:linear-gradient(90deg,#FA5151,#FF7A7A)}
-.bal{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;font-size:11px;font-weight:600;margin-bottom:14px;font-family:'Space Grotesk',sans-serif}
+.bal{display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:12px;font-size:11px;font-weight:600;margin-bottom:16px;font-family:'Space Grotesk',sans-serif}
 .bal.safe{background:var(--grn-bg);color:var(--grn)}.bal.warn{background:var(--amb-bg);color:var(--amb)}.bal.over{background:var(--red-bg);color:var(--red)}
-.amb{border:1.5px solid var(--g200);border-radius:18px;padding:22px;margin-bottom:18px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.amb{border:1.5px solid var(--g200);border-radius:18px;padding:24px;margin-bottom:16px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04)}
 .aml{font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--g400);margin-bottom:10px}
 .air{display:flex;align-items:baseline;gap:4px}
 .acu{font-family:'Space Grotesk',sans-serif;font-size:20px;color:var(--g300)}
@@ -111,41 +129,41 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:#ff
 .fi{width:100%;height:44px;background:var(--g100);border:1.5px solid transparent;border-radius:12px;padding:0 16px;font-family:'Space Grotesk',sans-serif;font-size:14px;color:#18181b;outline:none;transition:all .2s}
 .fi:focus{background:#fff;border-color:var(--pri);box-shadow:0 0 0 3px rgba(255,107,53,.1)}
 .pm{display:flex;gap:8px;overflow-x:auto;padding:4px 0}.pm::-webkit-scrollbar{height:0}
-.pi{padding:9px 18px;border:1.5px solid var(--g200);border-radius:100px;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer;transition:all .15s;user-select:none}
+.pi{padding:9px 16px;border:1.5px solid var(--g200);border-radius:100px;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer;transition:all .15s;user-select:none}
 .pi:active,.pi.act{background:#18181b;color:#fff;border-color:#18181b}
 .shm{text-align:center;padding:28px 0 24px}
 .svm{font-family:'Space Grotesk',sans-serif;font-size:44px;font-weight:700;letter-spacing:-2.5px}
 .brm{display:flex;align-items:center;padding:12px 0;border-bottom:1px solid var(--g100)}.brm:last-child{border-bottom:none}
 .bin2{flex:1}.bnn{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600}.bnt{font-family:'Space Grotesk',sans-serif;font-size:10px;color:var(--g400)}
-.bam{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700}.bam.pos{color:var(--grn)}.bam.neg{color:var(--red)}
+.bam{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700}.bam.pos{color:var(--grn)}.bam.neg{color:var(--red)}
 .trm{display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--g100)}.trm:last-child{border-bottom:none}
 .tsm{width:28px;height:28px;border-radius:50%;background:#18181b;color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;margin-right:12px}
 .ttm{flex:1;display:flex;align-items:center;gap:10px}
 .tnm{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600}
 .tam{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;color:var(--pri)}
-.abb{display:flex;gap:8px;padding:14px 22px 28px;background:rgba(255,255,255,.92);backdrop-filter:blur(20px) saturate(180%);border-top:1px solid var(--g200)}
+.abb{display:flex;gap:8px;padding:16px 24px 28px;background:rgba(255,255,255,.92);backdrop-filter:blur(20px) saturate(180%);border-top:1px solid var(--g200)}
 .abb .btn{flex:1;padding:13px 16px}
 .mo{position:absolute;inset:0;background:rgba(0,0,0,.3);backdrop-filter:blur(4px);z-index:50;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .3s}
 .mo.show{opacity:1;pointer-events:auto}
 .mm2{width:100%;background:#fff;border-radius:22px 22px 0 0;max-height:85%;overflow-y:auto;transform:translateY(100%);transition:transform .4s cubic-bezier(.32,.72,0,1);box-shadow:0 -8px 40px rgba(0,0,0,.1)}
 .mo.show .mm2{transform:translateY(0)}
 .mh{width:36px;height:4px;background:var(--g200);border-radius:2px;margin:12px auto 0}
-.mhd{display:flex;justify-content:space-between;align-items:center;padding:16px 22px 12px}
-.mt{font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:700}
-.mc{width:32px;height:32px;border-radius:50%;background:var(--g100);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;color:var(--g500);transition:all .15s}
+.mhd{display:flex;justify-content:space-between;align-items:center;padding:16px 24px 12px}
+.mt{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700}
+.mc{width:32px;height:32px;border-radius:50%;background:var(--g100);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px;color:var(--g500);transition:all .15s}
 .mc:hover{background:var(--g200)}
-.mb{padding:0 22px 24px}
+.mb{padding:0 24px 24px}
 .co{position:absolute;inset:0;background:rgba(0,0,0,.25);backdrop-filter:blur(6px);z-index:60;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
 .co.show{opacity:1;pointer-events:auto}
 .cb2{background:#fff;border-radius:20px;padding:28px 24px 20px;width:80%;max-width:260px;text-align:center;transform:scale(.9);transition:transform .3s cubic-bezier(.32,.72,0,1);box-shadow:0 16px 48px rgba(0,0,0,.12)}
 .co.show .cb2{transform:scale(1)}
 .ci{font-size:32px;margin-bottom:10px}
-.ct{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;margin-bottom:6px}
+.ct{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;margin-bottom:6px}
 .cd{font-size:12px;color:var(--g500);margin-bottom:20px}
 .cbs{display:flex;gap:8px}.cbs .btn{flex:1;padding:11px 16px;font-size:13px}
 .toast{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#18181b;color:#fff;padding:11px 24px;border-radius:100px;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;z-index:70;opacity:0;transition:all .3s cubic-bezier(.4,0,.2,1);pointer-events:none;box-shadow:0 8px 32px rgba(0,0,0,.15)}
 .toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
-.sp{position:relative;background:#18181b;border-radius:18px;padding:18px;margin-bottom:16px;overflow:hidden}
+.sp{position:relative;background:#18181b;border-radius:18px;padding:16px;margin-bottom:16px;overflow:hidden}
 .spc{background:#fff;border-radius:12px;padding:16px;min-height:120px}
 .sl{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--pri),transparent);animation:sm 1.8s ease-in-out infinite;z-index:5;box-shadow:0 0 16px rgba(255,107,53,.5)}
 @keyframes sm{0%{top:8%}50%{top:88%}100%{top:8%}}
@@ -165,14 +183,14 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:#ff
 .orc:hover{border-color:var(--g300);box-shadow:0 2px 8px rgba(0,0,0,.06)}
 .orc.sel{border-color:var(--pri);background:var(--pri-bg)}
 .ort{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.ord{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700}
+.ord{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700}
 .ora{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700}
 .orm{font-family:'Space Grotesk',sans-serif;font-size:10px;color:var(--g400)}
 .orb{display:inline-block;padding:2px 8px;border-radius:100px;font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700}
 .orb.single{background:var(--g100);color:var(--g500)}.orb.list{background:#EEF2FF;color:var(--blu)}.orb.receipt{background:var(--amb-bg);color:var(--amb)}.orb.invoice{background:var(--red-bg);color:var(--red)}
 .oc{display:inline-block;margin-left:4px;font-family:'Space Grotesk',sans-serif;font-size:9px;color:var(--grn);font-weight:700}
 .mbi{background:#fff;border:1px solid var(--g200);border-radius:14px;padding:16px;font-family:'Space Grotesk',sans-serif;box-shadow:0 1px 2px rgba(0,0,0,.04)}
-.mbr{display:flex;justify-content:space-between;padding:5px 0;font-size:11px;color:var(--g500)}
+.mbr{display:flex;justify-content:space-between;padding:4px 0;font-size:11px;color:var(--g500)}
 .mbr.tot{border-top:1px solid var(--g200);margin-top:6px;padding-top:8px;font-weight:700;font-size:14px;color:#18181b}
 .mbt{text-align:center;font-weight:700;font-size:14px;margin-bottom:10px}
 .mbs{text-align:center;font-size:9px;color:var(--g400);margin-bottom:10px}
@@ -180,19 +198,21 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:#ff
 @keyframes sp2{0%{box-shadow:0 0 0 0 rgba(255,107,53,.5),0 30px 80px rgba(0,0,0,.6)}40%{box-shadow:0 0 0 12px rgba(255,107,53,.08),0 30px 80px rgba(0,0,0,.6)}100%{box-shadow:0 0 0 1.5px rgba(255,255,255,.1),0 30px 80px rgba(0,0,0,.6)}}
 .ab>div{animation:pg .35s cubic-bezier(.4,0,.2,1)}
 @keyframes pg{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-.fh{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);font-size:11px;color:rgba(255,255,255,.45);z-index:5;text-align:center;max-width:92vw}
+/* 舞台下方提示：回到文档流（原来 position:fixed 会压住手机下半部分）
+   —— 不再遮挡内容，任何时候都完整可见 */
+.fh{margin-top:8px;font-size:11.5px;color:rgba(255,255,255,.45);text-align:center;max-width:720px;margin-left:auto;margin-right:auto;line-height:1.6}
 .fh b{color:var(--pri);font-weight:700}
 /* ===== 导览（演讲者模式） ===== */
 .tour-mask{position:fixed;z-index:200;pointer-events:none;border-radius:14px;box-shadow:0 0 0 9999px rgba(8,8,12,.74);transition:all .35s cubic-bezier(.4,0,.2,1)}
-.tour-card{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);width:min(560px,92vw);background:#fff;color:#18181b;border-radius:20px;padding:20px 22px;z-index:210;box-shadow:0 24px 64px rgba(0,0,0,.5);animation:pg .3s cubic-bezier(.4,0,.2,1)}
+.tour-card{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);width:min(560px,92vw);background:#fff;color:#18181b;border-radius:20px;padding:20px 24px;z-index:210;box-shadow:0 24px 64px rgba(0,0,0,.5);animation:pg .3s cubic-bezier(.4,0,.2,1)}
 .tour-step{font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700;letter-spacing:3px;color:var(--g400)}
-.tour-title{font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:700;margin:6px 0 8px}
+.tour-title{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;margin:6px 0 8px}
 .tour-script{font-size:13px;line-height:1.7;color:var(--g500);min-height:44px}
-.tour-dots{display:flex;gap:5px;margin:14px 0 12px}
+.tour-dots{display:flex;gap:5px;margin:16px 0 12px}
 .tour-dot{width:6px;height:6px;border-radius:50%;background:var(--g200);transition:all .2s}
 .tour-dot.on{background:#18181b;width:18px;border-radius:3px}
 .tour-ctrl{display:flex;gap:8px}
-.tour-ctrl .btn{flex:1;padding:12px 14px;font-size:12px}
+.tour-ctrl .btn{flex:1;padding:12px 16px;font-size:12px}
 /* ===== 演示自检面板 ===== */
 .test-panel{position:fixed;inset:0;background:rgba(8,8,12,.82);z-index:220;display:flex;align-items:center;justify-content:center;padding:24px}
 .test-card{background:#fff;color:#18181b;border-radius:20px;padding:24px;width:min(520px,92vw);max-height:82vh;overflow-y:auto;animation:pg .3s cubic-bezier(.4,0,.2,1)}
@@ -203,112 +223,126 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:#ff
 .test-row:last-of-type{border-bottom:none}
 .test-ok{color:var(--grn);font-weight:700;white-space:nowrap}
 .test-no{color:var(--red);font-weight:700;white-space:nowrap}
-/* ===== 手机内排版比例（对齐真机字号阶梯：320px 框宽，正文 13px 级 / 标题 23px 级 / 数字 28px 级） ===== */
+/* ===== 手机内排版比例 =====
+   ⚠️ 字号只允许取这 6 级（改这里之前先看 docs/UI排版规范.md）：
+     32 主视觉(ht-hero) / 23 页面大标题(ht) / 17 区块标题+大数字(ov)
+     13.5 正文(bn/bnn) / 12.5 强调按钮 / 11 辅助(bm/bnt) / 10 英文标签(ol/ol…)
+   历史问题：曾有 15 种字号、9~11.5px 挤了六级（相邻只差 0.5px），
+   肉眼分不出层级 → 又"糊"又"乱"。收敛后级间至少差 2px。
+   #uitest 只校验上限（.ht≤26 / .ht-hero≤36 / .ov≤22 / .st≤17 / .an-t≤17 / .rn≤17 / .ba≤16），
+   所以放大字号是安全的，但**不要超过这些上限**。 */
 .app .an{padding:50px 16px 12px}
-.app .an-t{font-size:15.5px}
-.app .an-b{font-size:11px;padding:6px 13px}
-.app .ab{padding:16px 18px 22px}
-.app .hs{padding:14px 0 16px}
+.app .an-t{font-size:17px}
+.app .an-b{font-size:12px;padding:6px 14px}
+.app .ab{padding:20px 16px 24px}
+.app .hs{padding:16px 0 20px}
 .app .ht{font-size:23px;letter-spacing:-0.8px;line-height:1.15}
 /* 主视觉标题：要的就是冲击力（首屏 slogan / 关键大数字允许超出正文阶梯） */
-.app .ht-hero{font-size:34px;letter-spacing:-1.6px;line-height:1.06;font-weight:700}
+.app .ht-hero{font-size:32px;letter-spacing:-1.4px;line-height:1.06;font-weight:700}
 .app .ht-hero span{color:var(--g300)}
-.app .hl{font-size:9.5px;letter-spacing:2.6px}
-.app .btn{font-size:12.5px;padding:13px 15px;gap:6px}
-.app .abb{padding:12px 16px 22px}
+.app .hl{font-size:10px;letter-spacing:1.4px}
+.app .btn{font-size:13px;padding:12px 16px;gap:6px}
+.app .abb{padding:12px 16px 20px}
 .app .abb .btn{padding:12px 8px}
-.app .st{font-size:15px}
-.app .sc{font-size:9.5px}
-.app .sh{margin-bottom:12px;padding-bottom:9px}
-.app .rc{padding:14px;border-radius:16px}
-.app .rn{font-size:15.5px}
-.app .rco{font-size:13.5px;letter-spacing:2px}
-.app .rco small{font-size:7px;letter-spacing:1px}
+.app .st{font-size:17px}
+.app .sc{font-size:10px}
+.app .sh{margin-bottom:12px;padding-bottom:8px}
+.app .rc{padding:16px;border-radius:16px}
+.app .rn{font-size:17px}
+.app .rco{font-size:17px;letter-spacing:2px}
+.app .rco small{font-size:10px;letter-spacing:1px}
 .app .rs{justify-content:space-between;gap:12px}
-.app .rsv{font-size:14.5px}
-.app .rsl{font-size:9.5px}
-.app .og{border-radius:14px;margin-bottom:18px}
-.app .oi{padding:13px 14px}
-.app .ol{font-size:9px;letter-spacing:1.4px}
-.app .ov{font-size:19px;letter-spacing:-0.5px}
-.app .ov.sm{font-size:14.5px}
-.app .mname{font-size:11.5px;padding:5px 12px}
-.app .br{padding:11px 0}
-.app .bi{width:36px;height:36px;font-size:16px;margin-right:10px;border-radius:10px}
-.app .bn{font-size:13.5px}
-.app .bm{font-size:9.5px}
-.app .ba{font-size:14px}
-.app .bd{width:26px;height:26px;font-size:11px}
-.app .bbw{margin-bottom:14px}
+.app .rsv{font-size:17px}
+.app .rsl{font-size:10px}
+.app .og{border-radius:16px;margin-bottom:16px}
+.app .oi{padding:16px}
+.app .ol{font-size:10px;letter-spacing:1.4px}
+.app .ov{font-size:22px;letter-spacing:-0.8px}
+.app .ov.sm{font-size:17px}
+.app .mname{font-size:13px;padding:6px 13px}
+.app .br{padding:12px 0}
+.app .bi{width:36px;height:36px;font-size:17px;margin-right:12px;border-radius:10px}
+.app .bn{font-size:13px}
+.app .bm{font-size:11px}
+.app .ba{font-size:16px}
+.app .bd{width:26px;height:26px;font-size:12px}
+.app .bbw{margin-bottom:16px}
 .app .bl{font-size:10px;letter-spacing:1.4px}
 .app .bnum{font-size:11px}
-.app .bnum strong{font-size:15.5px}
-.app .bal{font-size:10.5px;padding:9px 12px;border-radius:10px}
-.app .amb{padding:16px;border-radius:16px;margin-bottom:14px}
+.app .bnum strong{font-size:17px}
+.app .bal{font-size:11px;padding:9px 12px;border-radius:10px}
+.app .amb{padding:16px;border-radius:16px;margin-bottom:16px}
 .app .aml{font-size:10px;letter-spacing:1.4px}
-.app .acu{font-size:16px}
+.app .acu{font-size:17px}
 .app .ain{font-size:28px;letter-spacing:-0.8px}
-.app .fl{font-size:10px;letter-spacing:1.4px}
-.app .fi{font-size:13px;height:42px;padding:0 13px}
-.app .pi{font-size:11.5px;padding:8px 14px}
-.app .shm{padding:16px 0 14px}
+.app .fl{font-size:11px;letter-spacing:1.2px}
+.app .fi{font-size:13px;height:42px;padding:0 12px}
+.app .pi{font-size:13px;padding:8px 14px}
+.app .shm{padding:16px 0 16px}
 .app .svm{font-size:31px;letter-spacing:-1.4px}
-.app .bnn{font-size:13.5px}
-.app .bnt{font-size:9.5px}
-.app .bam{font-size:14.5px}
-.app .tsm{width:26px;height:26px;font-size:10px;margin-right:10px}
-.app .tnm{font-size:12.5px}
-.app .tam{font-size:12.5px}
-.app .mt{font-size:16px}
-.app .mhd{padding:14px 18px 11px}
-.app .mb{padding:0 18px 20px}
-.app .ct{font-size:15px}
-.app .cd{font-size:11.5px}
-.app .ci{font-size:26px}
-.app .cbs .btn{font-size:12.5px}
+.app .bnn{font-size:13px}
+.app .bnt{font-size:11px}
+.app .bam{font-size:17px}
+.app .tsm{width:26px;height:26px;font-size:10px;margin-right:12px}
+.app .tnm{font-size:13px}
+.app .tam{font-size:13px}
+.app .mt{font-size:17px}
+.app .mhd{padding:16px 16px 12px}
+.app .mb{padding:0 16px 20px}
+.app .ct{font-size:17px}
+.app .cd{font-size:11px}
+.app .ci{font-size:28px}
+.app .cbs .btn{font-size:13px}
 .app .spc{border-radius:10px}
-.app .ss{font-size:10.5px}
-.app .cti{font-size:18px}
-.app .ctl{font-size:8.5px}
-.app .cai{font-size:30px}
-.app .cat{font-size:11.5px}
-.app .os{font-size:9.5px;padding:9px 12px}
-.app .ord{font-size:13.5px}
-.app .ora{font-size:14.5px}
-.app .orm{font-size:9.5px}
-.app .orb{font-size:8.5px;padding:2px 7px}
-.app .oc{font-size:8.5px}
-.app .mbi{padding:14px;border-radius:12px}
+.app .ss{font-size:11px}
+.app .cti{font-size:17px}
+.app .ctl{font-size:10px}
+.app .cai{font-size:28px}
+.app .cat{font-size:11px}
+.app .os{font-size:11px;padding:8px 12px}
+.app .ord{font-size:13px}
+.app .ora{font-size:17px}
+.app .orm{font-size:11px}
+.app .orb{font-size:10px;padding:2px 8px}
+.app .oc{font-size:10px}
+.app .mbi{padding:16px;border-radius:12px}
 .app .mbt{font-size:13px}
-.app .mbs{font-size:9.5px}
-.app .mbr{font-size:10.5px}
+.app .mbs{font-size:11px}
+.app .mbr{font-size:11px}
 .app .mbr.tot{font-size:13px}
 .app .em{padding:30px 16px}
 .app .ei{font-size:32px}
-.app .et{font-size:12.5px}
-.app .es{font-size:9.5px}
-.app .toast{font-size:11.5px;padding:10px 20px}
+.app .et{font-size:13px}
+.app .es{font-size:11px}
+.app .toast{font-size:12px;padding:10px 20px}
 </style>
 </head>
 <body>
 <div class="bg"></div>
 <div class="wrap">
   <div class="hdr">
-    <div><h1>✈️ TravelAA · 多人实时联动演示</h1><p id="hdrSub">每个手机 = 一个真实用户 · 操作实时同步 · 展示多人AA完整流程</p></div>
-    <div class="hdr-r">
-      <span class="cb" id="engineBadge">🔌 检测中…</span>
-      <button class="cb" onclick="runSelfTest()">🩺 自检</button>
-      <button class="cb" onclick="startTour()">🎬 导览</button>
-      <button class="cb" onclick="removePhone()">−</button>
-      <button class="cb act">📱 <span id="phoneCountLabel">1</span>人</button>
-      <button class="cb" id="addPhoneBtn" onclick="addPhone()">＋</button>
-      <button class="cb" onclick="resetAll()">🔄 重置</button>
-      <button class="cb pr" onclick="autoDemo()">▶ 自动演示</button>
+    <div class="hdr-l">
+      <h1>✈️ TravelAA · 多人实时联动演示</h1>
+      <p id="hdrSub">每个手机 = 一个真实用户 · 操作实时同步 · 展示多人AA完整流程</p>
     </div>
   </div>
+  <div class="tbar">
+    <span class="cb dot" id="engineBadge" onclick="probeEngine()" title="AI 通道状态（点击重新探测）">🔌 离线模式</span>
+    <span class="tsep"></span>
+    <span class="stepper">
+      <i onclick="removePhone()" title="减少一台手机">−</i>
+      <b><span id="phoneCountLabel">1</span> 人</b>
+      <i onclick="addPhone()" id="addPhoneBtn" title="增加一台手机">＋</i>
+    </span>
+    <span class="tsep"></span>
+    <button class="cb" onclick="runSelfTest()">🩺 自检</button>
+    <button class="cb" onclick="startTour()">🎬 导览</button>
+    <button class="cb" onclick="resetAll()">🔄 重置</button>
+    <button class="cb pr" onclick="autoDemo()">▶ 自动演示</button>
+  </div>
   <div class="stage" id="phonesStage"></div>
+  <div class="fh" id="hintBar">💡 点工具栏 <b>＋</b> 加到 3~4 台手机（每台 = 一个真实用户）· 所有手机实时同步</div>
 </div>
-<div class="fh">💡 这是<b>多人 AA</b>演示：点工具栏 <b>＋</b> 加到 3~4 台手机（每台 = 一个真实用户）· 所有手机实时同步 · 或点 <b>▶ 自动演示</b> 看完整流程</div>
 
 <!-- 共享算法内核（与小程序、服务端同一份代码，UMD 三端复用；纯本地计算，无网络依赖） -->
 <script src="../apps/miniprogram/utils/ai.js"></script>
@@ -465,11 +499,13 @@ function renderEngineBadge() {
   var el = document.getElementById('engineBadge');
   if (!el) return;
   if (engineInfo.online) {
-    el.className = 'cb act';
-    el.textContent = '☁️ AI 已连接 · ' + engineInfo.model;
+    el.className = 'cb dot act';
+    el.textContent = '☁️ AI 已连接';
+    el.title = '已连接后端 AI 通道 · ' + engineInfo.model + '（点击重新探测）';
   } else {
-    el.className = 'cb';
-    el.textContent = '🔌 离线模式 · 本地规则引擎';
+    el.className = 'cb dot';
+    el.textContent = '🔌 离线模式';
+    el.title = '未连接后端，使用本地规则引擎（功能完整可用）· 点击重新探测';
   }
 }
 
@@ -566,7 +602,7 @@ function renderRoomDetail(userId,roomId){
   var bills=State.bills.filter(function(b){return b.roomId===roomId});
   var totalSpent=roomTotalCNY(roomId);
   var hasForeign=bills.some(function(b){return b.currency&&b.currency!=='CNY'});
-  var html='<div class="hs" style="padding:8px 0 14px;"><div class="hl">ROOM DETAIL</div><div class="ht">'+esc(room.name)+'</div></div>';
+  var html='<div class="hs" style="padding:8px 0 16px;"><div class="hl">ROOM DETAIL</div><div class="ht">'+esc(room.name)+'</div></div>';
   var totalBudget=(room.budgetPerPerson||0)*room.members.length;
   if(totalBudget>0){
     var bs=AI?AI.budgetStatus(bills,room.members,totalBudget,{room:room}):null;
@@ -608,7 +644,7 @@ function renderRoomDetail(userId,roomId){
       html+='<div class="mbt">🧾 这笔谁该摊？</div>';
       html+='<div class="mbs">'+esc(bill.description||'消费')+' · '+curSym(bill.currency)+money(bill.amount)+
         ' · '+esc(bill.payerName||'')+'垫付'+(bill.currency!=='CNY'?'（≈¥'+money(bill.cnyAmount)+'）':'')+'</div>';
-      html+='<div style="margin-top:10px;font-size:10.5px;color:var(--g500);line-height:1.6;">点名字把他移出/加回分摊，剩余的人自动重新等分。原账单保留，只追加一张调整单。</div>';
+      html+='<div style="margin-top:10px;font-size:11px;color:var(--g500);line-height:1.6;">点名字把他移出/加回分摊，剩余的人自动重新等分。原账单保留，只追加一张调整单。</div>';
       html+='<div class="pm" style="margin-top:10px;">';
       room.members.forEach(function(m){
         var on=keep.indexOf(m.id)>=0;
@@ -622,7 +658,7 @@ function renderRoomDetail(userId,roomId){
         html+='<div class="mbr"><span>'+esc(m?m.name:id)+'</span><span>'+curSym(bill.currency)+money(parts[i]||0)+'</span></div>';
       });
       html+='</div>';
-      html+='<div style="display:flex;gap:8px;margin-top:14px;">';
+      html+='<div style="display:flex;gap:8px;margin-top:16px;">';
       html+='<button class="btn lt" style="flex:1;" onclick="bdClose(\''+userId+'\')">取消</button>';
       html+='<button class="btn dk" style="flex:1.4;" onclick="bdApply(\''+userId+'\')">应用调整</button>';
       html+='</div></div>';
@@ -644,8 +680,8 @@ function renderRoomDetail(userId,roomId){
     var amountHtml='¥'+money(b.amount,0);
     if(b.currency&&b.currency!=='CNY')amountHtml=b.currency+' '+money(b.amount,0)+'<div style="font-size:9px;color:var(--g400);font-weight:500;">≈¥'+money(b.cnyAmount,0)+'</div>';
     var isP=(b.scope||(b.splitType==='sole'?'personal':'group'))==='personal';
-    var tag=isP?'<span style="display:inline-block;margin-left:5px;padding:1px 6px;border-radius:100px;background:var(--g100);color:var(--g500);font-size:8.5px;font-weight:600;vertical-align:middle;">私账</span>':'';
-    var adjTag=b.isAdjustment?'<span style="display:inline-block;margin-left:5px;padding:1px 6px;border-radius:100px;background:var(--amb-bg);color:var(--amb);font-size:8.5px;font-weight:600;vertical-align:middle;">调整单</span>':'';
+    var tag=isP?'<span style="display:inline-block;margin-left:4px;padding:1px 6px;border-radius:100px;background:var(--g100);color:var(--g500);font-size:10px;font-weight:600;vertical-align:middle;">私账</span>':'';
+    var adjTag=b.isAdjustment?'<span style="display:inline-block;margin-left:4px;padding:1px 6px;border-radius:100px;background:var(--amb-bg);color:var(--amb);font-size:10px;font-weight:600;vertical-align:middle;">调整单</span>':'';
     /* 账单行整行可点 → 打开账单详情（在那儿做「谁该摊这笔」= 多退少补） */
     html+='<div class="br" style="cursor:pointer;" onclick="openBillDetail(\''+userId+'\',\''+b.id+'\')"><div class="bi">'+getCatIcon2(b.category)+'</div><div class="bin"><div class="bn">'+esc(b.description)+tag+adjTag+'</div><div class="bm">'+esc(b.payerName)+' · '+(b.timeStr||'刚刚')+' · '+sourceLabel(b.source)+'</div></div><div class="ba">'+amountHtml+'</div><div class="bd" onclick="event.stopPropagation();askDeleteBill(\''+userId+'\',\''+b.id+'\',\''+esc(b.description)+'\')">✕</div></div>';
   });}
@@ -717,7 +753,7 @@ function renderStats(userId,roomId){
   var total=bills.reduce(function(s,b){return s+billCNY(b)},0);
   var me=USERS.filter(function(x){return x.id===userId})[0];
   var myP=AI&&AI.personalSpend?AI.personalSpend(allBills,userId):{total:0,count:0,list:[]};
-  var html='<div class="hs" style="padding:8px 0 14px;"><div class="hl">SPENDING REPORT</div><div class="ht">消费统计</div><div style="font-size:10.5px;color:var(--g400);margin-top:4px;">'+esc(scopeName)+'</div></div>';
+  var html='<div class="hs" style="padding:8px 0 16px;"><div class="hl">SPENDING REPORT</div><div class="ht">消费统计</div><div style="font-size:11px;color:var(--g400);margin-top:4px;">'+esc(scopeName)+'</div></div>';
   html+='<div class="og"><div class="oi"><div class="ol">TOTAL / 集体账</div><div class="ov">¥'+money(total,0)+'</div></div><div class="oi"><div class="ol">BILLS / 笔数</div><div class="ov sm">'+bills.length+'</div></div></div>';
 
   /* ---- 我的私账（人情账）：不进 AA 的零碎钱，只有本人可见 ---- */
@@ -728,7 +764,7 @@ function renderStats(userId,roomId){
     html+='<div style="font-size:10px;letter-spacing:1.6px;color:rgba(255,255,255,.45);">'+(me?esc(me.name):'我')+' 自己花的</div>';
     html+='<div style="font-family:Space Grotesk,sans-serif;font-size:26px;font-weight:700;letter-spacing:-1px;margin-top:4px;">¥'+money(myP.total)+'</div>';
     html+='<div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:6px;">'+myP.count+' 笔零碎 · 不进 AA、不影响别人</div>';
-    html+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.12);font-size:11px;color:rgba(255,255,255,.8);">这次旅行我总共花了　<b style="font-size:15px;">¥'+money(allIn)+'</b><br><span style="color:rgba(255,255,255,.5);font-size:10px;">= 集体账分摊后的个人部分 + 私账</span></div>';
+    html+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.12);font-size:11px;color:rgba(255,255,255,.8);">这次旅行我总共花了　<b style="font-size:17px;">¥'+money(allIn)+'</b><br><span style="color:rgba(255,255,255,.5);font-size:10px;">= 集体账分摊后的个人部分 + 私账</span></div>';
     html+='</div>';
     html+='<div style="margin-top:10px;font-size:10px;color:var(--g400);line-height:1.6;">明细：';
     myP.list.slice(-6).forEach(function(b){html+='「'+esc(b.description)+'」'+curSym(b.currency)+money(b.amount,0)+'　';});
@@ -742,7 +778,7 @@ function renderStats(userId,roomId){
   html+='<div class="sh"><div class="st">分类占比</div><div class="sc">BY CATEGORY</div></div>';
   catList.forEach(function(c){
     var pct=total>0?c.amount/total*100:0;
-    html+='<div style="margin-bottom:14px;"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;"><div style="font-family:Space Grotesk,sans-serif;font-size:13px;font-weight:600;">'+catLabel(c.cat)+'</div><div style="font-family:Space Grotesk,sans-serif;font-size:13px;font-weight:700;">¥'+money(c.amount,0)+' <span style="font-size:10px;color:var(--g400);font-weight:500;">'+pct.toFixed(1)+'%</span></div></div><div class="bbg" style="height:6px;"><div class="bf" style="width:'+pct+'%;background:#18181b;"></div></div></div>';
+    html+='<div style="margin-bottom:16px;"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;"><div style="font-family:Space Grotesk,sans-serif;font-size:13px;font-weight:600;">'+catLabel(c.cat)+'</div><div style="font-family:Space Grotesk,sans-serif;font-size:13px;font-weight:700;">¥'+money(c.amount,0)+' <span style="font-size:10px;color:var(--g400);font-weight:500;">'+pct.toFixed(1)+'%</span></div></div><div class="bbg" style="height:6px;"><div class="bf" style="width:'+pct+'%;background:#18181b;"></div></div></div>';
   });
 
   if(AI){
@@ -750,7 +786,7 @@ function renderStats(userId,roomId){
     var d=AI.dailyStats(bills);
     if(d.days&&d.days.length){
       var trendLabel=d.trend==='up'?'📈 越花越多':d.trend==='down'?'📉 越花越省':'➡️ 比较平稳';
-      html+='<div class="sh" style="margin-top:18px;"><div class="st">每日消费</div><div class="sc">'+trendLabel+'</div></div>';
+      html+='<div class="sh" style="margin-top:16px;"><div class="st">每日消费</div><div class="sc">'+trendLabel+'</div></div>';
       html+='<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--g500);margin-bottom:10px;"><span>日均 ¥'+money(d.dailyAvg,0)+'</span>'+(d.maxDay?('<span>最贵 '+d.maxDay.date.slice(5)+' · ¥'+money(d.maxDay.total,0)+'</span>'):'')+'</div>';
       var maxTotal=d.maxDay?d.maxDay.total:0;
       d.days.forEach(function(day){
@@ -761,7 +797,7 @@ function renderStats(userId,roomId){
     /* AI 消费洞察 */
     if(room){
       var insight=AI.generateInsight({room:room,bills:bills,members:room.members});
-      html+='<div class="sh" style="margin-top:18px;"><div class="st">AI 消费洞察</div><div class="sc">INSIGHT</div></div>';
+      html+='<div class="sh" style="margin-top:16px;"><div class="st">AI 消费洞察</div><div class="sc">INSIGHT</div></div>';
       html+='<div class="mbi" style="margin-bottom:10px;"><div style="font-size:12px;line-height:1.7;">'+esc(insight.summary)+'</div></div>';
       (insight.tips||[]).slice(0,3).forEach(function(t){
         html+='<div style="font-size:11px;color:var(--g500);padding:7px 0;border-bottom:1px solid var(--g100);">💡 '+esc(t)+'</div>';
@@ -771,7 +807,7 @@ function renderStats(userId,roomId){
 
   /* 入账方式统计 */
   var bySrc={};bills.forEach(function(b){var s=b.source||'manual';bySrc[s]=(bySrc[s]||0)+1;});
-  html+='<div class="sh" style="margin-top:18px;"><div class="st">入账方式</div><div class="sc">'+bills.length+' ITEMS</div></div>';
+  html+='<div class="sh" style="margin-top:16px;"><div class="st">入账方式</div><div class="sc">'+bills.length+' ITEMS</div></div>';
   Object.keys(bySrc).forEach(function(s){
     html+='<div class="mbr"><span>'+sourceLabel(s)+'</span><span>'+bySrc[s]+' 笔</span></div>';
   });
@@ -805,7 +841,7 @@ function renderAddBill(userId,roomId){
   html+='<input class="fi" placeholder="如：打车去机场86块，我垫的，和小红平分" value="'+esc(aiText)+'" oninput="updateAiText(\''+userId+'\',this.value)" onkeydown="aiKeydown(event,\''+userId+'\')">';
   html+='<div style="display:flex;gap:6px;margin-top:10px;">';
   html+='<button class="btn lt" style="flex:.85;font-size:11px;padding:12px 6px;white-space:nowrap;" onclick="startVoiceInput(\''+userId+'\')">'+(u._listening?'🎙️ 聆听中':'🎙️ 语音')+'</button>';
-  html+='<button class="btn dk" data-act="ai-parse" style="flex:1.5;font-size:11.5px;padding:12px 6px;white-space:nowrap;" onclick="aiParseBill(\''+userId+'\')">🤖 智能填表</button>';
+  html+='<button class="btn dk" data-act="ai-parse" style="flex:1.5;font-size:12px;padding:12px 6px;white-space:nowrap;" onclick="aiParseBill(\''+userId+'\')">🤖 智能填表</button>';
   html+='<button class="btn lt" style="flex:.85;font-size:11px;padding:12px 6px;white-space:nowrap;" onclick="aiUseSample(\''+userId+'\')">💡 例子</button>';
   html+='</div>';
   if(ai&&ai.parsed){
@@ -820,7 +856,7 @@ function renderAddBill(userId,roomId){
   /* ---- ② 金额（唯一的必填项） ---- */
   html+='<div class="amb"><div class="aml">多少钱 / AMOUNT</div><div class="air"><span class="acu">'+curSym(form.currency)+'</span><input class="ain" type="text" placeholder="0.00" value="'+esc(form.amount)+'" oninput="updateForm(\''+userId+'\',\'amount\',this.value)"></div>';
   if(form.currency!=='CNY'){
-    html+='<div style="margin-top:8px;font-size:10.5px;color:var(--g400);">≈ ¥'+money((Number(form.amount)||0)*rateOf(form.currency))+'（按记账时汇率 '+rateOf(form.currency)+' 快照）</div>';
+    html+='<div style="margin-top:8px;font-size:11px;color:var(--g400);">≈ ¥'+money((Number(form.amount)||0)*rateOf(form.currency))+'（按记账时汇率 '+rateOf(form.currency)+' 快照）</div>';
   }
   html+='</div>';
 
@@ -833,7 +869,7 @@ function renderAddBill(userId,roomId){
   html+='<div class="pi '+(!isPersonal?'act':'')+'" onclick="setOwnership(\''+userId+'\',\'aa\')">👥 大家 AA</div>';
   html+='<div class="pi '+(isPersonal?'act':'')+'" onclick="setOwnership(\''+userId+'\',\'personal\')">🙋 我的私账</div>';
   html+='</div>';
-  html+='<div style="margin-top:8px;font-size:10.5px;color:var(--g400);line-height:1.6;">'+
+  html+='<div style="margin-top:8px;font-size:11px;color:var(--g400);line-height:1.6;">'+
     (isPersonal
       ? '🙋 <b style="color:var(--g500);">私账</b>：只有你花钱、只有你看得到小计，<b style="color:var(--g500);">不进 AA、不影响别人</b>，但会累计到你的「我花了多少」。'
       : '👥 <b style="color:var(--g500);">AA</b>：按下面的分摊方式计入集体账，结算时互相找补。')+
@@ -852,7 +888,7 @@ function renderAddBill(userId,roomId){
     (adv?'▲ 收起更多选项':'▼ 更多选项（分类 · 分摊方式 · 币种 · 抹零）')+'</button>';
 
   if(adv){
-    html+='<div class="fg" style="margin-top:14px;"><div class="fl">消费分类</div><div class="pm">';
+    html+='<div class="fg" style="margin-top:16px;"><div class="fl">消费分类</div><div class="pm">';
     CATS.forEach(function(c){
       html+='<div class="pi '+(form.category===c[0]?'act':'')+'" onclick="updateForm(\''+userId+'\',\'category\',\''+c[0]+'\');renderApp(USERS.find(function(u){return u.id==\''+userId+'\'}))">'+c[1]+'</div>';
     });
@@ -880,9 +916,9 @@ function renderAddBill(userId,roomId){
     if(rnd&&rnd.changed){
       html+='<button class="btn lt" style="width:100%;font-size:12px;padding:12px;" onclick="roundAmount(\''+userId+'\')">✨ 凑成 '+curSym(form.currency)+rnd.rounded+'（差额 '+(rnd.loss>0?'+':'')+money(rnd.loss)+' 记进损耗）</button>';
     }else if(Number(form.amount)>0){
-      html+='<div style="font-size:10.5px;color:var(--grn);">✅ '+curSym(form.currency)+form.amount+' 已经是顺手整数，不用凑</div>';
+      html+='<div style="font-size:11px;color:var(--grn);">✅ '+curSym(form.currency)+form.amount+' 已经是顺手整数，不用凑</div>';
     }else{
-      html+='<div style="font-size:10.5px;color:var(--g400);">填了金额后，可一键凑成 '+AI.roundStepOf(form.currency)+' 的整数倍</div>';
+      html+='<div style="font-size:11px;color:var(--g400);">填了金额后，可一键凑成 '+AI.roundStepOf(form.currency)+' 的整数倍</div>';
     }
     html+='</div>';
   }
@@ -1010,7 +1046,7 @@ function renderCapture(userId,roomId){
       html+='</div>';
     }
   }else if(st.step==='scanning'){
-    html+='<div class="sp"><div class="sl"></div><div class="spc"><div style="text-align:center;padding:20px;"><div style="font-size:26px;margin-bottom:8px;">🔍</div><div style="font-family:Space Grotesk;font-size:11.5px;color:var(--g400);">正在智能识别账单...</div></div></div></div><div class="ss">⏳ AI识别中 · '+MOCK_OCR[st.billType].source+'</div>';
+    html+='<div class="sp"><div class="sl"></div><div class="spc"><div style="text-align:center;padding:20px;"><div style="font-size:26px;margin-bottom:8px;">🔍</div><div style="font-family:Space Grotesk;font-size:12px;color:var(--g400);">正在智能识别账单...</div></div></div></div><div class="ss">⏳ AI识别中 · '+MOCK_OCR[st.billType].source+'</div>';
   }else if(st.step==='results'){
     var md2=MOCK_OCR[st.billType];
     html+='<div class="os"><span>🤖</span><span>AI识别完成 · '+md2.source+'</span></div>';
@@ -1064,7 +1100,7 @@ function captureTab(userId,tab){
 function renderOrderTab(userId,roomId,st){
   var html='';
   html+='<div class="os"><span>🧳</span><span>粘贴携程订单确认短信/邮件，自动变成 AA 账单</span></div>';
-  html+='<div class="fl" style="margin-bottom:8px;">试试内置订单</div><div class="pm" style="margin-bottom:14px;">';
+  html+='<div class="fl" style="margin-bottom:8px;">试试内置订单</div><div class="pm" style="margin-bottom:16px;">';
   var samples=(CTRIP&&CTRIP.CTrip_SAMPLES)||[];
   samples.forEach(function(s,i){
     html+='<div class="pi" onclick="orderUseSample(\''+userId+'\','+i+')">'+s.label+'</div>';
@@ -1079,7 +1115,7 @@ function renderOrderTab(userId,roomId,st){
   /* ---- 订单截图识别（会看）---- */
   var vs = window.VISION_SAMPLES || null;
   if (vs) {
-    html += '<div class="fl" style="margin:18px 0 8px;">订单截图识别 / SCREENSHOT</div>';
+    html += '<div class="fl" style="margin:16px 0 8px;">订单截图识别 / SCREENSHOT</div>';
     html += '<div class="mbi" style="text-align:center;">';
     html += '<img src="' + (vs.hotel || '') + '" alt="携程酒店订单截图样例" style="width:100%;border-radius:10px;border:1px solid var(--g200);display:block;">';
     html += '<div style="font-family:Space Grotesk,sans-serif;font-size:9px;color:var(--g400);margin-top:8px;">内置样例：携程酒店订单截图</div>';
@@ -1103,7 +1139,7 @@ function renderOrderTab(userId,roomId,st){
 
   var orders=st.orders;
   if(orders&&orders.length){
-    html+='<div class="fl" style="margin:18px 0 10px;">识别到 '+orders.length+' 笔订单，选择要入账的</div><div class="ors">';
+    html+='<div class="fl" style="margin:16px 0 10px;">识别到 '+orders.length+' 笔订单，选择要入账的</div><div class="ors">';
     orders.forEach(function(o,i){
       var sel=st.orderSel&&st.orderSel.has(i);
       html+='<div class="orc '+(sel?'sel':'')+'" onclick="orderToggle(\''+userId+'\','+i+')">';
@@ -1250,11 +1286,11 @@ function renderSettle(userId,roomId){
     var label=b.amount>=0?'应收到此金额':'需支付此金额';
     html+='<div class="brm"><div class="bin2"><div class="bnn">'+esc(b.name)+'</div><div class="bnt">'+label+'</div></div><div class="bam '+(b.amount>=0?'pos':'neg')+'">'+sign+'¥'+money(Math.abs(b.amount))+'</div></div>';
   });
-  html+='<div class="sh" style="margin-top:18px;"><div class="st">最简转账</div><div class="sc">'+settlement.transfers.length+' STEPS</div></div>';
+  html+='<div class="sh" style="margin-top:16px;"><div class="st">最简转账</div><div class="sc">'+settlement.transfers.length+' STEPS</div></div>';
   settlement.transfers.forEach(function(t,i){
     html+='<div class="trm"><div class="tsm">'+(i+1)+'</div><div class="ttm"><div class="tnm">'+esc(t.fromName)+'</div><div class="tam">→ ¥'+money(t.amount)+' →</div><div class="tnm">'+esc(t.toName)+'</div></div></div>';
   });
-  if(settlement.transfers.length>0)html+='<div style="margin-top:18px;display:flex;gap:8px;"><button class="btn lt" style="flex:1;" onclick="copySettle(\''+userId+'\',\''+roomId+'\')">📋 复制方案</button><button class="btn dk" style="flex:1;" onclick="copyReport(\''+userId+'\',\''+roomId+'\')">📄 旅行报告</button></div>';
+  if(settlement.transfers.length>0)html+='<div style="margin-top:16px;display:flex;gap:8px;"><button class="btn lt" style="flex:1;" onclick="copySettle(\''+userId+'\',\''+roomId+'\')">📋 复制方案</button><button class="btn dk" style="flex:1;" onclick="copyReport(\''+userId+'\',\''+roomId+'\')">📄 旅行报告</button></div>';
 
   /* ---- 结算前置校验：还有几笔没记清（口头占位/缺金额） ---- */
   if(AI&&AI.settlementReadiness){
@@ -1262,9 +1298,9 @@ function renderSettle(userId,roomId){
     var adjCount=bills.filter(function(b){return b.isAdjustment}).length;
     var adjNote=adjCount?('含 '+adjCount+' 笔调整单（多退少补 / 暂估改价），已按调整后份额结算'):'';
     if(!ready.ready){
-      html+='<div class="os" style="margin-top:14px;border-color:var(--amb);color:var(--amb);">⚠️ '+esc(ready.message)+(adjNote?' · '+adjNote:'')+'</div>';
+      html+='<div class="os" style="margin-top:16px;border-color:var(--amb);color:var(--amb);">⚠️ '+esc(ready.message)+(adjNote?' · '+adjNote:'')+'</div>';
     }else if(adjCount){
-      html+='<div class="os" style="margin-top:14px;">🧾 '+adjNote+'</div>';
+      html+='<div class="os" style="margin-top:16px;">🧾 '+adjNote+'</div>';
     }
   }
 
@@ -1273,11 +1309,11 @@ function renderSettle(userId,roomId){
     html+='<div class="sh" style="margin-top:20px;"><div class="st">结清卡片</div><div class="sc">SHARE CARD</div></div>';
     var card=AI.shareCardData({room:room,bills:bills,members:room.members});
     html+='<div class="mbi" style="background:#18181b;color:#fff;border:none;">';
-    html+='<div style="font-family:Space Grotesk,sans-serif;font-size:15px;font-weight:700;">✈️ '+esc(card.headline)+'</div>';
+    html+='<div style="font-family:Space Grotesk,sans-serif;font-size:17px;font-weight:700;">✈️ '+esc(card.headline)+'</div>';
     html+='<div style="margin-top:10px;display:flex;gap:18px;">';
-    html+='<div><div style="font-size:9px;letter-spacing:1.6px;color:rgba(255,255,255,.45);">总消费</div><div style="font-family:Space Grotesk,sans-serif;font-size:19px;font-weight:700;">¥'+money(card.total)+'</div></div>';
-    html+='<div><div style="font-size:9px;letter-spacing:1.6px;color:rgba(255,255,255,.45);">人均</div><div style="font-family:Space Grotesk,sans-serif;font-size:19px;font-weight:700;">¥'+money(card.perPerson)+'</div></div>';
-    html+='<div><div style="font-size:9px;letter-spacing:1.6px;color:rgba(255,255,255,.45);">账单</div><div style="font-family:Space Grotesk,sans-serif;font-size:19px;font-weight:700;">'+card.billCount+'</div></div>';
+    html+='<div><div style="font-size:9px;letter-spacing:1.6px;color:rgba(255,255,255,.45);">总消费</div><div style="font-family:Space Grotesk,sans-serif;font-size:17px;font-weight:700;">¥'+money(card.total)+'</div></div>';
+    html+='<div><div style="font-size:9px;letter-spacing:1.6px;color:rgba(255,255,255,.45);">人均</div><div style="font-family:Space Grotesk,sans-serif;font-size:17px;font-weight:700;">¥'+money(card.perPerson)+'</div></div>';
+    html+='<div><div style="font-size:9px;letter-spacing:1.6px;color:rgba(255,255,255,.45);">账单</div><div style="font-family:Space Grotesk,sans-serif;font-size:17px;font-weight:700;">'+card.billCount+'</div></div>';
     html+='</div>';
     if(card.topCategories.length){
       html+='<div style="margin-top:12px;font-size:11px;color:rgba(255,255,255,.7);line-height:1.7;">';
@@ -1291,7 +1327,7 @@ function renderSettle(userId,roomId){
   /* ---- 礼貌催账话术 ---- */
   if(AI&&AI.politeReminder&&settlement.transfers.length>0){
     var t0=settlement.transfers[0];
-    html+='<div style="margin-top:10px;font-size:10.5px;color:var(--g400);line-height:1.6;">💬 不敢开口催账？一键生成不尴尬的说法</div>';
+    html+='<div style="margin-top:10px;font-size:11px;color:var(--g400);line-height:1.6;">💬 不敢开口催账？一键生成不尴尬的说法</div>';
     html+='<button class="btn lt" style="width:100%;margin-top:6px;" onclick="copyReminder(\''+userId+'\',\''+roomId+'\')">💬 生成礼貌催账话术</button>';
   }
 
@@ -1431,7 +1467,7 @@ function phoneGoHome(userId){
 function emBack(msg,userId){
   return '<div class="em"><div class="ei">🧭</div><div class="et">'+esc(msg)+'</div>'+
     '<div class="es">房间可能已被重置</div>'+
-    '<button class="btn dk" style="margin-top:18px;" onclick="phoneGoHome(\''+userId+'\')">返回首页</button></div>';
+    '<button class="btn dk" style="margin-top:16px;" onclick="phoneGoHome(\''+userId+'\')">返回首页</button></div>';
 }
 function phoneGoAdd(userId,roomId){var user=USERS.find(function(u){return u.id===userId});if(!user)return;user._page='add';user._roomId=roomId;user._form={amount:'',desc:'',category:'food',payer:userId,splitType:'equal',currency:'CNY'};user._aiText='';user._ai=null;renderApp(user)}
 function phoneGoSettle(userId,roomId){var user=USERS.find(function(u){return u.id===userId});if(!user)return;user._page='settle';user._roomId=roomId;user._form=null;renderApp(user)}
@@ -1723,7 +1759,7 @@ async function autoDemo() {
    一键导览（演讲者模式）：高亮 + 讲解词，答辩/路演直接照着念
    ============================================================ */
 var TOUR_STEPS = [
-  { sel: '.hdr-r', title: '多机联动演示台', script: '右上角可加减手机：每台手机 = 一个真实用户，操作实时同步。建议先加到 3~4 台，多人 AA 的效果最直观。',
+  { sel: '.tbar', title: '多机联动演示台', script: '工具条的「− 3 人 ＋」是人数步进器：每台手机 = 一个真实用户，操作实时同步。建议先加到 3~4 台，多人 AA 的效果最直观。',
     before: function () { if (State.phoneCount < 3) { State.phoneCount = 3; document.getElementById('phoneCountLabel').textContent = '3'; renderPhones(); } } },
   { sel: '#phonesStage', title: '每台手机就是一个真实用户', script: '每位成员用自己的手机记账，其他手机立刻同步——这正是现实中"垫付分散、事后对不上账"的场景。',
     before: function () { ensureDemoRoom(); } },
@@ -2001,7 +2037,7 @@ function showTestPanel(title, titleKey, checks) {
   }).join('');
   panel.innerHTML = '<div class="test-card"><div class="test-hd"><div class="test-tt">' + title + '</div><div style="font-family:Space Grotesk,sans-serif;font-size:13px;font-weight:700;color:' + (allPass ? 'var(--grn)' : 'var(--red)') + ';">' + passed + ' / ' + checks.length + '</div></div>' +
     '<div class="test-sum">' + (allPass ? '✅ 一切就绪，可以开讲' : '⚠️ 有项目未通过，请检查后再演示') + '</div>' + rows +
-    '<button class="btn dk" style="width:100%;margin-top:18px;" onclick="closeSelfTest()">关闭</button></div>';
+    '<button class="btn dk" style="width:100%;margin-top:16px;" onclick="closeSelfTest()">关闭</button></div>';
   panel.addEventListener('click', function (e) { if (e.target === panel) closeSelfTest(); });
   document.body.appendChild(panel);
   document.title = allPass ? (titleKey + ' ' + passed + '/' + checks.length + ' ALL-PASS') : (titleKey + ' ' + passed + '/' + checks.length + ' FAIL');
