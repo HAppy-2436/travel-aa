@@ -81,7 +81,21 @@ function ok(name, cond, extra) {
   ok('手机舞台挂载点存在', !!stage);
   ok('手机框已渲染', !!d.querySelector('#phone-u1 .pf'), d.querySelectorAll('#phone-u1 .pf').length + ' 个');
   ok('首页内容已渲染（App 容器）', !!d.querySelector('#app-u1 .an'));
-  ok('工具条按钮齐备', d.querySelectorAll('.hdr-r .cb').length >= 6, d.querySelectorAll('.hdr-r .cb').length + ' 个');
+  /* 工具条：新结构为「状态徽标 + 人数步进器 + 操作按钮 + 主行动」
+     —— 断言"关键交互都在"，而不是数按钮个数（结构可演进） */
+  const tbar = d.querySelector('.tbar');
+  ok('工具条存在', !!tbar);
+  ok('工具条：引擎状态徽标', !!d.getElementById('engineBadge'));
+  ok('工具条：人数步进器（−/＋ 与人数合并为一个控件）',
+    !!d.querySelector('.tbar .stepper') && !!d.getElementById('phoneCountLabel'),
+    d.querySelector('.stepper b') ? d.querySelector('.stepper b').textContent.trim() : '');
+  const acts = Array.from(tbar ? tbar.querySelectorAll('.cb') : []).map((b) => b.textContent.trim());
+  ok('工具条：自检入口', acts.some((t) => /自检/.test(t)));
+  ok('工具条：导览入口', acts.some((t) => /导览/.test(t)));
+  ok('工具条：重置入口', acts.some((t) => /重置/.test(t)));
+  ok('工具条：自动演示为唯一主行动（.cb.pr）', !!d.querySelector('.tbar .cb.pr'),
+    (d.querySelector('.tbar .cb.pr') || {}).textContent);
+  ok('工具条不再是 8 个等重按钮（`.cb` 数量 ≤ 5）', acts.length <= 5, acts.length + ' 个按钮');
 
   /* 3. 核心算法在浏览器形态下可用 */
   if (window.AI) {
