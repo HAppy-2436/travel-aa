@@ -384,9 +384,13 @@
    */
   function generateInsight(ctx) {
     var room = ctx.room || {};
-    var bills = ctx.bills || [];
+    // ⚠️ 洞察/报告一律用**人民币口径**，且排除调整单：
+    //    直接用 Number(b.amount) 会把日元账单（如 24000 JPY）当成 24000 元人民币累加，
+    //    曾让统计页显示"合计 ¥46400"（真值 ¥3507.2）。
+    //    调整单 amount 恒为 0 且是零和再分配，计入只会污染均值与占比。
+    var bills = settleableBills(ctx.bills || []).filter(function (b) { return !b.isAdjustment; });
     var members = ctx.members || [];
-    var total = round2(bills.reduce(function (s, b) { return s + (Number(b.amount) || 0); }, 0));
+    var total = round2(bills.reduce(function (s, b) { return s + billCNY(b); }, 0));
     var n = Math.max(1, members.length);
     var perPerson = round2(total / n);
 
@@ -401,26 +405,26 @@
     }
     var dailyAvg = round2(total / days);
 
-    // 分类统计
+    // 分类统计（人民币口径）
     var catMap = {};
     bills.forEach(function (b) {
       var c = b.category || 'other';
-      catMap[c] = (catMap[c] || 0) + (Number(b.amount) || 0);
+      catMap[c] = round2((catMap[c] || 0) + billCNY(b));
     });
     var top = Object.keys(catMap).sort(function (a, b) { return catMap[b] - catMap[a]; });
     var topCat = top[0] ? CATEGORIES[top[0]] || CATEGORIES.other : null;
     var topPct = total > 0 && top[0] ? Math.round(catMap[top[0]] / total * 100) : 0;
 
-    // 最大单笔
+    // 最大单笔（人民币口径）
     var largest = bills.reduce(function (acc, b) {
-      return (!acc || Number(b.amount) > Number(acc.amount)) ? b : acc;
+      return (!acc || billCNY(b) > billCNY(acc)) ? b : acc;
     }, null);
 
-    // 人均垫付（谁垫得最多）
+    // 人均垫付（谁垫得最多，人民币口径）
     var paidMap = {};
     bills.forEach(function (b) {
       var key = b.payerName || b.payer || '未知';
-      paidMap[key] = (paidMap[key] || 0) + (Number(b.amount) || 0);
+      paidMap[key] = round2((paidMap[key] || 0) + billCNY(b));
     });
     var topPayer = Object.keys(paidMap).sort(function (a, b) { return paidMap[b] - paidMap[a]; })[0] || '';
 
@@ -429,8 +433,9 @@
     if (topCat && topPct >= 40) {
       tips.push('「' + topCat.name + '」占比 ' + topPct + '%，是本次旅行的消费大头，复盘时可优先看这一项。');
     }
-    if (largest && total > 0 && Number(largest.amount) / total >= 0.3) {
-      tips.push('最大单笔「' + (largest.description || largest.desc || '消费') + '」¥' + Number(largest.amount).toFixed(2) + ' 占总支出 ' + Math.round(Number(largest.amount) / total * 100) + '%，建议确认是否已正确分摊。');
+    if (largest && total > 0 && billCNY(largest) / total >= 0.3) {
+      tips.push('最大单笔「' + (largest.description || largest.desc || '消费') + '」¥' + billCNY(largest).toFixed(2) +
+        ' 占总支出 ' + Math.round(billCNY(largest) / total * 100) + '%，建议确认是否已正确分摊。');
     }
     if (days >= 3) {
       tips.push('人均 ¥' + perPerson.toFixed(2) + '（' + days + ' 天日均 ¥' + dailyAvg.toFixed(2) + '），可与同行伙伴的预算做对照。');
@@ -790,7 +795,12 @@
     }
 
     // 2) 账不平：分摊合计 ≠ 账单金额
+    //    注意：**调整单（多退少补 / 暂估改价）不适用这条**——它的 amount 恒为 0，
+    //    而 splits 承载的是"份额变化量"（总额没变时为 0，改价时为 delta）。
+    //    此前未排除调整单，导致房间页常驻一条假警报
+    //    「分摊合计 ¥800 与账单金额 ¥0 不符」。
     bills.forEach(function (b) {
+      if (b.isAdjustment) return;
       if (!b.splits || !b.splits.length) return;
       var sum = b.splits.reduce(function (s, x) { return s + (Number(x.amount) || 0); }, 0);
       var amt = Number(b.amount) || 0;
