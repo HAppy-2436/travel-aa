@@ -196,5 +196,153 @@
     <span><i class="dot" style="background:#07C160"></i>绿色 = 提案达到的效果</span>
     <span>正文从 9.5~11px 提到 <b>13px</b>；标题从 23px 提到 <b>32px</b>（层级拉开）</span>
   </div>
+
+  <!-- ============================================================
+       演示台（手机外面的壳）前后对比
+       ============================================================ -->
+  <h1 style="margin-top:44px;">演示台 · 前后对比</h1>
+  <div class="sub">
+    手机外面的壳（顶部标题 / 工具条 / 手机卡 / 字幕 / 底部提示）。<br>
+    左边 8 个按钮等重、标题折行、底部提示 fixed 会压住手机；右边分三组、合并步进器、提示回到文档流。
+  </div>
+
+  <div class="row" style="align-items:stretch;">
+    <!-- 现版演示台 -->
+    <div class="shell bad" style="width:560px;">
+      <div class="tagbad">现状</div>
+      <div class="sh-hdr">
+        <div class="sh-title">
+          <div class="sh-h1">✈️ TravelAA · 多人实时联动演示</div>
+          <div class="sh-p">每个手机 = 一个真实用户 · 操作实时同步 · 展示多人AA完整流程</div>
+        </div>
+        <div class="sh-r">
+          <span class="sh-cb wide">🔌 离线模式 · 本地规则引擎</span>
+          <span class="sh-cb">🩺 自检</span>
+          <span class="sh-cb">🎬 导览</span>
+          <span class="sh-cb">−</span>
+          <span class="sh-cb act">📱 3人</span>
+          <span class="sh-cb">＋</span>
+          <span class="sh-cb">🔄 重置</span>
+          <span class="sh-cb pr">▶ 自动演示</span>
+        </div>
+      </div>
+      <div class="sh-note bad-note">↑ 8 个按钮视觉等重（只有"自动演示"有强调色）；<br>
+        ＋ / − / 3人 被拆成三个独立按钮；标题在窄视口会折成两行</div>
+      <div class="sh-stage">
+        <div class="sh-pu">
+          <div class="sh-pn">小明</div>
+          <div class="sh-pr2">发起人</div>
+          <div class="sh-cap">⑧ 智能抹零：12780 → 12800</div>
+          <div class="sh-phone"></div>
+        </div>
+        <div class="sh-pu">
+          <div class="sh-pn">小红</div>
+          <div class="sh-pr2">成员</div>
+          <div class="sh-cap">⑨ 代购不摊</div>
+          <div class="sh-phone"></div>
+        </div>
+      </div>
+      <div class="sh-fh">💡 这是<b>多人 AA</b>演示：点工具栏 ＋ 加到 3~4 台手机 …</div>
+      <div class="sh-note bad-note">↑ position:fixed 固定在视口底部<br>矮窗口下必然压住手机下半部分</div>
+    </div>
+
+    <!-- 提案演示台 -->
+    <div class="shell good" style="width:560px;">
+      <div class="taggood">提案</div>
+      <div class="sh-hdr2">
+        <div class="sh-h1b">✈️ TravelAA · 多人实时联动演示</div>
+        <div class="sh-pb">每个手机 = 一个真实用户 · 操作实时同步 · 展示多人AA完整流程</div>
+      </div>
+      <div class="sh-bar">
+        <span class="sh-dot" title="离线模式 · 本地规则引擎"></span>
+        <span class="sh-sep"></span>
+        <span class="sh-step"><i>−</i><b>3 人</b><i>＋</i></span>
+        <span class="sh-sep"></span>
+        <span class="sh-cb2">🩺 自检</span>
+        <span class="sh-cb2">🎬 导览</span>
+        <span class="sh-cb2">🔄 重置</span>
+        <span class="sh-cb2 pr">▶ 自动演示</span>
+      </div>
+      <div class="sh-note good-note">↑ 状态收成圆点 · ＋/−/人数 合并成步进器 · 操作弱化 · 主行动唯一强调</div>
+      <div class="sh-stage">
+        <div class="sh-pu">
+          <div class="sh-pn">小明 <span class="sh-role">发起人</span></div>
+          <div class="sh-cap2">⑧ 智能抹零：12780 → 12800</div>
+          <div class="sh-phone2"></div>
+        </div>
+        <div class="sh-pu">
+          <div class="sh-pn">小红 <span class="sh-role">成员</span></div>
+          <div class="sh-cap2">⑨ 代购不摊</div>
+          <div class="sh-phone2"></div>
+        </div>
+      </div>
+      <div class="sh-fh2">💡 点工具栏 <b>＋</b> 加到 3~4 台手机（每台 = 一个真实用户）· 所有手机实时同步</div>
+      <div class="sh-note good-note">↑ 回到文档流（在舞台下方）<br>不再遮挡手机，任何时候都完整可见</div>
+    </div>
+  </div>
+
+  <style>
+    .shell{background:#08080c;border-radius:18px;padding:18px;position:relative;border:1px solid rgba(255,255,255,.07)}
+    .shell.bad{border-color:rgba(250,81,81,.28)}
+    .shell.good{border-color:rgba(7,193,96,.28)}
+    .tagbad,.taggood{position:absolute;top:-10px;left:16px;font-family:'Space Grotesk',sans-serif;font-size:10px;
+      font-weight:700;padding:3px 10px;border-radius:100px}
+    .tagbad{background:#FA5151;color:#fff}
+    .taggood{background:#07C160;color:#fff}
+    /* 现版工具条 */
+    .sh-hdr{display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,.05);flex-wrap:wrap}
+    .sh-title{min-width:0}
+    .sh-h1{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;letter-spacing:-.5px}
+    .sh-p{font-size:10px;color:rgba(255,255,255,.3);margin-top:4px}
+    .sh-r{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+    .sh-cb{font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:600;color:rgba(255,255,255,.7);
+      border:1px solid rgba(255,255,255,.08);border-radius:100px;padding:6px 11px;white-space:nowrap}
+    .sh-cb.wide{color:rgba(255,255,255,.6)}
+    .sh-cb.act{border-color:rgba(255,107,53,.3);color:#FF6B35}
+    .sh-cb.pr{background:#FF6B35;border-color:#FF6B35;color:#fff}
+    /* 提案工具条 */
+    .sh-hdr2{padding-bottom:12px}
+    .sh-h1b{font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:700;letter-spacing:-.6px;white-space:nowrap}
+    .sh-pb{font-size:10.5px;color:rgba(255,255,255,.4);margin-top:5px}
+    .sh-bar{display:flex;align-items:center;gap:8px;padding:10px 0 12px;
+      border-bottom:1px solid rgba(255,255,255,.05);flex-wrap:wrap}
+    .sh-dot{width:9px;height:9px;border-radius:50%;background:#71717a;box-shadow:0 0 0 3px rgba(255,255,255,.06);flex:0 0 auto}
+    .sh-sep{width:1px;height:16px;background:rgba(255,255,255,.08)}
+    .sh-step{display:flex;align-items:center;border:1px solid rgba(255,255,255,.1);border-radius:100px;overflow:hidden}
+    .sh-step i{font-style:normal;font-size:12px;color:rgba(255,255,255,.55);padding:5px 10px;font-family:'Space Grotesk',sans-serif}
+    .sh-step b{font-family:'Space Grotesk',sans-serif;font-size:11px;color:#fff;padding:5px 10px;
+      background:rgba(255,255,255,.06);border-left:1px solid rgba(255,255,255,.08);border-right:1px solid rgba(255,255,255,.08)}
+    .sh-cb2{font-family:'Space Grotesk',sans-serif;font-size:10.5px;font-weight:600;color:rgba(255,255,255,.5);
+      padding:6px 12px;border-radius:100px;border:1px solid transparent;white-space:nowrap}
+    .sh-cb2.pr{margin-left:auto;background:#FF6B35;color:#fff;font-weight:700}
+    /* 舞台 */
+    .sh-stage{display:flex;gap:20px;justify-content:center;padding:16px 0 0}
+    .sh-pu{display:flex;flex-direction:column;align-items:center}
+    .sh-pn{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700}
+    .sh-pr2{font-size:9px;color:rgba(255,255,255,.3);background:rgba(255,255,255,.05);
+      padding:2px 8px;border-radius:100px;margin-top:2px}
+    .sh-role{font-size:9px;font-weight:600;color:rgba(255,255,255,.45);background:rgba(255,255,255,.07);
+      padding:2px 7px;border-radius:100px;margin-left:4px;vertical-align:middle}
+    .sh-cap{max-width:150px;margin-top:6px;padding:4px 9px;border-radius:100px;background:#FF6B35;color:#fff;
+      font-family:'Space Grotesk',sans-serif;font-size:8.5px;font-weight:600;text-align:center;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .sh-cap2{width:150px;margin-top:6px;padding:4px 9px;border-radius:100px;background:#FF6B35;color:#fff;
+      font-family:'Space Grotesk',sans-serif;font-size:8.5px;font-weight:600;text-align:center;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .sh-phone{width:150px;height:250px;background:#0c0c0c;border-radius:22px;margin-top:10px;
+      box-shadow:0 0 0 1.5px rgba(255,255,255,.1),0 30px 80px rgba(0,0,0,.6),0 10px 30px rgba(0,0,0,.4)}
+    .sh-phone2{width:150px;height:250px;background:#151517;border-radius:22px;margin-top:10px;position:relative;
+      box-shadow:0 0 0 1.5px rgba(255,255,255,.09),0 18px 48px rgba(0,0,0,.45)}
+    .sh-phone2::after{content:'';position:absolute;inset:7px;border-radius:17px;background:#fff;
+      box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+    .sh-fh{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-size:9px;
+      color:rgba(255,255,255,.45);white-space:nowrap;z-index:3}
+    .sh-fh2{font-size:9.5px;color:rgba(255,255,255,.45);text-align:center;padding-top:14px;line-height:1.6}
+    .sh-note{font-size:9px;line-height:1.6;margin-top:10px;padding:7px 10px;border-radius:8px}
+    .bad-note{color:#FA5151;background:rgba(250,81,81,.07)}
+    .good-note{color:#07C160;background:rgba(7,193,96,.07)}
+    .shell.bad{padding-bottom:34px}
+  </style>
 </body>
 </html>
