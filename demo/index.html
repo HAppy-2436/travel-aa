@@ -38,14 +38,47 @@ body.present .fh{display:none}
    那样高亮框会落到一个 display:none 的元素上（等于高亮到空气）。
    所以导览期间把工具条显示回来，并把手机高度让出这一行，保证仍然一屏装下。 */
 body.present.touring .tbar{display:flex}
-body.present.touring .pf{height:calc(100vh - 196px)}
 body.present .pu{gap:10px}
-/* 手机高度 = 视口 − (wrap 上下 24 + 人名行 ~56 + 字幕条 ~46 + 余量 12) */
-body.present .pf{height:calc(100vh - 138px)}
+/* 手机高度 = 视口 − (演示解说栏 ~96 + wrap 上下 24 + 人名行 ~56 + 字幕条 ~46 + 余量 12) */
+body.present.touring .pf{height:calc(100vh - 196px)}
+
+/* ===== 演示解说栏（评委导向）=====
+   问题：自动演示的解说词写进 #hdrSub，而演示模式把 .hdr 整个 display:none 了 ——
+   评委看到的是"4 台手机 + 每台一小条字幕"，**既没有产品名、也没有解说、也不知道演到第几步**。
+   所以演示模式下单独浮一条固定解说栏，把这三件事补齐：
+     · 品牌行（截图/录像脱离上下文也认得出这是什么产品）
+     · 分镜进度（第 N / 24）+ 进度条（评委知道还有多久、现在在哪）
+     · 解说正文（字号 15px、行高 1.6，投影上也读得清）+ 暂停/退出
+   高度约 96px，手机高度相应让出，保证仍然一屏装下、不用滚鼠标。 */
+.pshow{display:none}
+body.present .pshow{
+  display:block;position:fixed;top:0;left:0;right:0;z-index:55;
+  padding:12px clamp(16px,3vw,40px) 12px;
+  background:linear-gradient(180deg,rgba(8,8,12,.97),rgba(8,8,12,.86) 70%,rgba(8,8,12,0));
+  backdrop-filter:blur(8px);
+  pointer-events:none;   /* 只挡视线上方，不挡点击 */
+}
+.pshow-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.pshow-brand{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;color:#fff;letter-spacing:-.3px}
+.pshow-brand span{font-family:'Inter',sans-serif;font-size:11.5px;font-weight:600;color:rgba(255,255,255,.45);letter-spacing:0;margin-left:8px}
+.pshow-step{font-family:'Space Grotesk',sans-serif;font-size:11.5px;font-weight:700;color:var(--pri);background:rgba(255,107,53,.12);border:1px solid rgba(255,107,53,.3);border-radius:100px;padding:4px 11px;white-space:nowrap}
+.pshow-prog{flex:1;min-width:80px;height:3px;border-radius:2px;background:rgba(255,255,255,.1);overflow:hidden}
+.pshow-prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--pri),#FFB088);transition:width .4s cubic-bezier(.4,0,.2,1)}
+.pshow-btn{pointer-events:auto;font-family:'Space Grotesk',sans-serif;font-size:11.5px;font-weight:700;padding:6px 12px;border-radius:100px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:rgba(255,255,255,.8);cursor:pointer;white-space:nowrap}
+.pshow-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+.pshow-narr{margin-top:8px;font-size:15px;line-height:1.6;font-weight:600;color:#fff;max-width:1500px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+body.present .pf{height:calc(100vh - 234px)}
+/* 导览模式下：解说正文由导览卡负责，这里只留品牌与步骤，避免两块文字争注意力 */
+body.present.touring .pshow-narr{display:none}
+body.present.touring .pf{height:calc(100vh - 292px)}
 /* 演示模式下的退出入口：固定在右上角，不占文档流 */
 .present-exit{display:none}
 body.present .present-exit{display:block;position:fixed;top:14px;right:18px;z-index:60}
-/* ===== 演示台（手机外面的壳）=====
+/* 演示时"正在操作"的那台手机：加一圈品牌色高亮环，视线能跟着动作走 */
+.pu.acting .pf{box-shadow:0 0 0 2px var(--pri),0 0 0 8px rgba(255,107,53,.18),0 30px 80px rgba(0,0,0,.6)}
+.pu.acting .pn::after{content:'👆 正在操作';display:inline-block;margin-left:8px;font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:700;color:var(--on-pri);background:var(--pri);border-radius:100px;padding:2px 8px;vertical-align:middle}
+/* 演示台（手机外面的壳）=====
    三组语义，避免"8 个按钮等重、找不到主行动"：
      ① 状态：引擎徽标收成小圆点
      ② 步进器：− 3 人 ＋ 合并为一个控件（原来拆成 3 个独立按钮）
@@ -276,6 +309,30 @@ button.bdg:hover{background:rgba(255,255,255,.08);color:#fff}
 .test-row:last-of-type{border-bottom:none}
 .test-ok{color:var(--grn);font-weight:700;white-space:nowrap}
 .test-no{color:var(--red);font-weight:700;white-space:nowrap}
+/* ===== 复制失败兜底面板：把文本摊出来让用户自己复制（比假装成功有用） ===== */
+.copyfb{position:fixed;inset:0;background:rgba(8,8,12,.82);z-index:230;display:flex;align-items:center;justify-content:center;padding:24px}
+.copyfb-card{background:#fff;color:#18181b;border-radius:20px;padding:22px 24px;width:min(520px,92vw);animation:pg .3s cubic-bezier(.4,0,.2,1)}
+.copyfb-t{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700}
+.copyfb-s{font-size:12px;color:var(--g500);margin:6px 0 12px;line-height:1.6}
+.copyfb-ta{height:150px;padding:12px 14px;line-height:1.6;font-size:12px;resize:none;background:var(--g100)}
+/* ===== 收官总结（演示结束后给评委的一屏结论）===== */
+.finale{position:fixed;inset:0;background:rgba(8,8,12,.88);backdrop-filter:blur(6px);z-index:240;display:flex;align-items:center;justify-content:center;padding:24px}
+.finale-card{background:#fff;color:#18181b;border-radius:22px;padding:26px 28px;width:min(760px,94vw);max-height:90vh;overflow-y:auto;animation:pg .32s cubic-bezier(.4,0,.2,1)}
+.finale-hd{border-bottom:1.5px solid #18181b;padding-bottom:12px;margin-bottom:18px}
+.finale-t{font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;letter-spacing:-.6px}
+.finale-sub{font-size:12.5px;color:var(--g500);margin-top:5px}
+.finale-nums{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--g200);border:1px solid var(--g200);border-radius:14px;overflow:hidden;margin-bottom:16px}
+.finale-n{background:#fff;padding:14px 16px}
+.finale-l{font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.6px;color:var(--g400);margin-bottom:6px}
+.finale-v{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;letter-spacing:-.6px}
+.finale-v.ok{color:var(--grn);font-size:17px}
+.finale-v.bad{color:var(--amb);font-size:17px}
+.finale-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+.finale-chip{font-size:12px;color:#18181b;background:var(--g100);border:1px solid var(--g200);border-radius:100px;padding:6px 12px}
+.finale-chip b{color:var(--pri-ink);margin-right:6px}
+.finale-note{font-size:12px;line-height:1.7;color:var(--g500);background:var(--pri-bg);border-radius:12px;padding:12px 14px;margin-bottom:18px}
+.finale-acts{display:flex;gap:10px;flex-wrap:wrap}
+.finale-acts .btn{flex:1 1 0;min-width:150px}
 /* ===== 手机内排版比例 =====
    ⚠️ 字号只允许取这 6 级（改这里之前先看 docs/UI排版规范.md）：
      32 主视觉(ht-hero) / 23 页面大标题(ht) / 17 区块标题+大数字(ov)
@@ -398,6 +455,17 @@ button.bdg:hover{background:rgba(255,255,255,.08);color:#fff}
   <div class="fh" id="hintBar">💡 点工具栏 <b>＋</b> 加到 3~4 台手机（每台 = 一个真实用户）· 所有手机实时同步</div>
 </div>
 <button class="cb present-exit" onclick="exitPresent()" title="退出演示模式">✕ 退出演示</button>
+
+<!-- 演示解说栏：只在 body.present 显示。品牌 + 分镜进度 + 解说正文 + 暂停，全部浮在手机上方 -->
+<div class="pshow" id="presentBar" aria-live="polite">
+  <div class="pshow-top">
+    <div class="pshow-brand">✈️ TravelAA · 旅行 AA 记账<span>携程高校 AI HACKATHON · Team 爆能器</span></div>
+    <div class="pshow-step" id="presentStep">准备中</div>
+    <div class="pshow-prog"><i id="presentProg"></i></div>
+    <button type="button" class="pshow-btn" id="presentPause" onclick="toggleAutoPause()">⏸ 暂停</button>
+  </div>
+  <div class="pshow-narr" id="presentNarr">点「▶ 自动演示」看完整剧情，或点「🎬 导览」逐步听讲解</div>
+</div>
 
 <!-- 共享算法内核（与小程序、服务端同一份代码，UMD 三端复用；纯本地计算，无网络依赖） -->
 <script src="../apps/miniprogram/utils/ai.js"></script>
@@ -607,8 +675,23 @@ function renderPhones(){
 }
 
 /* 演示字幕条：自动演示时在手机上方打出"这一步在演示什么功能"
-   —— 观众看得到功能名，而不是只看到数据在变。 */
+   —— 观众看得到功能名，而不是只看到数据在变。
+   同时**顺手标记"谁在操作"**：正在操作的那台手机加一圈品牌色高亮，
+   评委的视线能跟着动作走（4 台并排时尤其重要）。 */
 var CAPTION = {};
+var presentStep = 0;
+/* 分镜序号从解说词的圈码里取（①…㉔），不需要给 24 个分镜逐个编号 */
+var CIRCLED = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔';
+var AUTO_STORYBOARDS = 24;
+
+function setActing(uid) {
+  USERS.forEach(function (u) {
+    var phone = document.getElementById('phone-' + u.id);
+    if (!phone) return;
+    if (u.id === uid) phone.classList.add('acting');
+    else phone.classList.remove('acting');
+  });
+}
 function setCaption(uid, text) {
   CAPTION[uid] = text || '';
   var el = document.getElementById('cap-' + uid);
@@ -616,9 +699,35 @@ function setCaption(uid, text) {
     el.textContent = CAPTION[uid];
     el.style.display = CAPTION[uid] ? 'block' : 'none';
   }
+  setActing(CAPTION[uid] ? uid : null);
 }
 function clearCaptions() {
   USERS.forEach(function (u) { setCaption(u.id, ''); });
+  presentStep = 0;
+  updatePresentBar(0, '点「▶ 自动演示」看完整剧情，或点「🎬 导览」逐步听讲解');
+}
+/* 演示解说栏：把 say() 的解说词 + 进度搬到评委看得见的地方
+   （原来写进 #hdrSub，而演示模式把 .hdr 隐藏了 = 白写）
+   opts.unit 默认「分镜」，导览传「导览」+ 导览自己的总步数。 */
+function updatePresentBar(step, text, opts) {
+  opts = opts || {};
+  var total = opts.total || AUTO_STORYBOARDS;
+  var unit = opts.unit || '分镜';
+  var stepEl = document.getElementById('presentStep');
+  var prog = document.getElementById('presentProg');
+  var narr = document.getElementById('presentNarr');
+  if (stepEl) {
+    stepEl.textContent = step > 0
+      ? (unit + ' ' + step + ' / ' + total)
+      : (unit === '导览' ? '导览' : '准备中');
+  }
+  if (prog) prog.style.width = (step > 0 ? Math.round(step / total * 100) : 0) + '%';
+  if (narr && text != null && text !== '') narr.textContent = text;
+}
+/* 从解说词首字取分镜序号；不是分镜解说（如"演示结束"）就返回 0 */
+function storyboardOf(text) {
+  var i = CIRCLED.indexOf(String(text == null ? '' : text).charAt(0));
+  return i >= 0 ? i + 1 : 0;
 }
 
 function renderApp(user){
@@ -932,14 +1041,13 @@ function exportCsv(userId,roomId){
       ok=true;
     }
   }catch(e){ok=false}
-  if(!ok&&navigator.clipboard&&navigator.clipboard.writeText){
-    /* 无 Blob 的环境（部分小程序 WebView / 无头浏览器）退化为复制到剪贴板 */
-    navigator.clipboard.writeText(csv);ok=true;
-    showToast(userId,'📋 已复制 '+count+' 笔账单（CSV），粘贴到表格即可');
+  if(!ok){
+    /* 无 Blob 的环境（部分小程序 WebView / 无头浏览器）：退化为复制，同样**如实提示** */
+    copyWithToast(userId,csv,'📋 已复制 '+count+' 笔账单（CSV），粘贴到表格即可');
     return true;
   }
-  showToast(userId,ok?('📥 已导出 '+count+' 笔账单（CSV）'):'导出失败，请改用复制方案');
-  return ok;
+  showToast(userId,'📥 已导出 '+count+' 笔账单（CSV）');
+  return true;
 }
 
 function phoneGoStats(userId,roomId){
@@ -1540,23 +1648,20 @@ function genNarrative(userId,roomId){
 function copyNarrative(userId){
   var u=USERS.find(function(x){return x.id===userId});
   if(!u||!u._narr)return;
-  if(navigator.clipboard)navigator.clipboard.writeText(u._narr);
-  showToast(userId,'📋 已复制小作文');
+  copyWithToast(userId,u._narr,'📋 已复制小作文');
 }
 function copyReport(userId,roomId){
   var room=State.rooms.find(function(r){return r.id===roomId});if(!room||!AI)return;
   var bills=State.bills.filter(function(b){return b.roomId===roomId});
   var text=AI.generateTripReport(room,bills,room.members);
-  if(navigator.clipboard)navigator.clipboard.writeText(text);
-  showToast(userId,'📄 旅行报告已复制');
+  copyWithToast(userId,text,'📄 旅行报告已复制');
 }
 /* 结清卡片：纯文本版，可直接粘到微信/群里 */
 function copyShareCard(userId,roomId){
   var room=State.rooms.find(function(r){return r.id===roomId});if(!room||!AI)return;
   var bills=State.bills.filter(function(b){return b.roomId===roomId});
   var text=AI.shareCardText({room:room,bills:bills,members:room.members});
-  if(navigator.clipboard)navigator.clipboard.writeText(text);
-  showToast(userId,'📤 结清卡片已复制，去群里发一条吧');
+  copyWithToast(userId,text,'📤 结清卡片已复制，去群里发一条吧');
 }
 /* 礼貌催账：把"你欠我钱"说成不尴尬的话 */
 function copyReminder(userId,roomId){
@@ -1565,8 +1670,7 @@ function copyReminder(userId,roomId){
   var settlement=calcSettlement(room,bills);
   var t=settlement.transfers[0];if(!t){showToast(userId,'当前没有需要催的账');return}
   var text=AI.politeReminder({fromName:t.fromName,toName:t.toName,amount:t.amount,roomName:room.name},{style:'friendly'});
-  if(navigator.clipboard)navigator.clipboard.writeText(text);
-  showToast(userId,'💬 话术已复制：'+text.slice(0,18)+'…');
+  copyWithToast(userId,text,'💬 话术已复制：'+text.slice(0,18)+'…');
 }
 
 /* 结算：**统一调用内核 AI.netBalances**，不再就地实现。
@@ -1616,6 +1720,75 @@ function calcSettlement(room,bills){
 function getCatIcon(cat){return({food:'🍜',transport:'🚗',hotel:'🏨',ticket:'🎫',shopping:'🛍️'})[cat]||'📦'}
 function genCode(){var code;do{code=String(Math.floor(100000+Math.random()*900000))}while(State.rooms.some(function(r){return r.code===code}));return code}
 function showToast(userId,msg){var t=document.getElementById('toast-'+userId);if(!t)return;t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},1800)}
+
+/* ============================================================
+   复制：**绝不谎报"已复制"**
+   ------------------------------------------------------------
+   原来 5 处复制都是 `if(navigator.clipboard) navigator.clipboard.writeText(x);
+   showToast('已复制')` —— 两个问题：
+     ① `navigator.clipboard` **只在安全上下文可用**。把 Demo 挂在普通 http:// 上、
+        或跑在部分内嵌 WebView（如小程序 web-view）里它是 undefined，
+        于是点了「📋 复制方案」→ 提示"已复制"→ 剪贴板里什么都没有。
+     ② `writeText()` 返回的是 Promise，可能 reject（无用户手势/权限被拒），
+        原来直接丢掉不管，同样谎报成功。
+   现在三级降级，并且**按真实结果给提示**：
+     ① navigator.clipboard（安全上下文 + 用户手势）
+     ② textarea + document.execCommand('copy')（老浏览器 / 非安全上下文）
+     ③ 都不行 → 弹出只读文本框并自动全选，提示按 Ctrl/⌘+C（不谎报）
+   ============================================================ */
+function legacyCopyText(text){
+  try{
+    if(typeof document.execCommand!=='function')return false;
+    var ta=document.createElement('textarea');
+    ta.value=text;ta.setAttribute('readonly','');
+    ta.style.position='fixed';ta.style.top='-1000px';ta.style.opacity='0';
+    document.body.appendChild(ta);
+    ta.select();ta.setSelectionRange(0,ta.value.length);
+    var ok=document.execCommand('copy');
+    document.body.removeChild(ta);
+    return !!ok;
+  }catch(e){return false}
+}
+function copyText(text){
+  text=String(text==null?'':text);
+  if(!text)return Promise.resolve(false);
+  var clip=window.navigator&&navigator.clipboard;
+  if(clip&&typeof clip.writeText==='function'){
+    try{
+      return Promise.resolve(clip.writeText(text)).then(function(){return true},function(){return legacyCopyText(text)});
+    }catch(e){/* 继续降级 */}
+  }
+  return Promise.resolve(legacyCopyText(text));
+}
+/* 复制失败时的兜底：把文本摊出来让用户自己复制（比假装成功有用得多） */
+function showCopyFallback(text){
+  var old=document.getElementById('copyFallback');
+  if(old&&old.parentNode)old.parentNode.removeChild(old);
+  var d=document.createElement('div');
+  d.id='copyFallback';d.className='copyfb';
+  d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');
+  d.setAttribute('aria-label','手动复制');
+  var card=document.createElement('div');card.className='copyfb-card';
+  var t=document.createElement('div');t.className='copyfb-t';t.textContent='⚠️ 当前环境不允许自动复制';
+  var s=document.createElement('div');s.className='copyfb-s';
+  s.textContent='文本已为你选中：按 Ctrl/⌘ + C 复制（手机上长按选中后复制）。';
+  var ta=document.createElement('textarea');
+  ta.className='fi copyfb-ta';ta.setAttribute('readonly','');ta.value=text;
+  var btn=document.createElement('button');btn.className='btn dk';btn.textContent='关闭';
+  card.appendChild(t);card.appendChild(s);card.appendChild(ta);card.appendChild(btn);
+  d.appendChild(card);document.body.appendChild(d);
+  btn.onclick=function(){if(d.parentNode)d.parentNode.removeChild(d)};
+  d.addEventListener('click',function(e){if(e.target===d&&d.parentNode)d.parentNode.removeChild(d)});
+  try{ta.focus();ta.select();ta.setSelectionRange(0,ta.value.length)}catch(e){/* ignore */}
+}
+/** 复制 + 如实提示。okMsg 只在**确实复制成功**时才出现。 */
+function copyWithToast(userId,text,okMsg){
+  copyText(text).then(function(ok){
+    if(ok){showToast(userId,okMsg);return}
+    showToast(userId,'⚠️ 自动复制不可用，已把文本摊出来，请手动复制');
+    showCopyFallback(text);
+  });
+}
 /* ============================================================
    真实多窗口同步（可选增强；探测失败自动降级，行为与改造前等价）
    ------------------------------------------------------------
@@ -1879,7 +2052,7 @@ function copySettle(userId,roomId){
   var marks=room.settled||{};
   var text='【TravelAA 结算方案】\n'+room.name+' · 总消费 ¥'+settlement.totalExpense.toFixed(2)+'\n\n';
   settlement.transfers.forEach(function(t,i){text+=(i+1)+'. '+t.fromName+' → '+t.toName+' ¥'+t.amount.toFixed(2)+(marks[transferKey(t)]?'  ✅ 已转':'')+'\n'});
-  if(navigator.clipboard)navigator.clipboard.writeText(text);showToast(userId,'📋 已复制结算方案');
+  copyWithToast(userId,text,'📋 已复制结算方案');
 }
 function closeModal(userId){var m=document.getElementById('modal-'+userId);if(m)m.classList.remove('show');a11yClosed()}
 /* 人数只有一个写入口：工具条 / 导览 / 自动演示都走它。
@@ -1894,7 +2067,41 @@ function setPhoneCount(n){
 }
 function addPhone(){if(State.phoneCount>=4){showToast('u1','最多 4 台手机（4 位成员）');return}setPhoneCount(State.phoneCount+1)}
 function removePhone(){if(State.phoneCount<=1){showToast('u1','至少保留 1 台手机');return}setPhoneCount(State.phoneCount-1)}
-function resetAll(){var wiped=State.rooms.concat(State.bills);var ts=new Date().toISOString();State.tombstones={};wiped.forEach(function(x){if(x&&x.id!=null){State.tombstones[x.id]=ts;forgetStamp(x.id)}});State.rooms=[];State.bills=[];State.nextRoomId=1;State.nextBillId=1;USERS.forEach(function(u){u._page='home';u._roomId=null;u._form=null;u._ai=null;u._aiText='';u._narr=null;u._narrLoading=false;u._listening=false;u._sampleIdx=null;u._visionResult=null});ocrState={};pendingDelete={};if(typeof clearCaptions==='function')clearCaptions();tourExit();closeSelfTest();renderPhones();syncAll()}
+/* ============================================================
+   重置：回到"什么都没发生"的初始态
+   ------------------------------------------------------------
+   用户反馈「点了重置并没有重置，没有从头开始」，实测有两个原因：
+     ① **没有取消正在跑的自动演示** —— 清空 State 后脚本继续往下演（切页面、打字幕），
+        而且 autoRunning 卡在 true，「▶ 自动演示」再也点不动；
+     ② **只清了数据，没清界面状态** —— 顶部解说词还停在上一次的分镜、每台手机的
+        "更多选项/改分摊面板"还开着。
+   所以这里除了清数据，还要 stopAutoDemo() + 复位解说词 + 复位每台手机的 UI 开关。
+   （人数刻意**保留**：那是演示台设置不是数据，重置不该把手搭好的 4 台手机收回去。）
+   ============================================================ */
+function resetAll(opts){
+  /* opts.keepDemoRunning：自动演示**自己**开演前要清一次场，不能顺手把自己取消掉。
+     （不加这个开关的话，resetAll → stopAutoDemo 会把 autoRunning 置回 false，
+       演示仍在跑却显示"没在跑"，再点一次就会并发出第二场演示。） */
+  if (!(opts && opts.keepDemoRunning)) {
+    if (typeof stopAutoDemo === 'function') stopAutoDemo();
+  }
+  var wiped=State.rooms.concat(State.bills);
+  var ts=new Date().toISOString();
+  State.tombstones={};
+  wiped.forEach(function(x){if(x&&x.id!=null){State.tombstones[x.id]=ts;forgetStamp(x.id)}});
+  State.rooms=[];State.bills=[];State.nextRoomId=1;State.nextBillId=1;
+  USERS.forEach(function(u){
+    u._page='home';u._roomId=null;u._form=null;u._ai=null;u._aiText='';
+    u._narr=null;u._narrLoading=false;u._listening=false;u._sampleIdx=null;u._visionResult=null;
+    /* 这两个以前漏了：关闭的"更多选项"、打开的"这笔谁该摊"面板会留到下一位观众 */
+    u._adv=false;u._bd=null;
+  });
+  ocrState={};pendingDelete={};
+  if(typeof clearCaptions==='function')clearCaptions();
+  var sub=document.getElementById('hdrSub');
+  if(sub)sub.textContent='每个手机 = 一个真实用户 · 操作实时同步 · 展示多人AA完整流程';
+  tourExit();closeSelfTest();renderPhones();syncAll();
+}
 
 /* ============================================================
    演示模式：开演时隐藏标题/工具条、手机自适应高度
@@ -1909,14 +2116,71 @@ function exitPresent() {
 
 /* ============================================================
    自动演示：分镜脚本（每一步都真实切页面，顶部字幕同步解说）
-   不是"后台加数据"，而是把 u1/u2/u3 当真人在操作来演
+   不是"后台加数据"，而是把每台手机当真人在操作来演
+
+   ⚠️ 取消机制（曾经漏掉，被用户抓出来：「点了重置并没有重置，没有从头开始」）：
+     · 脚本是一条 await 链，中途没人能停它 —— 点「🔄 重置」只是清空 State，
+       脚本接着往下演（切页面、打字幕），而且 `autoRunning` 永远是 true，
+       于是「▶ 自动演示」再也开不起来，看着就是"重置没用、没法从头开始"。
+     · 现在用**代次令牌 autoGen**：每走一步（await 返回）都比对一次，
+       代次变了就抛 __cancelled 自行退出。stopAutoDemo() 递增代次即完成取消。
+     · 再点一次「▶ 自动演示」= 取消旧的 + 从头开演。
    ============================================================ */
 var autoRunning = false;
+var autoGen = 0;
+var autoPaused = false;
+
+/** 暂停/继续：把 sleep 的截止时间往后推，脚本停在原地不动 */
+function toggleAutoPause() {
+  autoPaused = !autoPaused;
+  var b = document.getElementById('presentPause');
+  if (b) b.textContent = autoPaused ? '▶ 继续' : '⏸ 暂停';
+  if (autoPaused) showToast('u1', '⏸ 已暂停，随时可以接着讲');
+}
+
+/** 取消正在跑的自动演示，并把界面恢复到"开演前"的样子 */
+function stopAutoDemo() {
+  autoGen++;                 // 让在跑的实例在下一个 await 处自杀
+  autoRunning = false;
+  autoPaused = false;
+  var b = document.getElementById('presentPause');
+  if (b) b.textContent = '⏸ 暂停';
+  setActing(null);
+  if (document.body.classList.contains('present')) exitPresent();
+  if (typeof clearCaptions === 'function') clearCaptions();
+}
+
 async function autoDemo() {
-  if (autoRunning) return;
+  /* 再点一次 = 重头开演（而不是默默什么都不做） */
+  if (autoRunning) {
+    stopAutoDemo();
+    await new Promise(function (r) { setTimeout(r, 60); });
+  }
   autoRunning = true;
-  var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
-  var say = function (t) { var el = document.getElementById('hdrSub'); if (el) el.textContent = t; };
+  autoPaused = false;
+  var myGen = autoGen;
+  /* 每个 await 都是一个检查点：① 被取消（重置/重开）立刻退出；② 暂停时原地等待。
+     这样脚本里 24 个分镜不用逐个改。 */
+  var sleep = function (ms) {
+    var deadline = Date.now() + ms;
+    return new Promise(function (resolve, reject) {
+      var tick = function () {
+        if (myGen !== autoGen) return reject({ __cancelled: true });
+        if (autoPaused) deadline += 150;                 // 暂停 = 一直把截止时间往后推
+        if (Date.now() >= deadline) return resolve();
+        setTimeout(tick, 120);
+      };
+      tick();
+    });
+  };
+  var say = function (t) {
+    var el = document.getElementById('hdrSub');
+    if (el) el.textContent = t;
+    /* 同步到演示解说栏 —— 演示模式下 .hdr 是隐藏的，不搬过来评委就读不到 */
+    var n = storyboardOf(t);
+    if (n > 0) presentStep = n;
+    updatePresentBar(presentStep, t);
+  };
   var has = function (uid) { var i = USERS.findIndex(function (u) { return u.id === uid; }); return i >= 0 && i < State.phoneCount; };
   var HOME_SUB = '每个手机 = 一个真实用户 · 操作实时同步 · 展示多人AA完整流程';
   var wantStage = null;
@@ -1931,7 +2195,7 @@ async function autoDemo() {
     }
   };
   try {
-    resetAll();
+    resetAll({ keepDemoRunning: true });   // 清场，但别把自己取消掉
     enterPresent();                     // 演示模式：一屏装下，不用滚鼠标
     /* 4 台手机全部上场：第 4 位在过去只"加入"就没事干了，这里给他 4 个真实环节 */
     setPhoneCount(4);
@@ -2218,12 +2482,18 @@ async function autoDemo() {
     await sleep(1050);
 
     clearCaptions();
-    say('演示结束（24 个分镜）· 点「🎬 导览」逐步听讲解（' + TOUR_STEPS.length + ' 步覆盖全部功能）· 点「🔄 重置」可重播');
+    say('演示结束 · 24 个分镜讲完：从记一笔到清账，再到复盘与导出');
     showToast('u1', '🎬 自动演示完成');
-    await sleep(1800);
+    await sleep(1200);
+    /* 收官：给评委一屏能读完的结论（也是最好的一张截图） */
+    showFinale();
+    await sleep(600);
     exitPresent();                      // 演示结束回到常规布局
   } catch (e) {
-    if (e && e.__stageHold) {
+    if (e && e.__cancelled) {
+      /* 被"重置"或"再点一次自动演示"取消：不显示"演示中断"，也不改界面状态 ——
+         stopAutoDemo() 已经把演示模式与字幕收干净了 */
+    } else if (e && e.__stageHold) {
       /* 定格模式：保留字幕与画面（以及演示模式），不显示"演示中断" */
       if (typeof window !== 'undefined') window.__autoDemoHeld = true;
     } else {
@@ -2231,11 +2501,76 @@ async function autoDemo() {
       exitPresent();
     }
   } finally {
-    if (!(typeof window !== 'undefined' && window.__autoDemoHeld)) {
-      setTimeout(function () { say(HOME_SUB); }, 6000);
+    /* ⚠️ autoRunning 只在"自己还是当前这一代"时才清 ——
+       否则被取消的旧实例会把新实例的 running 标记抹掉，
+       于是「▶ 自动演示」又变成可以重复点击、互相打架。 */
+    if (myGen === autoGen) {
+      autoRunning = false;
+      if (!(typeof window !== 'undefined' && window.__autoDemoHeld)) {
+        setTimeout(function () { if (myGen === autoGen) say(HOME_SUB); }, 6000);
+      }
     }
-    autoRunning = false;
   }
+}
+
+/* ============================================================
+   收官总结：演示结束后给评委一屏能读完的结论
+   ------------------------------------------------------------
+   为什么需要：24 个分镜看完，评委记住的往往是"4 台手机在动"，
+   却记不住"到底解决了什么、算得准不准"。这里把**真实算出来的数字**
+   （不是写死的文案）摆在一屏里：总消费 / 人均 / 最少转账笔数 / 账恒平，
+   再列一遍五层能力，最后给一句定位。
+   数字全部来自当前 State —— 演示中途如果被改过，这里也跟着变，不撒谎。
+   ============================================================ */
+function showFinale() {
+  var room = State.rooms.filter(function (r) { return r.name === '国庆东京行'; })[0] || State.rooms[0];
+  if (!room) return;
+  var bills = State.bills.filter(function (b) { return b.roomId === room.id; });
+  var nb = AI && AI.netBalances ? AI.netBalances(bills, room.members) : null;
+  var st = calcSettlement(room, bills);
+  var personal = AI && AI.personalSpend ? AI.personalSpend(bills, 'u4').total : 0;
+  var adjCount = bills.filter(function (b) { return b.isAdjustment; }).length;
+  var personalCount = bills.filter(function (b) { return (b.scope || '') === 'personal' || b.splitType === 'sole'; }).length;
+  var old = document.getElementById('finale');
+  if (old && old.parentNode) old.parentNode.removeChild(old);
+  var d = document.createElement('div');
+  d.id = 'finale'; d.className = 'finale';
+  d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-label', '演示总结');
+  var caps = [
+    ['会听', '一句话 / 语音记账'],
+    ['会看', '票据 / 订单截图识别'],
+    ['会读单', '携程订单直接入账'],
+    ['会算账', '多币种 · 账恒平 · 最简转账'],
+    ['会复盘', '审计 · 洞察 · 小作文 · 导出']
+  ];
+  d.innerHTML = '<div class="finale-card">' +
+    '<div class="finale-hd"><div class="finale-t">✈️ TravelAA · 旅行 AA 记账</div>' +
+    '<div class="finale-sub">' + esc(room.name) + ' · ' + room.members.length + ' 人 · ' + bills.length + ' 笔账单</div></div>' +
+    '<div class="finale-nums">' +
+      '<div class="finale-n"><div class="finale-l">集体总消费</div><div class="finale-v">¥' + money(st.totalExpense, 0) + '</div></div>' +
+      '<div class="finale-n"><div class="finale-l">人均</div><div class="finale-v">¥' + money(room.members.length ? st.totalExpense / room.members.length : 0, 0) + '</div></div>' +
+      '<div class="finale-n"><div class="finale-l">最少转账</div><div class="finale-v">' + st.transfers.length + ' 笔</div></div>' +
+      '<div class="finale-n"><div class="finale-l">账恒平</div><div class="finale-v ' + (st.balanced ? 'ok' : 'bad') + '">' + (st.balanced ? '✅ 净余额合计 0' : '⚠️ 待核对') + '</div></div>' +
+    '</div>' +
+    '<div class="finale-chips">' + caps.map(function (c) { return '<span class="finale-chip"><b>' + c[0] + '</b>' + c[1] + '</span>'; }).join('') + '</div>' +
+    '<div class="finale-note">另计：' + personalCount + ' 笔私账（人情账）不进 AA、只有本人可见；' + adjCount + ' 笔调整单承载「多退少补 / 暂估改价」，原账全部留痕。' +
+      (personal > 0 ? '小王自己另花了 ¥' + money(personal, 0) + '。' : '') + '</div>' +
+    '<div class="finale-acts">' +
+      '<button class="btn lt" data-act="finale-tour">🎬 再听一遍导览（' + TOUR_STEPS.length + ' 步）</button>' +
+      '<button class="btn lt" data-act="finale-replay">🔁 重播自动演示</button>' +
+      '<button class="btn dk" data-act="finale-close">关闭</button>' +
+    '</div></div>';
+  document.body.appendChild(d);
+  var on = function (act, fn) { var el = d.querySelector('[data-act="' + act + '"]'); if (el) el.onclick = fn; };
+  on('finale-close', closeFinale);
+  on('finale-tour', function () { closeFinale(); startTour(); });
+  on('finale-replay', function () { closeFinale(); autoDemo(); });
+  d.addEventListener('click', function (e) { if (e.target === d) closeFinale(); });
+}
+function closeFinale() {
+  var d = document.getElementById('finale');
+  if (d && d.parentNode) d.parentNode.removeChild(d);
+  a11yClosed();
 }
 
 /* ============================================================
@@ -2569,6 +2904,8 @@ function renderTourStep() {
     var nextBtn = document.getElementById('tourNextBtn');
     var autoBtn = document.getElementById('tourAutoBtn');
     if (lbl) lbl.textContent = 'STEP ' + (tourState.idx + 1) + ' / ' + TOUR_STEPS.length;
+    /* 顶部解说栏同步显示「导览 N / 15」，否则演示模式下这里会停在「准备中」 */
+    updatePresentBar(tourState.idx + 1, '', { total: TOUR_STEPS.length, unit: '导览' });
     if (ttl) ttl.textContent = step.title;
     if (scr) scr.textContent = step.script;
     if (dots) {
@@ -2605,6 +2942,7 @@ function tourExit() {
   tourState.auto = false;
   if (tourState.timer) { clearInterval(tourState.timer); tourState.timer = null; }
   document.body.classList.remove('touring');
+  updatePresentBar(0, '点「▶ 自动演示」看完整剧情，或点「🎬 导览」逐步听讲解');
   var mask = document.getElementById('tourMask'); if (mask) mask.style.display = 'none';
   var card = document.getElementById('tourCard'); if (card) card.style.display = 'none';
   a11yClosed();
@@ -2837,7 +3175,7 @@ function closeSelfTest() {
    ============================================================ */
 var A11Y_FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 /* 弹层选择器按 z-index 从高到低排列（见 CSS：test-panel 220 / tour-card 210 / co 60 / mo 50） */
-var A11Y_LAYERS = ['.test-panel', '.tour-card', '.co.show', '.mo.show'];
+var A11Y_LAYERS = ['.finale', '.copyfb', '.test-panel', '.tour-card', '.co.show', '.mo.show'];
 var _a11yReturnFocus = null;
 
 function isShown(el) {
@@ -2935,6 +3273,11 @@ function a11yClosed() {
 function closeTopLayer() {
   var layer = topLayer();
   if (!layer) return false;
+  if (layer.classList.contains('finale')) { closeFinale(); return true; }
+  if (layer.classList.contains('copyfb')) {
+    if (layer.parentNode) layer.parentNode.removeChild(layer);
+    return true;
+  }
   if (layer.classList.contains('test-panel')) { closeSelfTest(); return true; }
   if (layer.classList.contains('tour-card')) { tourExit(); return true; }
   var m = /^confirm-(.+)$/.exec(layer.id || '');
@@ -3398,6 +3741,168 @@ function runUITest() {
       var threw = false;
       try { exportCsv('u2', room.id); } catch (e) { threw = true; }
       add('★ 导出 CSV：无 Blob 的环境不抛异常（降级为复制/提示）', !threw);
+    })();
+
+    /* 20. 重置必须真的重置 —— 用户抓到的 bug：
+       「点了重置并没有重置，没有从头开始」。根因是自动演示是一条 await 链，
+       中途没人能停它：清空 State 后脚本继续切页面、打字幕，而且 autoRunning
+       卡在 true，于是「▶ 自动演示」再也点不动。 */
+    await (async function () {
+      resetAll();
+      goPhone('u1', 'room');
+      autoDemo();                                   // 故意不 await：要的就是"跑到一半"
+      await wait(2600);
+      var midRunning = autoRunning;
+      var midRooms = State.rooms.length;
+      var midCaptions = USERS.filter(function (u) { return CAPTION[u.id]; }).length;
+
+      resetAll();                                   // 观众点了「🔄 重置」
+      await wait(150);
+      var sub = (document.getElementById('hdrSub') || {}).textContent || '';
+      var cleanNow = State.rooms.length === 0 && State.bills.length === 0 && autoRunning === false &&
+        !document.body.classList.contains('present');
+      add('★ 重置：演示中途点重置 → 立刻停下（不再继续切页面/打字幕）',
+        midRunning === true && midRooms > 0 && cleanNow,
+        '中途 running=' + midRunning + ' rooms=' + midRooms + ' 字幕' + midCaptions + ' → 重置后 rooms=' +
+        State.rooms.length + ' running=' + autoRunning + ' 演示模式=' + document.body.classList.contains('present'));
+
+      await wait(1600);                             // 再等一会儿：没被取消的话脚本会把数据建回来
+      add('★ 重置：等 1.6s 后数据不会"自己长回来"',
+        State.rooms.length === 0 && State.bills.length === 0,
+        'rooms=' + State.rooms.length + ' bills=' + State.bills.length);
+      add('★ 重置：解说词复位 + 字幕清空',
+        /每个手机 = 一个真实用户/.test(sub) && !USERS.some(function (u) { return CAPTION[u.id]; }),
+        '「' + sub.slice(0, 26) + '…」· 残留字幕 ' + USERS.filter(function (u) { return CAPTION[u.id]; }).length);
+      add('★ 重置：每台手机回首页，且「更多选项/改分摊面板」都关掉',
+        USERS.every(function (u) { return u._page === 'home' && u._roomId === null && !u._bd && !u._adv; }),
+        USERS.map(function (u) { return u.id + ':' + u._page + (u._bd ? '(面板未关)' : ''); }).join(' '));
+
+      /* 重置之后必须能重新开演（曾经再也点不动） */
+      autoDemo();
+      await wait(2600);
+      add('★ 重置后「▶ 自动演示」能从头开演（曾经卡死点不动）',
+        autoRunning === true && State.rooms.length > 0,
+        'running=' + autoRunning + ' rooms=' + State.rooms.length);
+      stopAutoDemo();
+      await wait(200);
+      resetAll();
+    })();
+
+    /* 21. 复制必须"如实" —— 剪贴板不可用时不能谎报「已复制」。
+       真实场景：Demo 挂在普通 http:// 上（非安全上下文）或内嵌 WebView 里，
+       navigator.clipboard 是 undefined —— 老实现会提示"已复制"但剪贴板是空的。 */
+    await (async function () {
+      add('★ 复制：三级降级实现齐备（clipboard → execCommand → 手工面板）',
+        typeof copyText === 'function' && typeof legacyCopyText === 'function' && typeof showCopyFallback === 'function');
+
+      showCopyFallback('测试文本ABC');
+      var fb0 = document.getElementById('copyFallback');
+      var ta0 = fb0 && fb0.querySelector('textarea');
+      add('★ 复制：兜底面板能看到原文（不是只弹个空框）',
+        !!ta0 && ta0.value === '测试文本ABC', ta0 ? JSON.stringify(ta0.value) : '无面板');
+      if (fb0 && fb0.parentNode) fb0.parentNode.removeChild(fb0);
+
+      /* 把两条通道都封掉，看 copyText 是否**如实**返回 false */
+      var savedExec = document.execCommand;
+      var savedWrite = null;
+      try { document.execCommand = undefined; } catch (e) { /* ignore */ }
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          savedWrite = navigator.clipboard.writeText;
+          navigator.clipboard.writeText = function () { return Promise.reject(new Error('blocked')); };
+        }
+      } catch (e) { /* ignore */ }
+      try { Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true }); } catch (e) { /* ignore */ }
+
+      var noChannel = await copyText('abc');
+      add('★ 复制：两条通道都不可用时返回 false（调用方据此如实提示，不谎报）',
+        noChannel === false, '返回 ' + noChannel);
+
+      copySettle('u1', ensureDemoRoom().id);
+      await wait(80);
+      var t1 = (document.getElementById('toast-u1') || {}).textContent || '';
+      var fb = document.getElementById('copyFallback');
+      add('★ 复制：此时点「复制方案」不出现"已复制"，而是摊出文本',
+        !/已复制/.test(t1) && !!fb, '「' + t1 + '」· 面板 ' + (fb ? '已弹出' : '未弹出'));
+      if (fb && fb.parentNode) fb.parentNode.removeChild(fb);
+
+      /* 还原环境 */
+      try { document.execCommand = savedExec; } catch (e) { /* ignore */ }
+      try { if (savedWrite) navigator.clipboard.writeText = savedWrite; } catch (e) { /* ignore */ }
+    })();
+
+    /* 22. 演示解说层（评委导向）：演示模式下**必须看得见**品牌/解说/进度/在操作的是谁。
+       曾经的致命问题：解说词写进 #hdrSub，而 body.present 把 .hdr 设成 display:none ——
+       评委只看到 4 台手机 + 每台一小条字幕，既没有产品名也没有解说。 */
+    await (async function () {
+      resetAll();
+      var bar = document.getElementById('presentBar');
+      add('★ 解说栏存在且带品牌（截图脱离上下文也认得出产品）',
+        !!bar && /TravelAA/.test(bar.textContent) && /HACKATHON|爆能器/.test(bar.textContent));
+
+      enterPresent();
+      await wait(60);
+      add('★ 演示模式下解说栏**可见**（不再被 display:none 吃掉）', isShownDeep(bar),
+        'display=' + getComputedStyle(bar).display);
+
+      /* 起演示，跑到有解说的分镜 */
+      autoDemo();
+      await wait(3200);
+      var stepTxt = (document.getElementById('presentStep') || {}).textContent || '';
+      var narrTxt = (document.getElementById('presentNarr') || {}).textContent || '';
+      var progW = (document.getElementById('presentProg') || {}).style.width || '';
+      add('★ 解说栏显示分镜进度（第 N / 24）', /分镜\s*\d+\s*\/\s*24/.test(stepTxt), '「' + stepTxt + '」');
+      add('★ 解说栏显示解说正文（评委读得到这一步在演什么）',
+        narrTxt.length > 8 && !/点「▶ 自动演示」/.test(narrTxt), '「' + narrTxt.slice(0, 34) + '…」');
+      add('★ 进度条随分镜推进', /%$/.test(progW) && parseFloat(progW) > 0, progW);
+      add('★ 高亮"谁在操作"（4 台并排时视线能跟着走）',
+        !!document.querySelector('#phonesStage .pu.acting'), document.querySelectorAll('.pu.acting').length + ' 台高亮');
+
+      /* 暂停：脚本必须真的停住（解说词不再变化） */
+      var beforePause = (document.getElementById('presentNarr') || {}).textContent || '';
+      var beforeStep = (document.getElementById('presentStep') || {}).textContent || '';
+      toggleAutoPause();
+      await wait(5200);                     // 比一个分镜还长；没暂停的话必然已经切走了
+      var afterNarr = (document.getElementById('presentNarr') || {}).textContent || '';
+      var afterStep = (document.getElementById('presentStep') || {}).textContent || '';
+      add('★ 解说栏暂停：暂停 5s 后仍在同一分镜（演示能停下来配合讲解）',
+        autoPaused === true && afterStep === beforeStep && afterNarr === beforePause,
+        '暂停前 ' + beforeStep + ' → 暂停后 ' + afterStep);
+      add('★ 解说栏暂停：按钮文案变成「继续」',
+        /继续/.test((document.getElementById('presentPause') || {}).textContent || ''),
+        (document.getElementById('presentPause') || {}).textContent);
+      toggleAutoPause();
+      await wait(1600);
+      add('★ 解说栏继续：恢复播放后分镜推进', !autoPaused, '分镜 ' + (document.getElementById('presentStep') || {}).textContent);
+
+      stopAutoDemo();
+      await wait(150);
+      add('★ 取消演示后解说栏复位（不留上一条解说）',
+        /点「▶ 自动演示」/.test((document.getElementById('presentNarr') || {}).textContent || '') &&
+        !document.body.classList.contains('present'),
+        (document.getElementById('presentNarr') || {}).textContent.slice(0, 22));
+
+      /* 收官面板：数字必须是**真实算出来的**，不是写死的文案 */
+      var finRoom = ensureDemoRoom();
+      showFinale();
+      var fin = document.getElementById('finale');
+      add('★ 收官总结面板会出现（给评委一屏结论）', !!fin && isShownDeep(fin));
+      if (fin) {
+        var st = calcSettlement(finRoom, State.bills.filter(function (b) { return b.roomId === finRoom.id; }));
+        var txt = fin.textContent;
+        add('★ 收官总结：数字来自真实结算（总消费/最少转账对得上）',
+          txt.indexOf(money(st.totalExpense, 0)) >= 0 && txt.indexOf(st.transfers.length + ' 笔') >= 0,
+          '总消费 ¥' + money(st.totalExpense, 0) + ' · ' + st.transfers.length + ' 笔');
+        add('★ 收官总结：标明账恒平结论', /账恒平/.test(txt) && /净余额合计 0/.test(txt));
+        add('★ 收官总结：列了五层能力', ['会听', '会看', '会读单', '会算账', '会复盘'].every(function (k) { return txt.indexOf(k) >= 0; }));
+        add('★ 收官总结：提供"再听导览/重播"入口',
+          !!fin.querySelector('[data-act="finale-tour"]') && !!fin.querySelector('[data-act="finale-replay"]'));
+        /* Esc 也要能关掉（无障碍层要认得这个新弹层） */
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        await wait(60);
+        add('★ 收官总结：Esc 可关闭（无障碍层认得新弹层）', !document.getElementById('finale'));
+      }
+      resetAll();
     })();
 
     /* 17. 自动演示：必须真的切页面（不是"后台默默加数据"），

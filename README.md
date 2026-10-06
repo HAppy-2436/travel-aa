@@ -96,10 +96,14 @@ travel-aa/
 | 打开方式 | 效果 |
 |---|---|
 | `demo/index.html?n=4` | 4 台手机开场（4 位成员，每人都会动手） |
-| `▶ 自动演示` / `?n=4#auto` | 24 个分镜的完整剧情（AI 记账 / 票据 / 携程订单 / 截图识别 / 抹零 / 代购 / 私账 / 多退少补 / 暂估改价 / 占位 / 审计 / 结算 / 结清闭环 / 复盘） |
+| `▶ 自动演示` / `?n=4#auto` | 24 个分镜的完整剧情（AI 记账 / 票据 / 携程订单 / 截图识别 / 抹零 / 代购 / 私账 / 多退少补 / 暂估改价 / 占位 / 审计 / 结算 / 结清闭环 / 复盘）→ **结束时弹收官总结**（真实算出的总消费/人均/最少转账/账恒平） |
 | `🎬 导览` / `?n=4&tour=1` | **15 步**导览（同类功能合并，覆盖全部 40 项功能）；`tour=N` 可直达第 N 步 |
 | `?n=4&stage=10#auto` | 自动演示定格在第 10 步（便于截图／讲解） |
-| `#selftest` / `#tourtest` / `#uitest` | 22 / 31 / 61 项浏览器内验收 |
+| `#selftest` / `#tourtest` / `#uitest` | 22 / 17 / 91 项浏览器内验收 |
+
+**演示模式下屏幕上会浮一条解说栏**，给评委补齐三件事：产品名与团队、分镜进度（`分镜 15 / 24` + 进度条）、
+以及**当前这一步在演什么**（15px 解说正文）；**正在操作的那台手机会加一圈高亮环 + 「👆 正在操作」**，
+4 台并排时视线能跟着动作走。讲解途中可以点「⏸ 暂停」把演示停住。
 
 > 加功能时**必须**在 `demo/index.html` 的 `FEATURES` 清单里加一行，并给某个导览步骤补 `covers` ——
 > 否则 `#selftest` 会红。原因很简单：**做了但演示里看不见的功能，等于没做。**
@@ -119,10 +123,10 @@ travel-aa/
 | 同步内核单测 | `node tests/sync.test.js` | 54 项 |
 | 相对路径检查 | `node tests/requires.check.js` | 全部可解析 |
 | 交付物可打开性 | `node tests/resource.check.js` | `file://` 下资源齐备 |
-| Demo 完整性 | `node tests/demo.check.js` | 191 项（含功能清单/导览覆盖/审计回归） |
+| Demo 完整性 | `node tests/demo.check.js` | 192 项（含功能清单/导览覆盖/审计回归） |
 | 服务器集成测试 | `node tests/server.test.js` | 77 项 |
 | Demo 功能自检 | 打开 `demo/index.html#selftest` | `SELFTEST 22/22 ALL-PASS` |
-| **交互验收（真实点击）** | 打开 `demo/index.html#uitest` | `UITEST 66/66 ALL-PASS`（含无障碍 / 结算闭环 / CSV 导出 / 4 台手机都动手） |
+| **交互验收（真实点击）** | 打开 `demo/index.html#uitest` | `UITEST 91/91 ALL-PASS`（含无障碍 / 结算闭环 / CSV / 演示解说层 / 4 台手机都动手） |
 | 导览 + 功能覆盖 | 打开 `demo/index.html#tourtest` | `TOURTEST 17/17 ALL-PASS` |
 
 > 项数以实际输出为准；`run-all.js` 里的下限会跟着一起收紧，防止测试被悄悄掏空。
