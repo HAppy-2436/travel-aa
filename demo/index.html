@@ -508,6 +508,14 @@ var AI_SAMPLES = [
 function money(n, dec) {
   return (Number(n) || 0).toFixed(dec === undefined ? 2 : dec);
 }
+/* 带千分位的金额 —— 只用在**评委一眼要读**的大数字上（结算总额、收官总结）。
+   ¥15,729 比 ¥15729 快得多，投影距离下尤其明显。
+   手动实现而不用 toLocaleString：后者在不同引擎/环境下分隔符与分组规则可能不一致。 */
+function moneyK(n, dec) {
+  var parts = (Number(n) || 0).toFixed(dec === undefined ? 0 : dec).split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return parts.join('.');
+}
 
 /* 当前币种 → 人民币汇率（由内核提供，记账时快照）
    必须用 AI.getRate()（不取整），不能用 AI.toCNY(1,code)：
@@ -791,7 +799,7 @@ function renderRoomDetail(userId,roomId){
     else if(level==='warn')html+='<div class="bal warn">⚠️ 已用 '+(pct||0).toFixed(0)+'%'+(bs&&bs.willExceed?'，按当前速度将超支':'，注意控制消费')+'</div>';
     else html+='<div class="bal safe">✅ 预算内'+(bs&&bs.safeDaily&&bs.days?((' · 剩余 '+bs.days+' 天，日均可用 ¥'+money(bs.safeDaily,0))):(' · 剩余 ¥'+money(totalBudget-totalSpent,0)))+'</div>';
   }
-  html+='<div class="og"><div class="oi"><div class="ol">TOTAL / 集体账</div><div class="ov">¥'+money(totalSpent,0)+'</div></div><div class="oi"><div class="ol">BILLS</div><div class="ov sm">'+bills.length+'</div></div><div class="oi"><div class="ol">MEMBERS</div><div class="ov sm">'+room.members.length+'</div></div><div class="oi"><div class="ol">CODE</div><div class="ov sm">'+room.code+'</div></div></div>';
+  html+='<div class="og"><div class="oi"><div class="ol">TOTAL / 集体账</div><div class="ov">¥'+moneyK(totalSpent)+'</div></div><div class="oi"><div class="ol">BILLS</div><div class="ov sm">'+bills.length+'</div></div><div class="oi"><div class="ol">MEMBERS</div><div class="ov sm">'+room.members.length+'</div></div><div class="oi"><div class="ol">CODE</div><div class="ov sm">'+room.code+'</div></div></div>';
   /* 备注区：把"外币折算 / 我的私账"这些说明**并进一条**，
      不再各占一个灰盒子（曾堆 3 条，视觉噪音大）。 */
   var notes=[];
@@ -934,7 +942,7 @@ function renderStats(userId,roomId){
   var me=USERS.filter(function(x){return x.id===userId})[0];
   var myP=AI&&AI.personalSpend?AI.personalSpend(allBills,userId):{total:0,count:0,list:[]};
   var html='<div class="hs" style="padding:8px 0 16px;"><div class="hl">SPENDING REPORT</div><div class="ht">消费统计</div><div style="font-size:11px;color:var(--g400);margin-top:4px;">'+esc(scopeName)+'</div></div>';
-  html+='<div class="og"><div class="oi"><div class="ol">TOTAL / 集体账</div><div class="ov">¥'+money(total,0)+'</div></div><div class="oi"><div class="ol">BILLS / 笔数</div><div class="ov sm">'+bills.length+'</div></div></div>';
+  html+='<div class="og"><div class="oi"><div class="ol">TOTAL / 集体账</div><div class="ov">¥'+moneyK(total)+'</div></div><div class="oi"><div class="ol">BILLS / 笔数</div><div class="ov sm">'+bills.length+'</div></div></div>';
   if(room)html+='<button class="btn lt" data-feat="export-csv" style="width:100%;margin-bottom:8px;" onclick="exportCsv(\''+userId+'\',\''+roomId+'\')">📥 导出这本账（CSV，含私账与调整单）</button>';
 
   /* ---- 我的私账（人情账）：不进 AA 的零碎钱，只有本人可见 ---- */
@@ -1546,7 +1554,7 @@ function renderSettle(userId,roomId){
   var bills=State.bills.filter(function(b){return b.roomId===roomId});
   var settlement=calcSettlement(room,bills);
   var totalSpent=settlement.totalExpense;
-  var html='<div class="shm" data-feat="settle-total"><div class="aml">旅行总消费</div><div class="svm">¥'+money(totalSpent)+'</div></div>';
+  var html='<div class="shm" data-feat="settle-total"><div class="aml">旅行总消费</div><div class="svm">¥'+moneyK(totalSpent)+'</div></div>';
   if(settlement.hasForeign)html+='<div class="os"><span>💱</span><span>含外币账单，已按记账时汇率快照折算为人民币</span></div>';
   var totalBudget=(room.budgetPerPerson||0)*room.members.length;
   if(totalBudget>0){
@@ -2547,14 +2555,14 @@ function showFinale() {
     '<div class="finale-hd"><div class="finale-t">✈️ TravelAA · 旅行 AA 记账</div>' +
     '<div class="finale-sub">' + esc(room.name) + ' · ' + room.members.length + ' 人 · ' + bills.length + ' 笔账单</div></div>' +
     '<div class="finale-nums">' +
-      '<div class="finale-n"><div class="finale-l">集体总消费</div><div class="finale-v">¥' + money(st.totalExpense, 0) + '</div></div>' +
-      '<div class="finale-n"><div class="finale-l">人均</div><div class="finale-v">¥' + money(room.members.length ? st.totalExpense / room.members.length : 0, 0) + '</div></div>' +
+      '<div class="finale-n"><div class="finale-l">集体总消费</div><div class="finale-v">¥' + moneyK(st.totalExpense) + '</div></div>' +
+      '<div class="finale-n"><div class="finale-l">人均</div><div class="finale-v">¥' + moneyK(room.members.length ? st.totalExpense / room.members.length : 0) + '</div></div>' +
       '<div class="finale-n"><div class="finale-l">最少转账</div><div class="finale-v">' + st.transfers.length + ' 笔</div></div>' +
       '<div class="finale-n"><div class="finale-l">账恒平</div><div class="finale-v ' + (st.balanced ? 'ok' : 'bad') + '">' + (st.balanced ? '✅ 净余额合计 0' : '⚠️ 待核对') + '</div></div>' +
     '</div>' +
     '<div class="finale-chips">' + caps.map(function (c) { return '<span class="finale-chip"><b>' + c[0] + '</b>' + c[1] + '</span>'; }).join('') + '</div>' +
     '<div class="finale-note">另计：' + personalCount + ' 笔私账（人情账）不进 AA、只有本人可见；' + adjCount + ' 笔调整单承载「多退少补 / 暂估改价」，原账全部留痕。' +
-      (personal > 0 ? '小王自己另花了 ¥' + money(personal, 0) + '。' : '') + '</div>' +
+      (personal > 0 ? '小王自己另花了 ¥' + moneyK(personal) + '。' : '') + '</div>' +
     '<div class="finale-acts">' +
       '<button class="btn lt" data-act="finale-tour">🎬 再听一遍导览（' + TOUR_STEPS.length + ' 步）</button>' +
       '<button class="btn lt" data-act="finale-replay">🔁 重播自动演示</button>' +
@@ -3891,8 +3899,8 @@ function runUITest() {
         var st = calcSettlement(finRoom, State.bills.filter(function (b) { return b.roomId === finRoom.id; }));
         var txt = fin.textContent;
         add('★ 收官总结：数字来自真实结算（总消费/最少转账对得上）',
-          txt.indexOf(money(st.totalExpense, 0)) >= 0 && txt.indexOf(st.transfers.length + ' 笔') >= 0,
-          '总消费 ¥' + money(st.totalExpense, 0) + ' · ' + st.transfers.length + ' 笔');
+          txt.indexOf(moneyK(st.totalExpense)) >= 0 && txt.indexOf(st.transfers.length + ' 笔') >= 0,
+          '总消费 ¥' + moneyK(st.totalExpense) + ' · ' + st.transfers.length + ' 笔');
         add('★ 收官总结：标明账恒平结论', /账恒平/.test(txt) && /净余额合计 0/.test(txt));
         add('★ 收官总结：列了五层能力', ['会听', '会看', '会读单', '会算账', '会复盘'].every(function (k) { return txt.indexOf(k) >= 0; }));
         add('★ 收官总结：提供"再听导览/重播"入口',
