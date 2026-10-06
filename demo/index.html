@@ -33,14 +33,24 @@ body.present .hdr{display:none}
    退出入口见右上角固定的 .present-exit（不占文档流）。 */
 body.present .tbar{display:none}
 body.present .stage{padding:0;min-height:0}
+/* 演示时收窄手机间距 + **禁止折行**。
+   4 台 × 320 + 3 个间距 + 左右留白必须 ≤ 视口，否则第 4 台会折到第二行被切掉
+   （实测 1400px 宽就折行，而投影仪常见分辨率正是 1280×720）。
+   ⚠️ 只收窄间距不够，而且**光靠 fitPhones 的 scale 也救不了** ——
+   flex 的折行发生在布局阶段，transform 是布局之后才生效的，折好的两行会一起被缩小。
+   所以这里必须 flex-wrap:nowrap（强行一行）+ overflow:clip 把布局溢出的部分裁掉，
+   再由 fitPhones() 等比缩放到刚好装下。 */
+body.present .stage{gap:clamp(10px,1.4vw,22px);flex-wrap:nowrap;overflow:clip;overflow-clip-margin:16px}
 body.present .fh{display:none}
 /* 导览要讲"演示台"本身（人数步进器 / 同步徽标 / 键盘可达），而演示模式默认把工具条藏了 ——
    那样高亮框会落到一个 display:none 的元素上（等于高亮到空气）。
    所以导览期间把工具条显示回来，并把手机高度让出这一行，保证仍然一屏装下。 */
 body.present.touring .tbar{display:flex}
 body.present .pu{gap:10px}
-/* 手机高度 = 视口 − (演示解说栏 ~96 + wrap 上下 24 + 人名行 ~56 + 字幕条 ~46 + 余量 12) */
-body.present.touring .pf{height:calc(100vh - 196px)}
+/* 演示模式的纵向高度由 fitPhones() 按实测值直接写在 .pf 的内联样式上；
+   下面的 calc 只是 JS 没跑（无头/量不到）时的保底值。 */
+body.present .pf{height:calc(100vh - 168px)}
+body.present.touring .pf{height:calc(100vh - 236px)}
 
 /* ===== 演示解说栏（评委导向）=====
    问题：自动演示的解说词写进 #hdrSub，而演示模式把 .hdr 整个 display:none 了 ——
@@ -66,12 +76,23 @@ body.present .pshow{
 .pshow-prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--pri),#FFB088);transition:width .4s cubic-bezier(.4,0,.2,1)}
 .pshow-btn{pointer-events:auto;font-family:'Space Grotesk',sans-serif;font-size:11.5px;font-weight:700;padding:6px 12px;border-radius:100px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:rgba(255,255,255,.8);cursor:pointer;white-space:nowrap}
 .pshow-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+.pshow-btn.on{border-color:rgba(255,107,53,.5);background:rgba(255,107,53,.16);color:var(--pri)}
 .pshow-narr{margin-top:8px;font-size:15px;line-height:1.6;font-weight:600;color:#fff;max-width:1500px;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-body.present .pf{height:calc(100vh - 234px)}
-/* 导览模式下：解说正文由导览卡负责，这里只留品牌与步骤，避免两块文字争注意力 */
+/* 导览模式下：解说正文由导览卡负责，这里只留品牌与步骤，避免两块文字争注意力。
+   两种模式下的手机高度都由 fitPhones() 按实测值写内联样式（见该函数），
+   下面这行只是保底。 */
 body.present.touring .pshow-narr{display:none}
-body.present.touring .pf{height:calc(100vh - 292px)}
+body.present.touring .pf{height:calc(100vh - 236px)}
+/* 演示模式下人名行会被顶部解说栏盖住 → 隐藏它，把"谁在操作"并进字幕条（见 setCaption） */
+body.present .pl{display:none}
+/* ⚠️ 必须禁止 flex 收缩：`flex-wrap:nowrap` + 内容超宽时，flex 会先把手机单元**压缩**
+   （flex-shrink 默认 1），而手机壳 .pf 宽度固定 320px，于是内屏比被压扁的外框宽，
+   两侧各被裁掉十几像素（实测标题首字被切、金额末字被切）。
+   正确做法：保持原宽度让整行溢出，再由 fitPhones() 等比缩放到刚好装下。 */
+body.present .pu{flex:0 0 auto}
+body.present .cap{width:100%}
+body.present .pf{width:320px;max-width:none}
 /* 演示模式下的退出入口：固定在右上角，不占文档流 */
 .present-exit{display:none}
 body.present .present-exit{display:block;position:fixed;top:14px;right:18px;z-index:60}
@@ -120,7 +141,8 @@ button.bdg:hover{background:rgba(255,255,255,.08);color:#fff}
 @keyframes nud{0%,100%{background:rgba(255,107,53,0);color:rgba(255,255,255,.6)}50%{background:rgba(255,107,53,.28);color:var(--pri)}}
 .stepper button.nudge{animation:nud 1.6s ease-in-out infinite}
 /* 手机舞台：允许换行 + 自动收缩，避免窄窗口/投影时右侧手机被裁掉
-   （曾出现 3 台手机总宽 1040px > 视口 900px，第 3 台整台看不见） */
+   （曾出现 3 台手机总宽 1040px > 视口 900px，第 3 台整台看不见）
+   演示模式改由 fitPhones() 接管：nowrap 强行一行 + 等比缩放，理由见该函数注释。 */
 .stage{display:flex;gap:clamp(14px,2.4vw,40px);justify-content:center;align-items:flex-start;flex-wrap:wrap;padding:16px 0 40px;min-height:calc(100vh - 200px)}
 .pu{display:flex;flex-direction:column;align-items:center;gap:14px;transition:transform .4s cubic-bezier(.4,0,.2,1);max-width:100%}
 .pu:hover{transform:translateY(-6px)}
@@ -462,6 +484,7 @@ button.bdg:hover{background:rgba(255,255,255,.08);color:#fff}
     <div class="pshow-brand">✈️ TravelAA · 旅行 AA 记账<span>携程高校 AI HACKATHON · Team 爆能器</span></div>
     <div class="pshow-step" id="presentStep">准备中</div>
     <div class="pshow-prog"><i id="presentProg"></i></div>
+    <button type="button" class="pshow-btn" id="presentNext" onclick="autoNext()" title="切成单步：每点一次前进一个分镜（适合边讲边演）">⏭ 下一步</button>
     <button type="button" class="pshow-btn" id="presentPause" onclick="toggleAutoPause()">⏸ 暂停</button>
   </div>
   <div class="pshow-narr" id="presentNarr">点「▶ 自动演示」看完整剧情，或点「🎬 导览」逐步听讲解</div>
@@ -704,7 +727,14 @@ function setCaption(uid, text) {
   CAPTION[uid] = text || '';
   var el = document.getElementById('cap-' + uid);
   if (el) {
-    el.textContent = CAPTION[uid];
+    /* 演示模式下顶部解说栏盖住了人名行（fixed 不占文档流），
+       所以把**谁在操作**并进字幕条：「小明 · ⑮ 暂估改价」，一行读全。 */
+    var owner = USERS.filter(function (u) { return u.id === uid; })[0];
+    if (CAPTION[uid] && document.body.classList.contains('present') && owner) {
+      el.innerHTML = '<b style="color:#18181b;">' + esc(owner.name) + '</b> · ' + esc(CAPTION[uid]);
+    } else {
+      el.textContent = CAPTION[uid];
+    }
     el.style.display = CAPTION[uid] ? 'block' : 'none';
   }
   setActing(CAPTION[uid] ? uid : null);
@@ -2071,6 +2101,7 @@ function setPhoneCount(n){
   var lbl=document.getElementById('phoneCountLabel');
   if(lbl)lbl.textContent=State.phoneCount;
   renderPhones();
+  fitPhones();          // 台数变了要重新量一次（演示模式下才真的缩放）
   return State.phoneCount;
 }
 function addPhone(){if(State.phoneCount>=4){showToast('u1','最多 4 台手机（4 位成员）');return}setPhoneCount(State.phoneCount+1)}
@@ -2115,9 +2146,82 @@ function resetAll(opts){
    演示模式：开演时隐藏标题/工具条、手机自适应高度
    —— 目的：观众看自动演示时**不需要滚动鼠标**（用户明确反馈）
    ============================================================ */
-function enterPresent() { document.body.classList.add('present'); }
+/* ============================================================
+   演示模式下的"一屏装下"：横向等比缩放 + 纵向按实测高度分配
+   ------------------------------------------------------------
+   两个都会在投影仪上翻车的问题：
+     ① **横向**：手机固定 320px，4 台 = 1280 + 间距 > 1280×720 投影仪，
+        `flex-wrap` 把第 4 台折到第二行、直接被切出画面（实测 1400px 宽就折行）。
+        ⚠️ 只加 `transform: scale()` 没用 —— **折行发生在布局阶段**，transform 是之后才生效的，
+        缩小的是"已经折好的两行"。所以 CSS 里必须 nowrap（强行一行），
+        再由这里缩放到刚好装下，布局溢出交给 `overflow:clip` 裁掉。
+     ② **纵向**：顶部那条解说栏是 fixed 的，不占文档流 —— 它会把第一行内容（人名行）盖住。
+        所以这里按**实测**的解说栏高度给 `.wrap` 留出 padding-top，
+        并把手机高度按"剩下多少可用"直接算出来（比写死 calc 值可靠，
+        解说栏在导览模式下会更矮）。
+   量不到宽度时（无头环境 / 布局未就绪）整体跳过，不做任何缩放。
+   ============================================================ */
+function fitPhones() {
+  var stage = document.getElementById('phonesStage');
+  if (!stage) return 1;
+  var wrap = document.querySelector('.wrap');
+  var bar = document.getElementById('presentBar');
+  var pfs = document.querySelectorAll('#phonesStage .pf');
+  var reset = function () {
+    stage.style.transform = '';
+    stage.style.transformOrigin = '';
+    if (wrap) wrap.style.paddingTop = '';
+    for (var i = 0; i < pfs.length; i++) pfs[i].style.height = '';
+  };
+  if (!document.body.classList.contains('present')) { reset(); return 1; }
+  if (!stage.clientWidth) return 1;           // 量不到宽度就别猜（jsdom 等无头环境）
+
+  reset();
+  /* ---- ① 纵向：解说栏实际多高，就给内容留多少 ---- */
+  var barH = bar ? bar.offsetHeight : 0;
+  if (wrap) wrap.style.paddingTop = (barH + 12) + 'px';
+  var unit = stage.children[0];
+  var capH = 0;
+  if (unit) {
+    var cap = unit.querySelector('.cap');
+    if (cap && cap.offsetHeight) capH = cap.offsetHeight + 10;   // 字幕条 + 单元内间距
+  }
+  var availH = window.innerHeight - stage.getBoundingClientRect().top - capH - 14;
+  if (availH > 240 && pfs.length) {
+    for (var k = 0; k < pfs.length; k++) pfs[k].style.height = Math.round(availH) + 'px';
+  }
+
+  /* ---- ② 横向：装不下就整体等比缩小（4 台永远在同一行、永远完整可见） ---- */
+  var units = stage.children;
+  if (!units || units.length < 2) return 1;
+  /* 用**首尾元素的实际包围盒**量内容宽度，而不是"各元素宽度相加 + gap×n" ——
+     后者依赖对 gap 的假设，实测会差几个像素、导致两侧各被切掉一点。 */
+  var first = units[0].getBoundingClientRect();
+  var last = units[units.length - 1].getBoundingClientRect();
+  var need = last.right - first.left;
+  var avail = stage.clientWidth;
+  if (!(need > 0) || !(avail > 0)) return 1;
+  var s = Math.min(1, (avail - 4) / need);
+  if (s < 0.995) {
+    /* 内容被 flex 居中、向两侧对称溢出；以 top-left 为原点缩小后整体左移了
+       avail×(1−s)/2，补回来即精确居中（不用依赖 transform-origin 的默认行为）。 */
+    stage.style.transformOrigin = 'top left';
+    stage.style.transform = 'translateX(' + (avail * (1 - s) / 2).toFixed(1) + 'px) scale(' + s.toFixed(4) + ')';
+    return s;
+  }
+  return 1;
+}
+window.addEventListener('resize', function () { fitPhones(); });
+
+function enterPresent() {
+  document.body.classList.add('present');
+  /* 进演示模式后布局变了，等一帧再量（否则量到的是旧宽度） */
+  fitPhones();
+  setTimeout(fitPhones, 60);
+}
 function exitPresent() {
   document.body.classList.remove('present');
+  fitPhones();                 // 非演示态：会被内部 reset 掉（清掉缩放/内联高度）
   var sub = document.getElementById('hdrSub');
   if (sub) sub.textContent = '每个手机 = 一个真实用户 · 操作实时同步 · 展示多人AA完整流程';
 }
@@ -2136,23 +2240,53 @@ function exitPresent() {
    ============================================================ */
 var autoRunning = false;
 var autoGen = 0;
-var autoPaused = false;
+/* 播放状态机：run 正常播 / pause 停住 / step 单步（一个分镜播完就等人点「下一步」） */
+var autoMode = 'run';
+var autoGate = null;        // 单步模式下当前正在等待放行的 resolve
+var pendingGate = false;    // say() 开启了新分镜 → 该分镜的第一次 sleep 要设闸
 
-/** 暂停/继续：把 sleep 的截止时间往后推，脚本停在原地不动 */
+function updatePresentControls() {
+  var pauseBtn = document.getElementById('presentPause');
+  var stepBtn = document.getElementById('presentNext');
+  if (pauseBtn) {
+    pauseBtn.textContent = autoMode === 'run' ? '⏸ 暂停' : '▶ 继续';
+    pauseBtn.classList.toggle('on', autoMode !== 'run');
+  }
+  if (stepBtn) {
+    stepBtn.classList.toggle('on', autoMode === 'step');
+    stepBtn.title = autoMode === 'step' ? '单步讲解中：每点一次前进一个分镜' : '切成单步：每点一次前进一个分镜（适合边讲边演）';
+  }
+}
+function releaseAutoGate() {
+  var f = autoGate;
+  autoGate = null;
+  if (f) f();
+}
+/** 「下一步」：切成单步模式并放行当前的等待 —— 一次前进一个分镜 */
+function autoNext() {
+  if (!autoRunning) return;
+  autoMode = 'step';
+  updatePresentControls();
+  releaseAutoGate();
+  showToast('u1', '⏭ 单步讲解：再点「下一步」继续，点「继续」恢复自动播放');
+}
+/** 「暂停 / 继续」：单步模式点它就是"恢复自动播放" */
 function toggleAutoPause() {
-  autoPaused = !autoPaused;
-  var b = document.getElementById('presentPause');
-  if (b) b.textContent = autoPaused ? '▶ 继续' : '⏸ 暂停';
-  if (autoPaused) showToast('u1', '⏸ 已暂停，随时可以接着讲');
+  if (!autoRunning) return;
+  if (autoMode === 'step') { autoMode = 'run'; updatePresentControls(); releaseAutoGate(); showToast('u1', '▶ 已恢复自动播放'); return; }
+  autoMode = autoMode === 'pause' ? 'run' : 'pause';
+  updatePresentControls();
+  if (autoMode === 'pause') showToast('u1', '⏸ 已暂停，随时可以接着讲');
 }
 
 /** 取消正在跑的自动演示，并把界面恢复到"开演前"的样子 */
 function stopAutoDemo() {
   autoGen++;                 // 让在跑的实例在下一个 await 处自杀
   autoRunning = false;
-  autoPaused = false;
-  var b = document.getElementById('presentPause');
-  if (b) b.textContent = '⏸ 暂停';
+  autoMode = 'run';
+  pendingGate = false;
+  autoGate = null;
+  updatePresentControls();
   setActing(null);
   if (document.body.classList.contains('present')) exitPresent();
   if (typeof clearCaptions === 'function') clearCaptions();
@@ -2165,17 +2299,28 @@ async function autoDemo() {
     await new Promise(function (r) { setTimeout(r, 60); });
   }
   autoRunning = true;
-  autoPaused = false;
+  autoMode = 'run';
+  pendingGate = false;
+  updatePresentControls();
   var myGen = autoGen;
-  /* 每个 await 都是一个检查点：① 被取消（重置/重开）立刻退出；② 暂停时原地等待。
+  /* 每个 await 都是一个检查点：① 被取消（重置/重开）立刻退出；② 暂停时原地等；
+     ③ 单步模式下，新分镜的第一处 await 会设闸，等人点「下一步」。
      这样脚本里 24 个分镜不用逐个改。 */
   var sleep = function (ms) {
     var deadline = Date.now() + ms;
+    /* 本处 await 是否要设闸：只有"新分镜刚被 say() announce 过"的第一个 await 才算，
+       同一分镜内部的几个小停顿照常自动播完（否则一屏内容会播一半就停住）。 */
+    var gated = pendingGate;
+    pendingGate = false;
     return new Promise(function (resolve, reject) {
+      var settled = false;
+      var go = function () { if (settled) return; settled = true; autoGate = null; resolve(); };
       var tick = function () {
-        if (myGen !== autoGen) return reject({ __cancelled: true });
-        if (autoPaused) deadline += 150;                 // 暂停 = 一直把截止时间往后推
-        if (Date.now() >= deadline) return resolve();
+        if (settled) return;
+        if (myGen !== autoGen) { settled = true; autoGate = null; return reject({ __cancelled: true }); }
+        if (autoMode === 'pause') deadline += 150;          // 暂停 = 一直把截止时间往后推
+        if (autoMode === 'step' && gated) { autoGate = go; setTimeout(tick, 150); return; }
+        if (Date.now() >= deadline) return go();
         setTimeout(tick, 120);
       };
       tick();
@@ -2186,6 +2331,7 @@ async function autoDemo() {
     if (el) el.textContent = t;
     /* 同步到演示解说栏 —— 演示模式下 .hdr 是隐藏的，不搬过来评委就读不到 */
     var n = storyboardOf(t);
+    if (n > 0 && n !== presentStep) pendingGate = true;     // 新分镜 → 下一个 await 设闸
     if (n > 0) presentStep = n;
     updatePresentBar(presentStep, t);
   };
@@ -2811,7 +2957,36 @@ var TOUR_STEPS = [
     script: '分类占比、每日消费与趋势（越花越多还是越花越省）、AI 消费洞察与建议、入账方式统计；私账单独一块，写着"自己花的"和"这次旅行我总共花了多少 = 集体账分摊后的个人部分 + 私账"。同一份数据，每个人看到的重点不同。最后可以一键「导出这本账」成 CSV（带 BOM，Excel 双击不乱码；私账与调整单都带标记），报销、对账、留底都用得上。',
     before: function () { ensurePersonalSample(); ensureV3Samples(); tourSetup('u2', 'stats'); } }
 ];
-var tourState = { idx: 0, auto: false, timer: null };
+/* speed = 自动播放的每步秒数；三档循环（讲得快/标准/慢慢讲） */
+var TOUR_SPEEDS = [9000, 6500, 4500];
+var TOUR_SPEED_LABELS = ['0.7×', '1×', '1.5×'];
+var tourState = { idx: 0, auto: false, timer: null, speed: 1 };
+
+/* 控制按钮的文案**同步**更新。
+   原来按钮文案写在 renderTourStep 的 setTimeout(260) 里 —— 点一下要等 0.26 秒才变样，
+   讲者会怀疑"是不是没点上"（实测也被这条坑到过断言）。 */
+function updateTourControls() {
+  var nextBtn = document.getElementById('tourNextBtn');
+  var autoBtn = document.getElementById('tourAutoBtn');
+  var speedBtn = document.getElementById('tourSpeedBtn');
+  if (nextBtn) nextBtn.textContent = (tourState.idx === TOUR_STEPS.length - 1) ? '完成 ✓' : '下一步 →';
+  if (autoBtn) autoBtn.textContent = tourState.auto ? '⏸ 暂停' : '▶ 自动';
+  if (speedBtn) speedBtn.textContent = '⏩ ' + TOUR_SPEED_LABELS[tourState.speed];
+}
+/** 循环切换导览自动播放速度；正在自动播时立刻按新速度重排定时器 */
+function cycleTourSpeed() {
+  tourState.speed = (tourState.speed + 1) % TOUR_SPEEDS.length;
+  if (tourState.auto) {
+    if (tourState.timer) clearInterval(tourState.timer);
+    tourState.timer = setInterval(tourTick, TOUR_SPEEDS[tourState.speed]);
+  }
+  updateTourControls();
+  showToast('u1', '⏩ 导览速度 ' + TOUR_SPEED_LABELS[tourState.speed] + '（每步 ' + (TOUR_SPEEDS[tourState.speed] / 1000) + ' 秒）');
+}
+function tourTick() {
+  if (tourState.idx >= TOUR_STEPS.length - 1) { toggleTourAuto(); return; }
+  tourNext();
+}
 
 function goPhone(uid, page) {
   var u = USERS.find(function (x) { return x.id === uid; }); if (!u) return;
@@ -2864,6 +3039,7 @@ function ensureTourDom() {
     '<div class="tour-ctrl">' +
       '<button class="btn lt" onclick="tourPrev()">← 上一步</button>' +
       '<button class="btn lt" id="tourAutoBtn" onclick="toggleTourAuto()">▶ 自动</button>' +
+      '<button class="btn lt" id="tourSpeedBtn" onclick="cycleTourSpeed()" title="切换自动播放速度（每步 9 / 6.5 / 4.5 秒）">⏩ 1×</button>' +
       '<button class="btn dk" id="tourNextBtn" onclick="tourNext()">下一步 →</button>' +
       '<button class="btn lt" style="flex:1;" onclick="tourExit()">退出</button>' +
     '</div>';
@@ -2885,6 +3061,7 @@ function renderTourStep() {
   var step = TOUR_STEPS[tourState.idx];
   if (!step) return tourExit();
   if (typeof step.before === 'function') { try { step.before(); } catch (e) { } }
+  updateTourControls();          // 按钮文案同步更新（不等下面那个 260ms 的定时器）
   setTimeout(function () {
     var mask = document.getElementById('tourMask');
     var el = step.sel ? document.querySelector(step.sel) : null;
@@ -2923,8 +3100,7 @@ function renderTourStep() {
       });
       dots.innerHTML = d;
     }
-    if (nextBtn) nextBtn.textContent = (tourState.idx === TOUR_STEPS.length - 1) ? '完成 ✓' : '下一步 →';
-    if (autoBtn) autoBtn.textContent = tourState.auto ? '⏸ 暂停' : '▶ 自动';
+    updateTourControls();
   }, 260);
 }
 function tourNext() {
@@ -2938,12 +3114,8 @@ function tourPrev() {
 function toggleTourAuto() {
   tourState.auto = !tourState.auto;
   if (tourState.timer) { clearInterval(tourState.timer); tourState.timer = null; }
-  if (tourState.auto) {
-    tourState.timer = setInterval(function () {
-      if (tourState.idx >= TOUR_STEPS.length - 1) { toggleTourAuto(); return; }
-      tourNext();
-    }, 6500);
-  }
+  if (tourState.auto) tourState.timer = setInterval(tourTick, TOUR_SPEEDS[tourState.speed]);
+  updateTourControls();
   renderTourStep();
 }
 function tourExit() {
@@ -3874,14 +4046,34 @@ function runUITest() {
       var afterNarr = (document.getElementById('presentNarr') || {}).textContent || '';
       var afterStep = (document.getElementById('presentStep') || {}).textContent || '';
       add('★ 解说栏暂停：暂停 5s 后仍在同一分镜（演示能停下来配合讲解）',
-        autoPaused === true && afterStep === beforeStep && afterNarr === beforePause,
+        autoMode === 'pause' && afterStep === beforeStep && afterNarr === beforePause,
         '暂停前 ' + beforeStep + ' → 暂停后 ' + afterStep);
       add('★ 解说栏暂停：按钮文案变成「继续」',
         /继续/.test((document.getElementById('presentPause') || {}).textContent || ''),
         (document.getElementById('presentPause') || {}).textContent);
       toggleAutoPause();
       await wait(1600);
-      add('★ 解说栏继续：恢复播放后分镜推进', !autoPaused, '分镜 ' + (document.getElementById('presentStep') || {}).textContent);
+      add('★ 解说栏继续：恢复播放后分镜推进', autoMode === 'run', '分镜 ' + (document.getElementById('presentStep') || {}).textContent);
+
+      /* 单步讲解：每点一次「下一步」前进一个分镜，然后停住等下一次点击 */
+      autoNext();
+      var stepA = parseInt(((document.getElementById('presentStep') || {}).textContent || '').replace(/\D/g, ''), 10) || 0;
+      await wait(2600);                     // 够当前分镜内部的小停顿播完
+      var stepB = parseInt(((document.getElementById('presentStep') || {}).textContent || '').replace(/\D/g, ''), 10) || 0;
+      await wait(2600);                     // 再等一个分镜的时长：没设闸的话早该前进了
+      var stepC = parseInt(((document.getElementById('presentStep') || {}).textContent || '').replace(/\D/g, ''), 10) || 0;
+      add('★ 单步讲解：点一次「下一步」只前进一个分镜，然后停住等下一次点击',
+        autoMode === 'step' && stepB > stepA && stepC === stepB,
+        stepA + ' → ' + stepB + ' →（再等 2.6s）仍 ' + stepC);
+      add('★ 单步讲解：按钮进入选中态（讲者一眼知道现在是手动模式）',
+        (document.getElementById('presentNext') || { classList: { contains: function () { return false; } } }).classList.contains('on'));
+      autoNext();
+      await wait(2600);
+      var stepD = parseInt(((document.getElementById('presentStep') || {}).textContent || '').replace(/\D/g, ''), 10) || 0;
+      add('★ 单步讲解：再点一次继续前进', stepD > stepC, stepC + ' → ' + stepD);
+      toggleAutoPause();                    // 单步模式下点「继续」= 恢复自动播放
+      await wait(200);
+      add('★ 单步 → 点「继续」可恢复自动播放', autoMode === 'run', autoMode);
 
       stopAutoDemo();
       await wait(150);
@@ -3910,6 +4102,35 @@ function runUITest() {
         await wait(60);
         add('★ 收官总结：Esc 可关闭（无障碍层认得新弹层）', !document.getElementById('finale'));
       }
+      resetAll();
+    })();
+
+    /* 23. 导览播放控制：自动播放能暂停，也能调速度（讲者按现场节奏来） */
+    await (async function () {
+      startTour();
+      await wait(120);
+      var autoBtn = document.getElementById('tourAutoBtn');
+      var speedBtn = document.getElementById('tourSpeedBtn');
+      add('★ 导览：卡片上有「自动播放」与「速度」两个控制', !!autoBtn && !!speedBtn,
+        (autoBtn || {}).textContent + ' / ' + (speedBtn || {}).textContent);
+
+      toggleTourAuto();
+      add('★ 导览：开启自动播放后按钮变「暂停」',
+        tourState.auto === true && /暂停/.test(autoBtn.textContent) && !!tourState.timer,
+        autoBtn.textContent);
+
+      var s0 = tourState.speed;
+      var ms0 = TOUR_SPEEDS[s0];
+      cycleTourSpeed();
+      add('★ 导览：速度可循环切换，且定时器按新速度重排',
+        tourState.speed !== s0 && /⏩/.test(speedBtn.textContent),
+        TOUR_SPEED_LABELS[s0] + '(' + ms0 + 'ms) → ' + speedBtn.textContent + '(' + TOUR_SPEEDS[tourState.speed] + 'ms)');
+      cycleTourSpeed(); cycleTourSpeed();
+      add('★ 导览：速度循环回起点（三档）', tourState.speed === s0, TOUR_SPEED_LABELS[tourState.speed]);
+
+      toggleTourAuto();
+      add('★ 导览：可暂停自动播放', tourState.auto === false && !tourState.timer, autoBtn.textContent);
+      tourExit();
       resetAll();
     })();
 

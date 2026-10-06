@@ -157,7 +157,52 @@ report('★ 导览先滚动再量位置（否则高亮框会停在屏幕外）',
 })());
 report('导览控制条不会把「退出」挤成竖排', /\.tour-ctrl \.btn\{flex:1 1 0/.test(html) && !/flex:0 0 56px;/.test(html));
 
-// ============ 10. 共享 AI 引擎浏览器形态冒烟 ============
+// ============ 10. 演示模式的一屏装下（投影仪上最容易翻车的地方） ============
+/* 实测事故：4 台手机 = 1334px，1280×720 投影仪放不下 → flex-wrap 把第 4 台折到第二行被切掉；
+   而**只加 transform:scale 也没用**，因为折行发生在布局阶段，缩的是"已经折好的两行"。
+   下面几条把修法钉住。 */
+report('★ 演示模式：舞台禁止折行（否则第 4 台掉到第二行被切）',
+  /body\.present \.stage\{[^}]*flex-wrap:nowrap/.test(html));
+report('★ 演示模式：舞台 overflow:clip（承接为不折行而溢出的布局）',
+  /body\.present \.stage\{[^}]*overflow:clip/.test(html));
+report('★ 演示模式：禁止 flex 压缩手机单元（否则内屏比外框宽、两侧被裁）',
+  /body\.present \.pu\{flex:0 0 auto\}/.test(html));
+report('★ fitPhones() 存在，且在「进演示模式 / 窗口缩放 / 改人数」时都会重量',
+  /function fitPhones\s*\(/.test(html) &&
+  /function enterPresent\(\)[\s\S]{0,400}?fitPhones\(\)/.test(html) &&
+  /addEventListener\('resize', function \(\) \{ fitPhones\(\)/.test(html) &&
+  /renderPhones\(\);\s*\n\s*fitPhones\(\)/.test(html));
+report('★ fitPhones 先量后缩（顺序反了会缩错）', (function () {
+  const i = html.indexOf('function fitPhones');
+  if (i < 0) return false;
+  const seg = html.slice(i, i + 2400);
+  /* 注意要认准**真正的缩放赋值**：函数开头 reset() 里也有一句 `stage.style.transform = ''`
+     （那是清空，不是缩放），拿它当基准就会误判。 */
+  const measure = seg.indexOf('units[0].getBoundingClientRect()');
+  const apply = seg.indexOf("stage.style.transform = 'translateX(");
+  return measure > -1 && apply > -1 && measure < apply;
+})());
+report('★ 纵向也按实测分配：给 .wrap 留出解说栏高度的 padding-top',
+  /wrap\.style\.paddingTop = \(barH \+ 12\)/.test(html) && /pfs\[k\]\.style\.height/.test(html));
+report('★ 演示解说栏只在 present 下显示（不影响常规视图）',
+  /\.pshow\{display:none\}/.test(html) && /body\.present \.pshow\{[\s\S]{0,90}?display:block/.test(html));
+report('★ 演示模式隐藏人名行，并把"谁在操作"并进字幕条（否则会被解说栏盖住）',
+  /body\.present \.pl\{display:none\}/.test(html) && /classList\.contains\('present'\) && owner/.test(html));
+report('★ 只有操作中的那台手机被高亮', /function setActing/.test(html) && /classList\.add\('acting'\)/.test(html));
+
+// ============ 10+. 演示的可控性（讲者要能暂停 / 单步 / 调速） ============
+report('★ 自动演示支持三种播放状态（run / pause / step）',
+  /var autoMode = 'run'/.test(html) && /autoMode === 'pause'/.test(html) && /autoMode === 'step'/.test(html));
+report('★ 单步：一个分镜播完就设闸等人点「下一步」',
+  /pendingGate/.test(html) && /autoGate/.test(html) &&
+  /function autoNext\s*\(/.test(html) && /function releaseAutoGate\s*\(/.test(html));
+report('★ 导览：可调自动播放速度（三档循环，定时器按新速度重排）',
+  /var TOUR_SPEEDS = \[/.test(html) && /function cycleTourSpeed\s*\(/.test(html) &&
+  /setInterval\(tourTick, TOUR_SPEEDS\[tourState\.speed\]\)/.test(html));
+report('★ 导览：按钮文案同步更新（不再等 260ms 的定时器）',
+  /function updateTourControls\s*\(/.test(html) && /updateTourControls\(\);\s*\n\s*renderTourStep\(\)/.test(html));
+
+// ============ 11. 共享 AI 引擎浏览器形态冒烟 ============
 const aiSrc = fs.readFileSync(path.join(__dirname, '..', 'apps', 'miniprogram', 'utils', 'ai.js'), 'utf8');
 globalThis.self = {};
 new Function(aiSrc)();

@@ -43,7 +43,7 @@ const SUITES = [
     name: '浏览器验收', file: 'tests/browser.check.js', min: 3,
     hint: '#selftest / #tourtest / #uitest',
     /* 三个挂钩各自还要过 "N/N ALL-PASS"，并保证项数不被偷偷削减 */
-    browser: [['selftest', 22], ['tourtest', 17], ['uitest', 85]],
+    browser: [['selftest', 22], ['tourtest', 17], ['uitest', 95]],
   },
 ];
 
