@@ -98,7 +98,39 @@ report('file:// 下可降级（不假定 localStorage 一定可用）', /mode ==
 report('★ 同步徽标有实据：探测到对端才宣称"多窗口已同步"',
   /SyncPeerSeen/.test(html) && /function startPresence\s*\(/.test(html) && /new BroadcastChannel\(SyncHub\.ns/.test(html));
 
-// ============ 8. 共享 AI 引擎浏览器形态冒烟 ============
+// ============ 9. 功能展示的完整性（"做了但演示里看不见"是最大的浪费） ============
+report('功能清单 FEATURES 存在且成规模', /var FEATURES = \[/.test(html) &&
+  (html.match(/\{ id: '[a-z-]+', name: '/g) || []).length >= 35,
+  (html.match(/\{ id: '[a-z-]+', name: '/g) || []).length + ' 项');
+report('导览步骤声明 covers（功能 → 步骤可双向校验）', /covers: \[/.test(html) &&
+  (html.match(/covers: \[/g) || []).length >= 25, (html.match(/covers: \[/g) || []).length + ' 步声明了覆盖');
+report('tourCoverage() 覆盖校验存在并进 #selftest', /function tourCoverage\s*\(/.test(html) && /tourCoverage\(\)/.test(html));
+report('导览高亮走 data-feat 语义锚点（不依赖样式类名）', (html.match(/data-feat="/g) || []).length >= 30,
+  (html.match(/data-feat="/g) || []).length + ' 个锚点');
+report('导览自检要求目标**可见**（防"高亮到空气"）', /isShownDeep/.test(html) && /目标不可见/.test(html));
+report('导览期间显示工具条（演示模式默认隐藏，否则前几步高亮到空气）', /body\.present\.touring \.tbar/.test(html));
+report('★ 4 台手机都有各自环节的守卫存在', /没有"凑数的人"|没有凑数的人/.test(html) || /4 台手机在导览里都有各自的环节/.test(html));
+report('★ 自动演示有"每台手机都动手"的守卫', /seenPhones/.test(html) && /没有"只看不演"的人/.test(html));
+report('★ 结算闭环：标记已转账 / 撤销', /function toggleSettled\s*\(/.test(html) && /function settledInfo\s*\(/.test(html));
+report('人数只有一个写入口 setPhoneCount', /function setPhoneCount\s*\(/.test(html) && /setPhoneCount\(4\)/.test(html));
+report('自动演示保证 4 台手机上场', /setPhoneCount\(4\)/.test(html));
+// 第 4 位成员（小王 u4）必须真的参与：导览与自动演示都要有他的环节
+const u4InTour = (html.match(/#app-u4 \[data-feat=/g) || []).length;
+report('★ 第 4 位成员（小王）在导览里有多处环节', u4InTour >= 4, u4InTour + ' 处（导览）');
+report('★ 第 4 位成员在自动演示里动手（语音/截图/私账/改分摊/结清）', /voice/.test(html) && /visionRecognize\('u4'/.test(html) && /openBillDetail\('u4'/.test(html),
+  '语音 + 截图识别 + 多退少补 + 结清闭环');
+
+report('★ 导览先滚动再量位置（否则高亮框会停在屏幕外）', (function () {
+  const i = html.indexOf('function renderTourStep');
+  if (i < 0) return false;
+  const seg = html.slice(i, i + 1400);
+  const scroll = seg.indexOf('scrollIntoView');
+  const rect = seg.indexOf('getBoundingClientRect');
+  return scroll > -1 && rect > -1 && scroll < rect;
+})());
+report('导览控制条不会把「退出」挤成竖排', /\.tour-ctrl \.btn\{flex:1 1 0/.test(html) && !/flex:0 0 56px;/.test(html));
+
+// ============ 10. 共享 AI 引擎浏览器形态冒烟 ============
 const aiSrc = fs.readFileSync(path.join(__dirname, '..', 'apps', 'miniprogram', 'utils', 'ai.js'), 'utf8');
 globalThis.self = {};
 new Function(aiSrc)();

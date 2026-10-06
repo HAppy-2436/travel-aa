@@ -20,7 +20,7 @@
 > 所以正确说法是：**整个项目目录拷过去，双击 `demo/index.html` 即可离线运行**；
 > 只发一个 html 文件会白屏。
 
-**给评委/观众看的就是 `demo/index.html`**，打开后：工具条中间 `＋` 加到 3~4 台手机 → 点 `▶ 自动演示`，或点 `🎬 导览` 按 8 步讲解。
+**给评委/观众看的就是 `demo/index.html`**，打开后：工具条中间 `＋` 加到 3~4 台手机 → 点 `▶ 自动演示`，或点 `🎬 导览` 按 **29 步**讲解（覆盖 40 项功能，漏一个测试就红）。
 **刷新不丢**（`localStorage`）与**多窗口实时同步**（`BroadcastChannel`）都是自动探测的：
 探测得到就启用、探测不到就降级为单页联动，工具条上的同步徽标会**如实显示当前处在哪一档**。
 实测 Edge/Chrome 下 `file://` 双击打开也能刷新不丢；想看真实跨窗口同步，就再开一个标签页打开同一路径
@@ -32,7 +32,7 @@
 
 ```bash
 # ① 网页 Demo：双击 demo/index.html（Chrome / Edge）
-#    开讲前点工具条「🩺 自检」，出现 20/20 PASS 即可放心演示
+#    开讲前点工具条「🩺 自检」，出现 22/22 PASS 即可放心演示
 
 # ② 跑全量验收（Node ≥ 20，无需安装任何依赖）
 node tests/run-all.js        # 9 套测试一把梭；等价于 npm test
@@ -91,6 +91,19 @@ travel-aa/
 `ctrip.js`（携程订单解析）、`sync.js`（多窗口合并/墓碑/rev）为 UMD 模块，
 **小程序、网页 Demo、Node 服务端三端复用同一份代码**——算法只维护一处，不会出现三份实现互相漂移。
 
+### 🎬 演示入口一览
+
+| 打开方式 | 效果 |
+|---|---|
+| `demo/index.html?n=4` | 4 台手机开场（4 位成员，每人都会动手） |
+| `▶ 自动演示` / `?n=4#auto` | 24 个分镜的完整剧情（AI 记账 / 票据 / 携程订单 / 截图识别 / 抹零 / 代购 / 私账 / 多退少补 / 暂估改价 / 占位 / 审计 / 结算 / 结清闭环 / 复盘） |
+| `🎬 导览` / `?n=4&tour=1` | **29 步**导览，覆盖 40 项功能；`tour=N` 可直达第 N 步 |
+| `?n=4&stage=10#auto` | 自动演示定格在第 10 步（便于截图／讲解） |
+| `#selftest` / `#tourtest` / `#uitest` | 22 / 31 / 61 项浏览器内验收 |
+
+> 加功能时**必须**在 `demo/index.html` 的 `FEATURES` 清单里加一行，并给某个导览步骤补 `covers` ——
+> 否则 `#selftest` 会红。原因很简单：**做了但演示里看不见的功能，等于没做。**
+
 ---
 
 ## ✅ 验收标准（交接前已全部通过）
@@ -106,11 +119,11 @@ travel-aa/
 | 同步内核单测 | `node tests/sync.test.js` | 54 项 |
 | 相对路径检查 | `node tests/requires.check.js` | 全部可解析 |
 | 交付物可打开性 | `node tests/resource.check.js` | `file://` 下资源齐备 |
-| Demo 完整性 | `node tests/demo.check.js` | onclick 交叉校验全通过 |
+| Demo 完整性 | `node tests/demo.check.js` | 181 项（含功能清单/导览覆盖校验） |
 | 服务器集成测试 | `node tests/server.test.js` | 77 项 |
-| Demo 功能自检 | 打开 `demo/index.html#selftest` | `SELFTEST 20/20 ALL-PASS` |
-| **交互验收（真实点击）** | 打开 `demo/index.html#uitest` | `UITEST 54/54 ALL-PASS`（含无障碍） |
-| 导览可用性 | 打开 `demo/index.html#tourtest` | `TOURTEST 8/8 ALL-PASS` |
+| Demo 功能自检 | 打开 `demo/index.html#selftest` | `SELFTEST 22/22 ALL-PASS` |
+| **交互验收（真实点击）** | 打开 `demo/index.html#uitest` | `UITEST 61/61 ALL-PASS`（含无障碍 / 结算闭环 / 4 台手机都动手） |
+| 导览 + 功能覆盖 | 打开 `demo/index.html#tourtest` | `TOURTEST 31/31 ALL-PASS` |
 
 > 项数以实际输出为准；`run-all.js` 里的下限会跟着一起收紧，防止测试被悄悄掏空。
 

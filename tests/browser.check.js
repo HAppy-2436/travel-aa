@@ -86,7 +86,9 @@ async function runMode(mode, hash, expectKey, waitMs) {
   const modes = [
     ['selftest', '#selftest', 'SELFTEST', 3000],
     ['tourtest', '#tourtest', 'TOURTEST', 3000],
-    ['uitest', '#uitest', 'UITEST', 60000],
+    /* uitest 里含一次完整的 #auto 自动演示（24 个分镜，每镜都有停顿），
+       所以等待时间要给够；不够就会在演示跑完前读到中间态。 */
+    ['uitest', '#uitest', 'UITEST', 120000],
   ];
 
   let bad = 0;
