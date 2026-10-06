@@ -32,7 +32,7 @@ scripts.forEach((m) => {
 report('存在内联脚本', inlineCount > 0);
 
 // ============ 2. 外部引用可解析 ============
-['ai\\.js', 'ctrip\\.js', 'vision-samples\\.js'].forEach(pat => {
+['ai\\.js', 'ctrip\\.js', 'sync\\.js', 'vision-samples\\.js'].forEach(pat => {
   const m = html.match(new RegExp('src="([^"]*' + pat + ')"'));
   report('引用 ' + pat.replace('\\', ''), !!m, m && m[1]);
   if (m) {
@@ -42,7 +42,7 @@ report('存在内联脚本', inlineCount > 0);
 });
 
 // ============ 3. 关键 DOM 挂载点 ============
-const REQUIRED_IDS = ['phonesStage', 'phoneCountLabel', 'engineBadge'];
+const REQUIRED_IDS = ['phonesStage', 'phoneCountLabel', 'engineBadge', 'syncBadge'];
 REQUIRED_IDS.forEach(id => report('DOM 挂载点 #' + id, html.includes('id="' + id + '"')));
 
 // ============ 4. 引擎函数 ============
@@ -66,7 +66,9 @@ const ENGINE_FNS = [
   // 演示保障
   'runSelfTest', 'closeSelfTest', 'showTestPanel', 'runTourTest', 'startTour', 'tourNext', 'tourPrev', 'tourExit', 'toggleTourAuto',
   'runUITest', 'clickByText', 'setInput',
-  'probeEngine', 'ensureDemoRoom'
+  'probeEngine', 'ensureDemoRoom',
+  // 真实多窗口同步（刷新不丢 / 多窗口实时）
+  'bootSync', 'renderSyncBadge', 'publishSoon', 'applyRemote', 'reseedCounters', 'stampChanged', 'syncState'
 ];
 ENGINE_FNS.forEach(fn => report('引擎函数 ' + fn, new RegExp('function\\s+' + fn + '\\s*\\(').test(html)));
 
@@ -83,7 +85,20 @@ report('账单写入 State.bills', /State\.bills\.push/.test(html));
 report('分摊使用共享内核 allocateEvenly', html.includes('allocateEvenly'));
 report('多币种折算使用共享内核', /billCNY|toCNY/.test(html));
 
-// ============ 7. 共享 AI 引擎浏览器形态冒烟 ============
+// ============ 7. 真实多窗口同步接线（防"接了一半"） ============
+report('State 带 tombstones（删除防复活）', /State\s*=\s*\{[^}]*tombstones\s*:/.test(html));
+report('删除账单时写墓碑', /State\.tombstones\[[^\]]+\]\s*=/.test(html));
+report('每次渲染都会发布快照', /function syncAll\(\)\{[\s\S]{0,400}?publishSoon\(\)/.test(html));
+report('启动时调用 bootSync', /bootSync\(\)/.test(html) && /function bootSync\s*\(/.test(html));
+report('合并后重排自增计数器（防多窗口 id 撞车）', /State\.nextBillId\s*=\s*Math\.max/.test(html));
+report('LWW 前给变更实体盖时间戳', /function stampChanged\s*\(/.test(html) && /x\.updatedAt\s*=\s*now/.test(html));
+report('远端合并不回环广播（回声放大防护）', /SyncApplyingRemote/.test(html));
+report('演示/自检 hash 下不回填旧数据（可复现）', /DEMO_HASH/.test(html));
+report('file:// 下可降级（不假定 localStorage 一定可用）', /mode === 'memory'|SyncMode\s*=\s*'memory'/.test(html));
+report('★ 同步徽标有实据：探测到对端才宣称"多窗口已同步"',
+  /SyncPeerSeen/.test(html) && /function startPresence\s*\(/.test(html) && /new BroadcastChannel\(SyncHub\.ns/.test(html));
+
+// ============ 8. 共享 AI 引擎浏览器形态冒烟 ============
 const aiSrc = fs.readFileSync(path.join(__dirname, '..', 'apps', 'miniprogram', 'utils', 'ai.js'), 'utf8');
 globalThis.self = {};
 new Function(aiSrc)();

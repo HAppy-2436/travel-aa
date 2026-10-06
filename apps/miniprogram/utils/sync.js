@@ -19,7 +19,7 @@
  * 2) 墓碑（tombstone）防「删除复活」
  *    删除必须留痕：否则对方窗口的旧快照一合并，被删的账单就活了。
  * 3) 单调 rev（版本号）
- *    快照带全局 rev，只接受更大的 rev，丢弃乱序/过期快照。
+ *    快照带全局 rev，只丢弃**更旧**的 rev（相等放行，见 nextRev 注释）。
  * 4) writer 回声抑制
  *    自己的写入会触发自己的 storage 事件，用 tabId 过滤。
  * 5) 全局唯一 id（uid）
@@ -222,12 +222,32 @@
     }
 
     /**
+     * 取下一个**全局单调**的 rev。
+     *
+     * 为什么不能简单 `rev += 1`：rev 是每个窗口各自的局部计数器，都从 0 开始。
+     * 窗口 A 没收到 B 的快照就先 publish，B 的本地 rev 可能仍是 0，
+     * 于是 B 发的 rev=1 与 A 已经推进到的 rev=1 相同 → 被 "stale-rev" 丢弃，
+     * **B 那一笔数据永远同步不到 A**（实测：双窗口各记一笔，各自只看到自己那笔）。
+     *
+     * 修正：以 (墙钟毫秒 × 1000) 为下界，并回读共享存储里的 rev，
+     * 三者取最大再 +1，保证跨窗口严格递增；同一毫秒内多次发布也靠 +1 拉开。
+     * 极端并发的同一 rev 由 receive() 的「相等也合并」兜底（见下）。
+     */
+    function nextRev() {
+      var stored = readSnapshot();
+      var storedRev = stored && typeof stored.rev === 'number' ? stored.rev : 0;
+      var next = Math.max(rev, storedRev, Date.now() * 1000) + 1;
+      rev = next;
+      return next;
+    }
+
+    /**
      * 把当前 State 落盘并广播
      * @param {Object} state { rooms, bills, tombstones }
      */
     function publish(state) {
       if (mode === 'memory') return null;
-      rev += 1;
+      nextRev();
       var snap = {
         schema: SCHEMA,
         rev: rev,
@@ -252,8 +272,11 @@
       if (!snap || typeof snap !== 'object') { stats.ignored += 1; return { applied: false, reason: 'bad-snapshot' }; }
       if (snap.writer === myTab) { stats.ignored += 1; return { applied: false, reason: 'echo' }; }
       if (snap.schema != null && snap.schema > SCHEMA) { stats.ignored += 1; return { applied: false, reason: 'future-schema' }; }
-      // 只接受更新的 rev，丢弃乱序/过期快照
-      if (typeof snap.rev === 'number' && snap.rev <= rev) { stats.ignored += 1; return { applied: false, reason: 'stale-rev' }; }
+      // 只丢弃**更旧**的 rev。相等必须放行：两个窗口在同一毫秒各写一笔时
+      // rev 可能撞车，若把相等也当乱序丢掉，撞车那一方的数据就永久丢失。
+      // 放行的代价只是多跑一次合并，而 mergeList 按 updatedAt 做 LWW、幂等，
+      // 内容没变化时 changed=false，不会触发多余渲染。
+      if (typeof snap.rev === 'number' && snap.rev < rev) { stats.ignored += 1; return { applied: false, reason: 'stale-rev' }; }
 
       var localRooms = (local && local.rooms) || [];
       var localBills = (local && local.bills) || [];
@@ -266,7 +289,7 @@
       var changed = mr.changed || mb.changed ||
         Object.keys(tombs).length !== Object.keys(localTombs).length;
 
-      rev = typeof snap.rev === 'number' ? snap.rev : rev;
+      rev = typeof snap.rev === 'number' ? Math.max(rev, snap.rev) : rev;
       var merged = { rooms: mr.list, bills: mb.list, tombstones: tombs, rev: rev };
       if (changed) stats.merged += 1;
       return { applied: true, changed: changed, merged: merged, from: snap.writer };

@@ -7,7 +7,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#08080c;--white:#fff;--g100:#f7f7f8;--g200:#eeeef0;--g300:#d4d4d8;--g400:#a1a1aa;--g500:#71717a;--pri:#FF6B35;--pri-bg:#FFF0EB;--grn:#07C160;--grn-bg:#EDFAF3;--red:#FA5151;--red-bg:#FEF0F0;--amb:#FF9500;--amb-bg:#FFF8EE;--blu:#1a73e8}
+/* ===== 设计令牌（对比度已按 WCAG 2.1 AA 校正）=====
+   原来：品牌橙 #FF6B35 配白字 = 2.84:1、次要灰 #a1a1aa 配白底 = 2.58:1，
+         都低于正文 4.5:1 的门槛 —— 投影/手机屏上"看不清"的主因。
+   现在拆成两族，**品牌色本身不动**（保留识别度），只把"当文字用"的令牌加深：
+     --pri      仅用于**填充**（橙底），配 --on-pri 深色字 → 6.25:1
+     --pri-ink  仅用于**白底上的橙字**                    → 6.00:1
+   绿/红/琥珀同理：它们全部只当文字用，直接换成 AA 版本（白底 6.0 / 5.0 / 5.5:1）。
+   进度条 .bf.* 的渐变是纯装饰，仍保留原来的鲜亮色。 */
+:root{--bg:#08080c;--white:#fff;--g100:#f7f7f8;--g200:#eeeef0;--g300:#8e8e96;--g400:#71717a;--g500:#52525b;--pri:#FF6B35;--pri-ink:#B23A0B;--on-pri:#18181b;--pri-bg:#FFF0EB;--grn:#046B35;--grn-bg:#EDFAF3;--red:#C64040;--red-bg:#FEF0F0;--amb:#9A5A00;--amb-bg:#FFF8EE;--blu:#1557B8}
 body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:#fff;min-height:100vh;overflow-x:auto;-webkit-font-smoothing:antialiased}
 .bg{position:fixed;inset:0;background:radial-gradient(ellipse 60% 40% at 20% 10%,rgba(255,107,53,0.06),transparent 60%),radial-gradient(ellipse 50% 50% at 80% 80%,rgba(100,100,255,0.04),transparent 60%);z-index:0}
 .wrap{position:relative;z-index:1;max-width:1600px;margin:0 auto;padding:28px 32px}
@@ -46,19 +54,33 @@ body.present .present-exit{display:block;position:fixed;top:14px;right:18px;z-in
 .tsep{width:1px;height:18px;background:rgba(255,255,255,0.08)}
 .cb{padding:9px 16px;border:1px solid rgba(255,255,255,0.08);border-radius:100px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.7);font-family:'Space Grotesk',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);white-space:nowrap}
 .cb:hover{background:rgba(255,255,255,0.08);color:#fff;transform:translateY(-1px)}
-.cb.pr{background:var(--pri);border-color:var(--pri);color:#fff;box-shadow:0 4px 16px rgba(255,107,53,.25);margin-left:auto}
+.cb.pr{background:var(--pri);border-color:var(--pri);color:var(--on-pri);box-shadow:0 4px 16px rgba(255,107,53,.25);margin-left:auto}
 .cb.act{border-color:rgba(255,107,53,.3);color:var(--pri)}
 /* 引擎状态：收成小圆点 + 短文字，比原来省一半宽度 */
 .cb.dot{font-size:11px;padding:7px 13px;color:rgba(255,255,255,.5);border-color:rgba(255,255,255,.06)}
-/* 人数步进器：一个控件表达"减 / 当前人数 / 加" */
+/* 状态徽标（引擎 / 同步）：与按钮**长得像但不是按钮**，因此不复用 .cb ——
+   否则"工具条按钮数"这类校验会把状态显示也算成操作入口。 */
+.bdg{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border:1px solid rgba(255,255,255,.06);border-radius:100px;background:rgba(255,255,255,.03);font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:600;color:rgba(255,255,255,.5);white-space:nowrap}
+button.bdg{cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1)}
+button.bdg:hover{background:rgba(255,255,255,.08);color:#fff}
+.bdg.act{border-color:rgba(255,107,53,.3);color:var(--pri)}
+/* ===== 键盘可达性 =====
+   1) :focus-visible —— 只有键盘导航才画焦点环，鼠标点击不画（不影响视觉）。
+      深色演示台用品牌橙，手机屏内是浅底，改用近黑，保证 3:1 可见度。
+   2) .sr —— 屏幕阅读器专用文本（视觉隐藏但会被朗读），用于给纯图标控件补名字。 */
+:focus-visible{outline:2px solid var(--pri);outline-offset:2px;border-radius:6px}
+.app :focus-visible,.co :focus-visible,.mo :focus-visible,.test-card :focus-visible,.tour-card :focus-visible{outline-color:#18181b}
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+/* 人数步进器：一个控件表达"减 / 当前人数 / 加"
+   ⚠️ 用 <button> 而不是 <i>：原来的 <i onclick> 不可聚焦、键盘按不到、屏幕阅读器不认。 */
 .stepper{display:flex;align-items:center;border:1px solid rgba(255,255,255,0.1);border-radius:100px;overflow:hidden;background:rgba(255,255,255,0.03)}
-.stepper i{font-style:normal;font-size:14px;color:rgba(255,255,255,.6);padding:8px 14px;cursor:pointer;transition:all .15s;user-select:none}
-.stepper i:hover{background:rgba(255,255,255,.1);color:#fff}
+.stepper button{font-family:inherit;font-style:normal;font-size:14px;color:rgba(255,255,255,.6);padding:8px 14px;background:none;border:none;cursor:pointer;transition:all .15s;user-select:none}
+.stepper button:hover{background:rgba(255,255,255,.1);color:#fff}
 .stepper b{font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;color:#fff;padding:8px 12px;background:rgba(255,255,255,.06);border-left:1px solid rgba(255,255,255,.08);border-right:1px solid rgba(255,255,255,.08);white-space:nowrap}
 /* 「＋ 加手机」首次进入时的呼吸高亮：多人场景最容易被忽略的一步
    （现在加号在步进器里，用背景呼吸代替描边呼吸） */
 @keyframes nud{0%,100%{background:rgba(255,107,53,0);color:rgba(255,255,255,.6)}50%{background:rgba(255,107,53,.28);color:var(--pri)}}
-.stepper i.nudge{animation:nud 1.6s ease-in-out infinite}
+.stepper button.nudge{animation:nud 1.6s ease-in-out infinite}
 /* 手机舞台：允许换行 + 自动收缩，避免窄窗口/投影时右侧手机被裁掉
    （曾出现 3 台手机总宽 1040px > 视口 900px，第 3 台整台看不见） */
 .stage{display:flex;gap:clamp(14px,2.4vw,40px);justify-content:center;align-items:flex-start;flex-wrap:wrap;padding:16px 0 40px;min-height:calc(100vh - 200px)}
@@ -71,7 +93,7 @@ body.present .present-exit{display:block;position:fixed;top:14px;right:18px;z-in
    保持紧凑（不挤占舞台垂直空间，也不把工具栏顶到换行）。 */
 /* 字幕条：宽度对齐内屏（手机壳 320 - 2×10 = 300），单行省略。
    用户反馈"每一步的功能字太小看不清、没突出" → 字号 10→14px、加粗、加左侧强调。 */
-.cap{width:300px;max-width:100%;margin:10px 0 0;padding:8px 14px;border-radius:12px;background:var(--pri);color:#fff;
+.cap{width:300px;max-width:100%;margin:10px 0 0;padding:8px 14px;border-radius:12px;background:var(--pri);color:var(--on-pri);
   font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;line-height:1.3;letter-spacing:.2px;
   text-align:center;box-sizing:border-box;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
@@ -100,7 +122,7 @@ body.present .present-exit{display:block;position:fixed;top:14px;right:18px;z-in
 .btn:active{transform:scale(.96)}
 .btn.dk{background:#18181b;color:#fff;box-shadow:0 2px 12px rgba(0,0,0,.12)}
 .btn.lt{background:#fff;color:#18181b;border:1.5px solid var(--g200);box-shadow:0 1px 2px rgba(0,0,0,.04)}
-.btn.or{background:var(--pri);color:#fff;box-shadow:0 2px 12px rgba(255,107,53,.2)}
+.btn.or{background:var(--pri);color:var(--on-pri);box-shadow:0 2px 12px rgba(255,107,53,.2)}
 .btn.dg{background:var(--red);color:#fff;box-shadow:0 2px 12px rgba(250,81,81,.2)}
 .sh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px;padding-bottom:10px;border-bottom:1.5px solid #18181b}
 .st{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700}
@@ -109,13 +131,13 @@ body.present .present-exit{display:block;position:fixed;top:14px;right:18px;z-in
 .rc:hover{border-color:var(--g300);box-shadow:0 2px 8px rgba(0,0,0,.06),0 0 1px rgba(0,0,0,.08);transform:translateY(-2px)}
 .rt{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
 .rn{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700}
-.rco{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;letter-spacing:2.5px;color:var(--pri)}
+.rco{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;letter-spacing:2.5px;color:var(--pri-ink)}
 .rco small{display:block;font-size:7px;letter-spacing:1.5px;color:var(--g400);text-transform:uppercase}
 .rs{display:flex;gap:24px}
 .rsv{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700}
 .rsl{font-size:8px;color:var(--g400);text-transform:uppercase;letter-spacing:1.2px;margin-top:1px}
 .em{text-align:center;padding:48px 20px;color:var(--g300);animation:fi .4s ease-out}
-.ei{font-size:48px;margin-bottom:10px;opacity:.6}.et{font-family:'Space Grotesk',sans-serif;font-size:13px;color:var(--g400)}.es{font-size:10px;color:var(--g300);margin-top:8px}
+.ei{font-size:48px;margin-bottom:10px;opacity:.6}.et{font-family:'Space Grotesk',sans-serif;font-size:13px;color:var(--g400)}.es{font-size:10px;color:var(--g400);margin-top:8px}
 @keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .og{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--g200);border:1px solid var(--g200);border-radius:16px;overflow:hidden;margin-bottom:24px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
 .oi{background:#fff;padding:16px 18px}
@@ -144,12 +166,13 @@ body.present .present-exit{display:block;position:fixed;top:14px;right:18px;z-in
 .amb{border:1.5px solid var(--g200);border-radius:18px;padding:24px;margin-bottom:16px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04)}
 .aml{font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--g400);margin-bottom:10px}
 .air{display:flex;align-items:baseline;gap:4px}
-.acu{font-family:'Space Grotesk',sans-serif;font-size:20px;color:var(--g300)}
+.acu{font-family:'Space Grotesk',sans-serif;font-size:20px;color:var(--g400)}
 .ain{font-family:'Space Grotesk',sans-serif;font-size:40px;font-weight:700;letter-spacing:-1.5px;border:none;outline:none;background:transparent;width:100%;color:#18181b}
-.ain::placeholder{color:var(--g200)}
+.ain::placeholder{color:var(--g300)}
 .fg{margin-bottom:16px}
 .fl{font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--g400);margin-bottom:8px}
 .fi{width:100%;height:44px;background:var(--g100);border:1.5px solid transparent;border-radius:12px;padding:0 16px;font-family:'Space Grotesk',sans-serif;font-size:14px;color:#18181b;outline:none;transition:all .2s}
+.fi::placeholder{color:var(--g400)}
 .fi:focus{background:#fff;border-color:var(--pri);box-shadow:0 0 0 3px rgba(255,107,53,.1)}
 .pm{display:flex;gap:8px;overflow-x:auto;padding:4px 0}.pm::-webkit-scrollbar{height:0}
 .pi{padding:9px 16px;border:1.5px solid var(--g200);border-radius:100px;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer;transition:all .15s;user-select:none}
@@ -163,7 +186,7 @@ body.present .present-exit{display:block;position:fixed;top:14px;right:18px;z-in
 .tsm{width:28px;height:28px;border-radius:50%;background:#18181b;color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;margin-right:12px}
 .ttm{flex:1;display:flex;align-items:center;gap:10px}
 .tnm{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600}
-.tam{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;color:var(--pri)}
+.tam{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;color:var(--pri-ink)}
 .abb{display:flex;gap:8px;padding:16px 24px 28px;background:rgba(255,255,255,.92);backdrop-filter:blur(20px) saturate(180%);border-top:1px solid var(--g200)}
 .abb .btn{flex:1;padding:13px 16px}
 .mo{position:absolute;inset:0;background:rgba(0,0,0,.3);backdrop-filter:blur(4px);z-index:50;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .3s}
@@ -190,7 +213,7 @@ body.present .present-exit{display:block;position:fixed;top:14px;right:18px;z-in
 .spc{background:#fff;border-radius:12px;padding:16px;min-height:120px}
 .sl{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--pri),transparent);animation:sm 1.8s ease-in-out infinite;z-index:5;box-shadow:0 0 16px rgba(255,107,53,.5)}
 @keyframes sm{0%{top:8%}50%{top:88%}100%{top:8%}}
-.ss{text-align:center;padding:10px;font-family:'Space Grotesk',sans-serif;font-size:11px;color:var(--pri);font-weight:600}
+.ss{text-align:center;padding:10px;font-family:'Space Grotesk',sans-serif;font-size:11px;color:var(--pri-ink);font-weight:600}
 .cts{display:flex;gap:6px;margin-bottom:16px}
 .ct2{flex:1;padding:12px 8px;border:1.5px solid var(--g200);border-radius:14px;text-align:center;cursor:pointer;transition:all .2s}
 .ct2:active,.ct2.act{border-color:#18181b;background:#18181b;color:#fff}
@@ -350,12 +373,13 @@ body.present .present-exit{display:block;position:fixed;top:14px;right:18px;z-in
     </div>
   </div>
   <div class="tbar">
-    <span class="cb dot" id="engineBadge" onclick="probeEngine()" title="AI 通道状态（点击重新探测）">🔌 离线模式</span>
+    <button class="bdg" id="engineBadge" onclick="probeEngine()" title="AI 通道状态（点击重新探测）">🔌 离线模式</button>
+    <span class="bdg" id="syncBadge" role="status" aria-live="polite" title="同步状态">📴 单页联动</span>
     <span class="tsep"></span>
-    <span class="stepper">
-      <i onclick="removePhone()" title="减少一台手机">−</i>
+    <span class="stepper" role="group" aria-label="演示手机台数">
+      <button type="button" onclick="removePhone()" title="减少一台手机" aria-label="减少一台手机">−</button>
       <b><span id="phoneCountLabel">1</span> 人</b>
-      <i onclick="addPhone()" id="addPhoneBtn" title="增加一台手机">＋</i>
+      <button type="button" onclick="addPhone()" id="addPhoneBtn" title="增加一台手机" aria-label="增加一台手机">＋</button>
     </span>
     <span class="tsep"></span>
     <button class="cb" onclick="runSelfTest()">🩺 自检</button>
@@ -371,10 +395,12 @@ body.present .present-exit{display:block;position:fixed;top:14px;right:18px;z-in
 <!-- 共享算法内核（与小程序、服务端同一份代码，UMD 三端复用；纯本地计算，无网络依赖） -->
 <script src="../apps/miniprogram/utils/ai.js"></script>
 <script src="../apps/miniprogram/utils/ctrip.js"></script>
+<!-- 同步内核（同一份 UMD）：同浏览器多窗口实时同步 + 刷新不丢；探测失败自动降级为单页模拟 -->
+<script src="../apps/miniprogram/utils/sync.js"></script>
 <!-- 订单截图样例（base64 内嵌，离线可用） -->
 <script src="assets/vision-samples.js"></script>
 <script>
-var State={rooms:[],bills:[],nextRoomId:1,nextBillId:1,phoneCount:1};
+var State={rooms:[],bills:[],tombstones:{},nextRoomId:1,nextBillId:1,phoneCount:1};
 var USERS=[{id:'u1',name:'小明',color:'#FF6B35',role:'发起人'},{id:'u2',name:'小红',color:'#E91E63',role:'成员'},{id:'u3',name:'小李',color:'#2196F3',role:'成员'},{id:'u4',name:'小王',color:'#4CAF50',role:'成员'}];
 var ocrState={};var pendingDelete={};
 
@@ -523,11 +549,11 @@ function renderEngineBadge() {
   var el = document.getElementById('engineBadge');
   if (!el) return;
   if (engineInfo.online) {
-    el.className = 'cb dot act';
+    el.className = 'bdg act';
     el.textContent = '☁️ AI 已连接';
     el.title = '已连接后端 AI 通道 · ' + engineInfo.model + '（点击重新探测）';
   } else {
-    el.className = 'cb dot';
+    el.className = 'bdg';
     el.textContent = '🔌 离线模式';
     el.title = '未连接后端，使用本地规则引擎（功能完整可用）· 点击重新探测';
   }
@@ -565,7 +591,7 @@ function renderPhones(){
   for(var i=0;i<State.phoneCount;i++){
     var user=USERS[i];var phone=document.createElement('div');
     phone.className='pu';phone.id='phone-'+user.id;
-    phone.innerHTML='<div class="pl"><div><div class="pn" style="color:'+esc(user.color)+'">'+esc(user.name)+'</div><div class="pr2">'+esc(user.role)+'</div></div></div><div class="cap" id="cap-'+user.id+'" style="display:none;"></div><div class="pf"><div class="pn2"></div><div class="pbt pw"></div><div class="pbt vu"></div><div class="pbt vd"></div><div class="ps"><div class="app" id="app-'+user.id+'"></div><div class="toast" id="toast-'+user.id+'"></div><div class="co" id="confirm-'+user.id+'"><div class="cb2"><div class="ci">🗑️</div><div class="ct" id="confirmTitle-'+user.id+'">删除账单？</div><div class="cd" id="confirmDesc-'+user.id+'">此操作不可撤销</div><div class="cbs"><button class="btn lt" onclick="cancelConfirm(\''+user.id+'\')">取消</button><button class="btn dg" onclick="doConfirm(\''+user.id+'\')">删除</button></div></div></div><div class="hi"></div></div></div>';
+    phone.innerHTML='<div class="pl"><div><div class="pn" style="color:'+esc(user.color)+'">'+esc(user.name)+'</div><div class="pr2">'+esc(user.role)+'</div></div></div><div class="cap" id="cap-'+user.id+'" style="display:none;" role="status" aria-live="polite"></div><div class="pf"><div class="pn2"></div><div class="pbt pw" aria-hidden="true"></div><div class="pbt vu" aria-hidden="true"></div><div class="pbt vd" aria-hidden="true"></div><div class="ps"><div class="app" id="app-'+user.id+'"></div><div class="toast" id="toast-'+user.id+'" role="status" aria-live="polite"></div><div class="co" id="confirm-'+user.id+'"><div class="cb2" role="dialog" aria-modal="true" aria-labelledby="confirmTitle-'+user.id+'" aria-describedby="confirmDesc-'+user.id+'" tabindex="-1"><div class="ci" aria-hidden="true">🗑️</div><div class="ct" id="confirmTitle-'+user.id+'">删除账单？</div><div class="cd" id="confirmDesc-'+user.id+'">此操作不可撤销</div><div class="cbs"><button class="btn lt" onclick="cancelConfirm(\''+user.id+'\')">取消</button><button class="btn dg" onclick="doConfirm(\''+user.id+'\')">删除</button></div></div></div><div class="hi" aria-hidden="true"></div></div></div>';
     stage.appendChild(phone);renderApp(user);
     if (CAPTION[user.id]) setCaption(user.id, CAPTION[user.id]);
   }
@@ -606,8 +632,11 @@ function renderApp(user){
   html+='</div>';
   if(cp==='room')html+='<div class="abb"><button class="btn lt" onclick="phoneGoAdd(\''+user.id+'\',\''+crid+'\')">＋ 记一笔</button><button class="btn or" onclick="phoneGoCapture(\''+user.id+'\',\''+crid+'\')">📷 拍照</button><button class="btn dk" onclick="phoneGoSettle(\''+user.id+'\',\''+crid+'\')">结算</button></div>';
   else if(cp==='add')html+='<div class="abb"><button class="btn dk" style="flex:1;" onclick="submitBill(\''+user.id+'\',\''+crid+'\')">确认记账</button></div>';
-  html+='<div class="mo" id="modal-'+user.id+'"><div class="mm2" onclick="event.stopPropagation()"><div class="mh"></div><div class="mhd"><div class="mt" id="modalTitle-'+user.id+'">创建旅行房间</div><div class="mc" onclick="closeModal(\''+user.id+'\')">✕</div></div><div class="mb" id="modalBody-'+user.id+'"></div></div></div>';
+  html+='<div class="mo" id="modal-'+user.id+'"><div class="mm2" role="dialog" aria-modal="true" aria-labelledby="modalTitle-'+user.id+'" tabindex="-1" onclick="event.stopPropagation()"><div class="mh" aria-hidden="true"></div><div class="mhd"><div class="mt" id="modalTitle-'+user.id+'">创建旅行房间</div><button type="button" class="mc" onclick="closeModal(\''+user.id+'\')" aria-label="关闭">✕</button></div><div class="mb" id="modalBody-'+user.id+'"></div></div></div>';
   app.innerHTML=html;
+  /* 页面里大量可点元素是 <div onclick>（房间卡 / 账单行 / 成员胶囊 / 支付人…），
+     补 tabindex+role 并交给全局 Enter/空格 处理器，键盘用户才能走完整条流程 */
+  a11yEnhance(app);
   var overlay=document.getElementById('modal-'+user.id);
   if(overlay)overlay.addEventListener('click',function(e){if(e.target===overlay)closeModal(user.id)});
   // 重渲染后把字幕补回来（app.innerHTML 会清掉它）
@@ -622,7 +651,7 @@ function renderHome(user,myRooms){
   else{myRooms.forEach(function(room){
     var bills=State.bills.filter(function(b){return b.roomId===room.id});
     var total=bills.reduce(function(s,b){return s+billCNY(b)},0);
-    html+='<div class="rc" onclick="openRoom(\''+user.id+'\',\''+room.id+'\')"><div class="rt"><div class="rn">'+esc(room.name)+'</div><div class="rco"><small>房间号</small>'+esc(room.code)+'</div></div><div class="rs"><div><div class="rsv">'+room.members.length+'</div><div class="rsl">成员</div></div><div><div class="rsv">'+bills.length+'</div><div class="rsl">账单</div></div><div><div class="rsv" style="color:var(--pri)">¥'+total.toFixed(0)+'</div><div class="rsl">总消费</div></div></div></div>';
+    html+='<div class="rc" onclick="openRoom(\''+user.id+'\',\''+room.id+'\')"><div class="rt"><div class="rn">'+esc(room.name)+'</div><div class="rco"><small>房间号</small>'+esc(room.code)+'</div></div><div class="rs"><div><div class="rsv">'+room.members.length+'</div><div class="rsl">成员</div></div><div><div class="rsv">'+bills.length+'</div><div class="rsl">账单</div></div><div><div class="rsv" style="color:var(--pri-ink)">¥'+total.toFixed(0)+'</div><div class="rsl">总消费</div></div></div></div>';
   });}
   return html;
 }
@@ -1462,24 +1491,187 @@ function calcSettlement(room,bills){
 function getCatIcon(cat){return({food:'🍜',transport:'🚗',hotel:'🏨',ticket:'🎫',shopping:'🛍️'})[cat]||'📦'}
 function genCode(){var code;do{code=String(Math.floor(100000+Math.random()*900000))}while(State.rooms.some(function(r){return r.code===code}));return code}
 function showToast(userId,msg){var t=document.getElementById('toast-'+userId);if(!t)return;t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},1800)}
-function syncAll(){USERS.slice(0,State.phoneCount).forEach(function(u){renderApp(u);var phone=document.getElementById('phone-'+u.id);if(phone){var frame=phone.querySelector('.pf');frame.classList.remove('sf');void frame.offsetHeight;frame.classList.add('sf')}})}
+/* ============================================================
+   真实多窗口同步（可选增强；探测失败自动降级，行为与改造前等价）
+   ------------------------------------------------------------
+   改造前：4 台手机的"实时同步"是**单页模拟** —— 共享同一份内存 State，
+           刷新即全部丢失，也无法开两个浏览器窗口协同。
+   改造后：接上共享内核 sync.js
+           · 同浏览器多个窗口/标签页真实同步（BroadcastChannel + storage 事件）
+           · localStorage 持久化 → 刷新不丢、关掉再开数据还在
+           · 三级降级：broadcast → local → memory（file:// 下自动回到单页模拟）
+   ⚠️ 仅在 http(s) 下生效：file:// 的 localStorage 是不透明源，探测会失败，
+      此时 mode=memory，页面行为与改造前**逐字节等价**，不影响双击打开演示。
+   ============================================================ */
+var SyncHub = null;
+var SyncMode = 'memory';
+var SyncApplyingRemote = false;
+/* 是否**真的**见过另一个窗口。徽标不能只凭"BroadcastChannel 构造成功"就宣称"多窗口已同步"：
+   file:// 下 new BroadcastChannel() 能构造成功，但消息未必真能跨窗口投递（实测构造=true）。
+   所以开局发一次 presence 打招呼，收到对端应答才算数。 */
+var SyncPeerSeen = false;
+var _presence = null;
+
+function syncState() {
+  return { rooms: State.rooms, bills: State.bills, tombstones: State.tombstones };
+}
+
+/* 合并/加载后重排自增计数器：否则新窗口从 1 开始记，会生成重复的 bill_1 互相覆盖 */
+function reseedCounters() {
+  var maxRoom = 0, maxBill = 0;
+  State.rooms.forEach(function (r) {
+    var m = /^room_(\d+)$/.exec(r && r.id); if (m) maxRoom = Math.max(maxRoom, +m[1]);
+  });
+  State.bills.forEach(function (b) {
+    var m = /^bill_(\d+)$/.exec(b && b.id); if (m) maxBill = Math.max(maxBill, +m[1]);
+  });
+  State.nextRoomId = Math.max(State.nextRoomId, maxRoom + 1);
+  State.nextBillId = Math.max(State.nextBillId, maxBill + 1);
+}
+
+function applyRemote(merged) {
+  SyncApplyingRemote = true;
+  try {
+    State.rooms = merged.rooms || [];
+    State.bills = merged.bills || [];
+    State.tombstones = merged.tombstones || {};
+    reseedCounters();
+    /* 记住刚合并进来的内容指纹：否则下一次本地发布会把它们全判成"改过了"并盖新时间戳，
+       导致本地永远赢、把对方后续的真实修改挡掉。 */
+    _lastStamp = {};
+    State.rooms.concat(State.bills).forEach(function (x) {
+      if (x && x.id != null) _lastStamp[x.id] = stripStamp(x);
+    });
+  } finally { SyncApplyingRemote = false; }
+  syncAll();
+  renderSyncBadge();
+}
+
+function bootSync() {
+  if (!window.TravelSync || typeof window.TravelSync.createSync !== 'function') {
+    renderSyncBadge();
+    return 'unavailable';
+  }
+  SyncHub = window.TravelSync.createSync({
+    getState: syncState,
+    setMerged: applyRemote,
+    onMode: function (m) { SyncMode = m; renderSyncBadge(); }
+  });
+  SyncMode = SyncHub.start();
+
+  /* 冷启动：把共享存储里的数据读回来（刷新不丢）。仅在本窗口还是空的时候回填，
+     避免覆盖"刚点了重置"或 URL 参数播种出来的初始态。
+     ⚠️ 带演示/自检 hash 时**不回填**：那些入口自带播种逻辑（#v3demo 甚至不重置），
+        回填旧数据会让每次打开的结果都不一样，截图与自检都不可复现。 */
+  var DEMO_HASH = /#(auto|v3demo|selftest|tourtest|uitest)\b|[?&]stage=\d/;
+  if (DEMO_HASH.test(location.href)) { renderSyncBadge(); return SyncMode; }
+  var snap = SyncHub.readSnapshot();
+  if (snap && State.rooms.length === 0 && (snap.rooms || []).length) {
+    applyRemote({ rooms: snap.rooms || [], bills: snap.bills || [], tombstones: snap.tombstones || {} });
+  }
+  renderSyncBadge();
+  startPresence();
+  return SyncMode;
+}
+
+/* 窗口点名：发 hello，收到 hello/ack 即认定"确实有另一个窗口活着"。
+   这条信号只用于**徽标措辞**，同步本身仍由 sync.js 的快照通道负责。 */
+function startPresence() {
+  if (!SyncHub || typeof BroadcastChannel !== 'function') return;
+  var me = SyncHub.tabId();
+  try { _presence = new BroadcastChannel(SyncHub.ns + '.presence'); } catch (e) { return; }
+  _presence.onmessage = function (e) {
+    var d = e && e.data;
+    var from = d && (d.hello || d.ack);
+    if (!from || from === me) return;
+    if (!SyncPeerSeen) { SyncPeerSeen = true; renderSyncBadge(); }
+    if (d.hello) { try { _presence.postMessage({ ack: me }); } catch (err) { /* ignore */ } }
+  };
+  try { _presence.postMessage({ hello: me }); } catch (e) { /* ignore */ }
+}
+
+function renderSyncBadge() {
+  var el = document.getElementById('syncBadge');
+  if (!el) return;
+  var peer = SyncMode === 'broadcast' && SyncPeerSeen;
+  var map = {
+    memory: ['📴 单页联动', '本地存储不可用 → 回到单页模拟，功能完整可用；用本地服务器打开即可多窗口同步', ''],
+    unavailable: ['📴 单页联动', '未加载同步内核 sync.js，当前为单页模拟', ''],
+    local: ['💾 已开启本地留存', '数据已存本机（刷新不丢）· 实时跨窗口通道不可用，当前是本窗口内的联动', 'act']
+  };
+  var m;
+  if (SyncMode === 'broadcast') {
+    m = peer
+      ? ['🔗 多窗口已同步', '已探测到另一个窗口：在一个窗口记一笔，另一个窗口秒级可见；刷新不丢', 'act']
+      : ['💾 已开启本地留存', '数据已存本机（刷新不丢）· 尚未探测到第二个窗口：再开一个标签页打开本页面即会自动连通', 'act'];
+  } else {
+    m = map[SyncMode] || map.memory;
+  }
+  el.className = 'bdg ' + m[2];
+  el.textContent = m[0];
+  el.title = m[1];
+}
+
+/* 每次状态变化：先广播/落盘，再重渲染。
+   ⚠️ 远端合并触发的 syncAll 不能反过来再 publish，否则两个窗口会互相回声放大。 */
+var _publishTimer = null;
+var _lastStamp = {};          // id → 上次发布时的内容快照，用于判断"这条到底改没改"
+
+/* LWW 合并按 updatedAt 比新旧，但 Demo 里的账单/房间只有 createdAt：
+   加入成员、改预算这类**原地修改**不会更新时间戳 → 合并时两边时间戳相等，
+   mergeList 会保留本地旧副本，对方的修改被静默丢掉。
+   因此发布前只给"内容确实变了"的实体盖新时间戳（全量盖会让本地永远赢，
+   反过来把对方的新修改挡掉）。*/
+function stripStamp(x) {
+  var o = {};
+  Object.keys(x).forEach(function (k) { if (k !== 'updatedAt') o[k] = x[k]; });
+  return JSON.stringify(o);
+}
+function stampChanged() {
+  var now = new Date().toISOString();
+  var touch = function (list) {
+    (list || []).forEach(function (x) {
+      if (!x || x.id == null) return;
+      var sig = stripStamp(x);
+      if (_lastStamp[x.id] !== sig) { x.updatedAt = now; _lastStamp[x.id] = sig; }
+    });
+  };
+  touch(State.rooms); touch(State.bills);
+}
+function forgetStamp(id) { delete _lastStamp[id]; }
+
+function publishSoon() {
+  if (!SyncHub || SyncApplyingRemote) return;
+  if (_publishTimer) return;
+  _publishTimer = setTimeout(function () {
+    _publishTimer = null;
+    try { stampChanged(); SyncHub.publish(syncState()); } catch (e) { /* 配额满等：不影响页面 */ }
+  }, 60);
+}
+
+function syncAll(){USERS.slice(0,State.phoneCount).forEach(function(u){renderApp(u);var phone=document.getElementById('phone-'+u.id);if(phone){var frame=phone.querySelector('.pf');frame.classList.remove('sf');void frame.offsetHeight;frame.classList.add('sf')}});publishSoon()}
 
 function askDeleteBill(userId,billId,desc){
   pendingDelete[userId]={userId:userId,billId:billId};
   var title=document.getElementById('confirmTitle-'+userId);var d=document.getElementById('confirmDesc-'+userId);
   if(title)title.textContent='删除账单？';if(d)d.textContent='「'+desc+'」将被永久删除';
   var overlay=document.getElementById('confirm-'+userId);if(overlay)overlay.classList.add('show');
+  a11yOpen(overlay);
 }
-function cancelConfirm(userId){delete pendingDelete[userId];var overlay=document.getElementById('confirm-'+userId);if(overlay)overlay.classList.remove('show')}
+function cancelConfirm(userId){delete pendingDelete[userId];var overlay=document.getElementById('confirm-'+userId);if(overlay)overlay.classList.remove('show');a11yClosed()}
 function doConfirm(userId){
-  if(pendingDelete[userId]){var idx=State.bills.findIndex(function(b){return b.id===pendingDelete[userId].billId});if(idx>=0){State.bills.splice(idx,1);showToast(userId,'🗑️ 已删除账单')}delete pendingDelete[userId]}
-  var overlay=document.getElementById('confirm-'+userId);if(overlay)overlay.classList.remove('show');syncAll();
+  if(pendingDelete[userId]){var id=pendingDelete[userId].billId;var idx=State.bills.findIndex(function(b){return b.id===id});if(idx>=0){State.bills.splice(idx,1);
+    /* 删除必须留墓碑：否则对方窗口的旧快照一合并，被删的账单就"复活"了 */
+    State.tombstones[id]=new Date().toISOString();forgetStamp(id);
+    showToast(userId,'🗑️ 已删除账单')}delete pendingDelete[userId]}
+  var overlay=document.getElementById('confirm-'+userId);if(overlay)overlay.classList.remove('show');syncAll();a11yClosed();
 }
 
 function openCreateModal(userId){
   var body=document.getElementById('modalBody-'+userId);document.getElementById('modalTitle-'+userId).textContent='创建旅行房间';
   body.innerHTML='<div class="fg"><div class="fl">旅行名称</div><input class="fi" placeholder="如：国庆东京行" id="createName-'+userId+'"></div><div class="fg"><div class="fl">目的地</div><input class="fi" placeholder="如：东京" id="createDest-'+userId+'"></div><div class="fg"><div class="fl">出发 / 返程（可选，用于预算燃烧率）</div><div style="display:flex;gap:8px;"><input class="fi" type="date" id="createStart-'+userId+'" style="flex:1;"><input class="fi" type="date" id="createEnd-'+userId+'" style="flex:1;"></div></div><div class="fg"><div class="fl">人均预算（可选）</div><input class="fi" placeholder="如：5000" id="createBudget-'+userId+'" type="number"></div><button class="btn dk" style="width:100%;margin-top:4px;" onclick="doCreateRoom(\''+userId+'\')">创建房间</button>';
   document.getElementById('modal-'+userId).classList.add('show');
+  a11yOpen(document.getElementById('modal-'+userId));
 }
 function doCreateRoom(userId){
   var user=USERS.find(function(u){return u.id===userId});
@@ -1494,6 +1686,7 @@ function openJoinModal(userId){
   var body=document.getElementById('modalBody-'+userId);document.getElementById('modalTitle-'+userId).textContent='加入旅行房间';
   body.innerHTML='<div class="fg"><div class="fl">房间号</div><input class="fi" placeholder="输入6位房间号" maxlength="6" id="joinCode-'+userId+'" style="text-align:center;font-size:18px;letter-spacing:8px;font-weight:700;"></div><button class="btn dk" style="width:100%;margin-top:4px;" onclick="doJoinRoom(\''+userId+'\')">加入房间</button>';
   document.getElementById('modal-'+userId).classList.add('show');
+  a11yOpen(document.getElementById('modal-'+userId));
 }
 function doJoinRoom(userId){
   var user=USERS.find(function(u){return u.id===userId});
@@ -1562,10 +1755,10 @@ function copySettle(userId,roomId){
   settlement.transfers.forEach(function(t,i){text+=(i+1)+'. '+t.fromName+' → '+t.toName+' ¥'+t.amount.toFixed(2)+'\n'});
   if(navigator.clipboard)navigator.clipboard.writeText(text);showToast(userId,'📋 已复制结算方案');
 }
-function closeModal(userId){var m=document.getElementById('modal-'+userId);if(m)m.classList.remove('show')}
+function closeModal(userId){var m=document.getElementById('modal-'+userId);if(m)m.classList.remove('show');a11yClosed()}
 function addPhone(){if(State.phoneCount>=4){showToast('u1','最多 4 台手机（4 位成员）');return}State.phoneCount++;document.getElementById('phoneCountLabel').textContent=State.phoneCount;renderPhones()}
 function removePhone(){if(State.phoneCount<=1){showToast('u1','至少保留 1 台手机');return}State.phoneCount--;document.getElementById('phoneCountLabel').textContent=State.phoneCount;renderPhones()}
-function resetAll(){State.rooms=[];State.bills=[];State.nextRoomId=1;State.nextBillId=1;USERS.forEach(function(u){u._page='home';u._roomId=null;u._form=null;u._ai=null;u._aiText='';u._narr=null;u._narrLoading=false;u._listening=false;u._sampleIdx=null;u._visionResult=null});ocrState={};pendingDelete={};if(typeof clearCaptions==='function')clearCaptions();tourExit();closeSelfTest();renderPhones()}
+function resetAll(){var wiped=State.rooms.concat(State.bills);var ts=new Date().toISOString();State.tombstones={};wiped.forEach(function(x){if(x&&x.id!=null){State.tombstones[x.id]=ts;forgetStamp(x.id)}});State.rooms=[];State.bills=[];State.nextRoomId=1;State.nextBillId=1;USERS.forEach(function(u){u._page='home';u._roomId=null;u._form=null;u._ai=null;u._aiText='';u._narr=null;u._narrLoading=false;u._listening=false;u._sampleIdx=null;u._visionResult=null});ocrState={};pendingDelete={};if(typeof clearCaptions==='function')clearCaptions();tourExit();closeSelfTest();renderPhones();syncAll()}
 
 /* ============================================================
    演示模式：开演时隐藏标题/工具条、手机自适应高度
@@ -1890,10 +2083,14 @@ function ensureTourDom() {
   document.body.appendChild(mask);
   var card = document.createElement('div');
   card.className = 'tour-card'; card.id = 'tourCard';
+  /* role=dialog 但**不是** aria-modal：导览卡是讲者提示条，下方页面仍可操作，
+     不能对读屏宣称"页面被禁用"，因此也不做焦点陷阱（见 a11y 层 isModalLayer）。 */
+  card.setAttribute('role', 'dialog');
+  card.setAttribute('aria-label', '演示导览');
   card.innerHTML = '<div class="tour-step" id="tourStepLabel"></div>' +
     '<div class="tour-title" id="tourTitle"></div>' +
-    '<div class="tour-script" id="tourScript"></div>' +
-    '<div class="tour-dots" id="tourDots"></div>' +
+    '<div class="tour-script" id="tourScript" role="status" aria-live="polite"></div>' +
+    '<div class="tour-dots" id="tourDots" aria-hidden="true"></div>' +
     '<div class="tour-ctrl">' +
       '<button class="btn lt" onclick="tourPrev()">← 上一步</button>' +
       '<button class="btn lt" id="tourAutoBtn" onclick="toggleTourAuto()">▶ 自动</button>' +
@@ -1909,6 +2106,7 @@ function startTour() {
   document.getElementById('tourCard').style.display = 'block';
   document.getElementById('tourMask').style.display = 'block';
   renderTourStep();
+  a11yEnhance(document.getElementById('tourCard'));
   showToast('u1', '🎬 导览开始 · 共 ' + TOUR_STEPS.length + ' 步');
 }
 function renderTourStep() {
@@ -1972,6 +2170,7 @@ function tourExit() {
   if (tourState.timer) { clearInterval(tourState.timer); tourState.timer = null; }
   var mask = document.getElementById('tourMask'); if (mask) mask.style.display = 'none';
   var card = document.getElementById('tourCard'); if (card) card.style.display = 'none';
+  a11yClosed();
 }
 
 /* ============================================================
@@ -2113,6 +2312,7 @@ function showTestPanel(title, titleKey, checks) {
     '<button class="btn dk" style="width:100%;margin-top:16px;" onclick="closeSelfTest()">关闭</button></div>';
   panel.addEventListener('click', function (e) { if (e.target === panel) closeSelfTest(); });
   document.body.appendChild(panel);
+  a11yOpen(panel);
   document.title = allPass ? (titleKey + ' ' + passed + '/' + checks.length + ' ALL-PASS') : (titleKey + ' ' + passed + '/' + checks.length + ' FAIL');
 }
 /* 导览自动验收：逐步执行导览并检查每步高亮目标是否存在 */
@@ -2129,7 +2329,155 @@ function runTourTest() {
 function closeSelfTest() {
   var p = document.getElementById('testPanel');
   if (p) p.parentNode.removeChild(p);
+  a11yClosed();
 }
+
+/* ============================================================
+   无障碍（a11y）：语义 / 键盘 / 对比度
+   ------------------------------------------------------------
+   ① 语义：弹层标 role="dialog" + aria-modal + aria-labelledby；
+      动态消息（toast / 演示字幕 / 状态徽标）标 role="status" aria-live="polite"。
+   ② 键盘：Esc 关闭最上层；弹层内 Tab 循环；打开时焦点进弹层、关闭时还给原元素；
+      页面里大量 `<div onclick>` 卡片（房间卡/账单行/成员胶囊）补 tabindex+role，
+      并支持 Enter / 空格激活 —— 否则键盘用户根本走不完整条流程。
+   ③ 对比度：见 :root 令牌（品牌橙当文字用 2.84:1 → --pri-ink 6.00:1；次要灰 2.58:1
+      → --g400 4.88:1；绿/红/琥珀语义色同样换成 AA 版本）。
+
+   ⚠️ 为什么**不用原生 <dialog>**：演示台是"3~4 台手机并排"的模拟机身，
+      .co / .mo 是绝对定位在**手机壳内部**的弹层。原生 <dialog> 会进入 top layer
+      并相对视口居中 → 弹窗飞出手机屏、盖住整页，直接破坏"每台手机 = 一个用户"的
+      视觉隐喻。这里用 role/aria + 焦点陷阱达到等价的键盘与读屏体验。
+   ============================================================ */
+var A11Y_FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+/* 弹层选择器按 z-index 从高到低排列（见 CSS：test-panel 220 / tour-card 210 / co 60 / mo 50） */
+var A11Y_LAYERS = ['.test-panel', '.tour-card', '.co.show', '.mo.show'];
+var _a11yReturnFocus = null;
+
+function isShown(el) {
+  if (!el) return false;
+  if (el.style && el.style.display === 'none') return false;
+  try {
+    var cs = getComputedStyle(el);
+    return cs.display !== 'none' && cs.visibility !== 'hidden';
+  } catch (e) { return true; }
+}
+
+/* 给「有 onclick 但不是原生控件」的元素补键盘可达性（幂等，可重复调用） */
+function a11yEnhance(scope) {
+  var nodes = (scope || document).querySelectorAll('[onclick]');
+  for (var i = 0; i < nodes.length; i++) {
+    var el = nodes[i], tag = el.tagName;
+    if (tag === 'BUTTON' || tag === 'A' || tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') continue;
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+    if (!el.hasAttribute('role')) el.setAttribute('role', 'button');
+    if (!el.hasAttribute('aria-label')) {
+      var t = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      if (t) el.setAttribute('aria-label', t.slice(0, 40));
+    }
+  }
+  /* 纯图标按钮补名字（只有 emoji / ✕ 的元素读屏念不出含义） */
+  var iconOnly = (scope || document).querySelectorAll('.mc,.bd,.pbt');
+  for (var j = 0; j < iconOnly.length; j++) {
+    var b = iconOnly[j];
+    if (b.hasAttribute('aria-label') || b.getAttribute('aria-hidden') === 'true') continue;
+    b.setAttribute('aria-label', b.classList.contains('mc') ? '关闭' : (b.classList.contains('bd') ? '删除这笔账单' : '手机按键（装饰）'));
+  }
+}
+
+function topLayer() {
+  for (var i = 0; i < A11Y_LAYERS.length; i++) {
+    var list = document.querySelectorAll(A11Y_LAYERS[i]);
+    for (var j = list.length - 1; j >= 0; j--) { if (isShown(list[j])) return list[j]; }
+  }
+  return null;
+}
+/* 弹层里真正的"内容盒"（焦点陷阱的作用范围） */
+function layerBox(layer) {
+  if (!layer) return null;
+  return layer.querySelector('.cb2,.mm2,.test-card') || layer;
+}
+/* 导览卡是"讲者提示"，不阻断页面 → 不做焦点陷阱，只处理 Esc */
+function isModalLayer(layer) { return !!layer && !layer.classList.contains('tour-card'); }
+
+function focusablesIn(box) {
+  var out = [], list = box.querySelectorAll(A11Y_FOCUSABLE);
+  for (var i = 0; i < list.length; i++) {
+    var el = list[i];
+    if (el.hasAttribute('disabled')) continue;
+    if (el.getAttribute('tabindex') === '-1' && !/^(INPUT|SELECT|TEXTAREA|BUTTON|A)$/.test(el.tagName)) continue;
+    if (!isShown(el)) continue;
+    out.push(el);
+  }
+  return out;
+}
+
+function a11yOpen(layer) {
+  if (!layer) return;
+  a11yEnhance(layer);
+  if (!_a11yReturnFocus && document.activeElement && document.activeElement !== document.body) {
+    _a11yReturnFocus = document.activeElement;
+  }
+  var box = layerBox(layer);
+  if (!box) return;
+  /* 延后一帧：弹层有 opacity/transform 过渡，立刻 focus 在部分浏览器会被吞掉 */
+  setTimeout(function () {
+    if (!isShown(layer)) return;
+    var list = focusablesIn(box);
+    var target = list.length ? list[0] : box;
+    if (target && target.focus) { try { target.focus(); } catch (e) { /* ignore */ } }
+  }, 30);
+}
+
+function a11yClosed() {
+  var el = _a11yReturnFocus;
+  _a11yReturnFocus = null;
+  if (el && el.focus) { try { el.focus(); } catch (e) { /* ignore */ } }
+}
+
+/* Esc 关闭最上层：自检面板 → 导览卡 → 手机弹窗 → 退出演示模式 */
+function closeTopLayer() {
+  var layer = topLayer();
+  if (!layer) return false;
+  if (layer.classList.contains('test-panel')) { closeSelfTest(); return true; }
+  if (layer.classList.contains('tour-card')) { tourExit(); return true; }
+  var m = /^confirm-(.+)$/.exec(layer.id || '');
+  if (m) { cancelConfirm(m[1]); return true; }
+  m = /^modal-(.+)$/.exec(layer.id || '');
+  if (m) { closeModal(m[1]); return true; }
+  return false;
+}
+
+document.addEventListener('keydown', function (e) {
+  var key = e.key;
+  /* ① Esc：逐层退出（先关最上层弹层，都没有才退出演示模式） */
+  if (key === 'Escape' || key === 'Esc') {
+    if (closeTopLayer()) { e.preventDefault(); return; }
+    if (document.body.classList.contains('present')) { exitPresent(); e.preventDefault(); }
+    return;
+  }
+  /* ② Enter / 空格 激活"不是按钮的按钮"（卡片、账单行、成员胶囊…） */
+  if (key === 'Enter' || key === ' ' || key === 'Spacebar') {
+    var el = e.target;
+    if (!el || !el.getAttribute || !el.getAttribute('onclick')) return;
+    if (/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) return;
+    e.preventDefault();
+    el.click();
+    return;
+  }
+  /* ③ Tab 焦点陷阱：只在模态弹层里循环，不让焦点跑到被遮住的页面上 */
+  if (key === 'Tab') {
+    var layer = topLayer();
+    if (!layer || !isModalLayer(layer)) return;
+    var box = layerBox(layer);
+    var list = focusablesIn(box);
+    if (!list.length) { e.preventDefault(); return; }
+    var first = list[0], last = list[list.length - 1], active = document.activeElement;
+    var inside = box === active || box.contains(active);
+    if (e.shiftKey) {
+      if (!inside || active === first) { e.preventDefault(); last.focus(); }
+    } else if (!inside || active === last) { e.preventDefault(); first.focus(); }
+  }
+}, false);
 
 /* ============================================================
    交互验收（#uitest）：用真实点击驱动，专查"点了没反应 / 进得去出不来"
@@ -2368,6 +2716,142 @@ function runUITest() {
     var inView = backRect && backRect.left >= frame.left - 1 && backRect.right <= frame.right + 1;
     add('布局：页面无横向溢出', overflow <= 2, '溢出 ' + overflow + 'px');
     add('布局：导航按钮在手机可视区内', !!inView);
+
+    /* 19. 无障碍（a11y）：对比度 / 语义 / 键盘
+       —— 这三件事只有真跑一遍才知道有没有回退，静态看代码看不出来。 */
+    await (async function () {
+      var rgb = function (c) {
+        var m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/.exec(c || '');
+        return m ? [+m[1], +m[2], +m[3], m[4] === undefined ? 1 : parseFloat(m[4])] : null;
+      };
+      var bgOf = function (el) {
+        var n = el;
+        while (n && n.nodeType === 1) {
+          var s = getComputedStyle(n);
+          if (s.backgroundImage && s.backgroundImage !== 'none') return null;  // 渐变/图片算不准，跳过
+          var c = rgb(s.backgroundColor);
+          if (c && c[3] > 0.5) return c;
+          n = n.parentElement;
+        }
+        return [255, 255, 255];
+      };
+      var lum = function (c) {
+        var f = function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+        return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+      };
+      var ratio = function (a, b) {
+        var l1 = lum(a), l2 = lum(b);
+        if (l1 < l2) { var t = l1; l1 = l2; l2 = t; }
+        return (l1 + 0.05) / (l2 + 0.05);
+      };
+      var isEmoji = function (t) {
+        try { return /^[\p{Extended_Pictographic}\s·✕＋−%+]+$/u.test(t); } catch (e) { return t.length <= 2; }
+      };
+
+      var bad = [], checked = 0;
+      ['home', 'room', 'add', 'capture', 'settle', 'stats'].forEach(function (p) {
+        goPhone('u1', p);
+        var nodes = document.querySelectorAll('#app-u1 *');
+        for (var i = 0; i < nodes.length; i++) {
+          var el = nodes[i];
+          if (el.getAttribute('aria-hidden') === 'true') continue;
+          var own = '';
+          for (var k = 0; k < el.childNodes.length; k++) {
+            if (el.childNodes[k].nodeType === 3) own += el.childNodes[k].nodeValue;
+          }
+          own = own.replace(/\s+/g, ' ').trim();
+          if (!own || isEmoji(own)) continue;
+          var s = getComputedStyle(el);
+          if (parseFloat(s.opacity) < 1) continue;
+          var fg = rgb(s.color); if (!fg || fg[3] < 0.5) continue;
+          var bg = bgOf(el); if (!bg) continue;
+          var fs = parseFloat(s.fontSize) || 0, fw = parseInt(s.fontWeight, 10) || 400;
+          /* WCAG：≥24px，或 ≥18.66px 且加粗 → 大字，3:1 即可；其余 4.5:1 */
+          var need = (fs >= 24 || (fs >= 18.66 && fw >= 700)) ? 3.0 : 4.5;
+          var r = ratio(fg, bg);
+          checked++;
+          if (r < need) bad.push(p + ' ' + (el.className || el.tagName) + '「' + own.slice(0, 8) + '」' + r.toFixed(2) + '<' + need);
+        }
+      });
+      add('★ 无障碍：手机内文字对比度全部达 WCAG AA', bad.length === 0,
+        bad.length ? (bad.length + ' 处不达标 · ' + bad.slice(0, 3).join(' | ')) : (checked + ' 处文本全部达标'));
+
+      var live = document.querySelectorAll('[role="status"][aria-live="polite"]');
+      add('★ 无障碍：动态消息用 aria-live 播报', live.length >= 3,
+        live.length + ' 处（账单 toast / 演示字幕 / 同步状态）');
+
+      var dlgC = document.querySelector('#confirm-u1 .cb2'), dlgM = document.querySelector('#modal-u1 .mm2');
+      var dlgOK = function (d) {
+        if (!d) return false;
+        var lb = d.getAttribute('aria-labelledby');
+        return d.getAttribute('role') === 'dialog' && d.getAttribute('aria-modal') === 'true' &&
+          !!lb && !!document.getElementById(lb);
+      };
+      add('★ 无障碍：弹层 role=dialog + aria-modal + 标题关联', dlgOK(dlgC) && dlgOK(dlgM),
+        (dlgC && dlgC.getAttribute('aria-labelledby')) + ' / ' + (dlgM && dlgM.getAttribute('aria-labelledby')));
+
+      /* 弹层容器本身也带 onclick（stopPropagation），但它不是"可点卡片"，
+         它的 tabindex="-1" 是**故意**的（焦点头进内层，不进容器） */
+      var clicky = document.querySelectorAll('#app-u1 [onclick]:not(button):not(a):not(input):not([role="dialog"])');
+      var notReachable = 0;
+      for (var ci = 0; ci < clicky.length; ci++) {
+        if (clicky[ci].getAttribute('tabindex') !== '0' || clicky[ci].getAttribute('role') !== 'button') notReachable++;
+      }
+      add('★ 无障碍：可点卡片键盘可达（tabindex + role=button）',
+        clicky.length > 0 && notReachable === 0,
+        clicky.length + ' 个可点元素' + (notReachable ? (' · ' + notReachable + ' 个键盘到不了') : '，全部可达'));
+
+      /* 真按 Enter 进房间：验证键盘路径确实通到业务逻辑，而不只是属性好看 */
+      goPhone('u1', 'home');
+      var kcard = document.querySelector('#app-u1 .rc[tabindex="0"]');
+      if (kcard) {
+        kcard.focus();
+        kcard.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+      }
+      await wait(80);
+      add('★ 无障碍：键盘 Enter 能真正进入房间（端到端）',
+        !!kcard && USERS[0]._page === 'room', '页面 → ' + USERS[0]._page);
+
+      /* Esc 关闭 + 焦点进弹层：真实派发键盘事件，走的是生产代码里那条路径 */
+      var firstBill = State.bills[0];
+      askDeleteBill('u1', firstBill ? firstBill.id : 'none', '无障碍测试');
+      await wait(90);
+      var coEl = document.querySelector('#confirm-u1');
+      var opened = coEl.classList.contains('show');
+      var focusIn = coEl.contains(document.activeElement) || coEl.querySelector('.cb2') === document.activeElement;
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await wait(60);
+      var closedByEsc = !coEl.classList.contains('show');
+      add('★ 无障碍：打开弹层自动聚焦 + Esc 可关闭', opened && focusIn && closedByEsc,
+        '打开 ' + opened + ' · 焦点入内 ' + focusIn + ' · Esc 关闭 ' + closedByEsc);
+
+      /* Tab 焦点陷阱：从最后一个可聚焦元素 Tab 应回到第一个，不外泄到被遮住的页面 */
+      askDeleteBill('u1', firstBill ? firstBill.id : 'none', '焦点陷阱测试');
+      await wait(90);
+      var fList = focusablesIn(coEl.querySelector('.cb2'));
+      if (fList.length >= 2) {
+        fList[fList.length - 1].focus();
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
+        var wrapped = document.activeElement === fList[0];
+        add('★ 无障碍：弹层内 Tab 焦点循环（不外泄）', wrapped,
+          fList.length + ' 个可聚焦元素 · 末位 Tab 回到首位 ' + wrapped);
+      } else {
+        add('★ 无障碍：弹层内 Tab 焦点循环（不外泄）', false, '可聚焦元素不足 2 个');
+      }
+      var tabEv = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+      document.dispatchEvent(tabEv);
+      await wait(40);
+      /* 导览卡也应当能用 Esc 收起（讲者中途想直接开讲） */
+      startTour();
+      await wait(120);
+      var tourWasOpen = document.getElementById('tourCard').style.display !== 'none';
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await wait(60);
+      add('★ 无障碍：导览可用 Esc 收起', tourWasOpen && document.getElementById('tourCard').style.display === 'none',
+        '开启 ' + tourWasOpen + ' · Esc 收起 ' + (document.getElementById('tourCard').style.display === 'none'));
+      if (document.body.classList.contains('present')) exitPresent();
+    })();
+
     /* 17. 自动演示：必须真的切页面（不是"后台默默加数据"） */
     var seenPages = {};
     var origRender = renderApp;
@@ -2475,6 +2959,7 @@ function runUITest() {
 }
 
 renderPhones();
+a11yEnhance(document);
 probeEngine();
 
 /* ============================================================
@@ -2567,6 +3052,9 @@ function startV3Demo() {
    - 首次进入时高亮 ＋ 按钮，提示"可以加人"（这是最常被忽略的一步）
    ============================================================ */
 (function initPhoneCount() {
+  /* 同步内核要在任何播种之前启动：先回填共享存储里的旧数据，
+     再决定手机台数，避免刚刷新时把已有房间当成"空房间"重新播种。 */
+  bootSync();
   var m = /[?&#]n=(\d+)/.exec(location.href);
   if (m) {
     var n = Math.max(1, Math.min(4, parseInt(m[1], 10) || 1));

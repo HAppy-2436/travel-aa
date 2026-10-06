@@ -277,9 +277,13 @@ function bill(id, amount, updatedAt) { return { id, amount, updatedAt: updatedAt
     ok('窗口 A 模式 = broadcast', a.mode() === 'broadcast', a.mode());
 
     const snap1 = a.publish(stateA);
-    ok('publish 产出快照且带 rev/writer/schema', !!snap1 && snap1.rev === 1 && snap1.writer === 'aaa111' && snap1.schema === S.SCHEMA,
+    ok('publish 产出快照且带 rev/writer/schema', !!snap1 && typeof snap1.rev === 'number' && snap1.rev > 0 && snap1.writer === 'aaa111' && snap1.schema === S.SCHEMA,
       snap1 && ('rev=' + snap1.rev + ' writer=' + snap1.writer));
     ok('快照已落盘', env.localStorage.getItem(S.SNAP_KEY) !== null);
+
+    // rev 必须是**全局单调**的：连续两次 publish 严格递增
+    const snap1b = a.publish(stateA);
+    ok('★ rev 全局单调递增（同一窗口连续发布）', snap1b.rev > snap1.rev, snap1.rev + ' → ' + snap1b.rev);
 
     // G. 回声抑制：同一个 writer 再收自己的快照 → 忽略
     const echo = a.receive(snap1, stateA);
@@ -291,18 +295,30 @@ function bill(id, amount, updatedAt) { return { id, amount, updatedAt: updatedAt
     ok('F. 过期 rev 快照被丢弃', rs.applied === false && rs.reason === 'stale-rev', rs.reason);
 
     // 更新的 rev → 应用
-    const fresh = { schema: S.SCHEMA, rev: 9, writer: 'bbb222', ts: new Date().toISOString(),
+    const fresh = { schema: S.SCHEMA, rev: snap1b.rev + 100, writer: 'bbb222', ts: new Date().toISOString(),
       rooms: [room('r2', 'B 房', '2024-10-02T00:00:00.000Z')], bills: [], tombstones: {} };
     const rf = a.receive(fresh, stateA);
     ok('更新的 rev 被应用', rf.applied === true && rf.changed === true, 'from=' + rf.from);
     ok('合并后包含双方房间', rf.merged.rooms.length === 2, String(rf.merged.rooms.length));
-    ok('rev 推进到远端值', rf.merged.rev === 9, String(rf.merged.rev));
+    ok('rev 推进到远端值', rf.merged.rev === fresh.rev, String(rf.merged.rev));
+    // 同步器不持有 State，调用方负责把 merged 写回（真实 Demo 里由 setMerged 完成）
+    stateA.rooms = rf.merged.rooms;
 
-    // 相同 rev 再来一次（乱序）→ 丢弃
-    ok('相同 rev 的重复快照被丢弃', a.receive(fresh, stateA).reason === 'stale-rev');
+    // 相同 rev 再来一次（内容已合并）→ 放行但幂等，changed=false
+    const again = a.receive(fresh, stateA);
+    ok('★ 相同 rev 放行但幂等（不丢并发写、不重复渲染）',
+      again.applied === true && again.changed === false, 'applied=' + again.applied + ' changed=' + again.changed);
+
+    // ★ 回归：两个窗口 rev 撞车时，撞车方的数据不能被丢弃
+    const collide = { schema: S.SCHEMA, rev: fresh.rev, writer: 'ccc333', ts: new Date().toISOString(),
+      rooms: [room('r3', 'C 房', '2024-10-03T00:00:00.000Z')], bills: [], tombstones: {} };
+    const rc = a.receive(collide, stateA);
+    ok('★ 同 rev 撞车不丢数据（合并进第三方房间）',
+      rc.applied === true && rc.changed === true && rc.merged.rooms.length === 3,
+      'applied=' + rc.applied + ' rooms=' + (rc.merged && rc.merged.rooms.length));
 
     // H. schema 版本
-    const future = { ...fresh, rev: 99, schema: S.SCHEMA + 1 };
+    const future = { ...fresh, rev: fresh.rev + 1000, schema: S.SCHEMA + 1 };
     const rH = a.receive(future, stateA);
     ok('H. 未来 schema 被拒绝（不猜测格式）', rH.applied === false && rH.reason === 'future-schema', rH.reason);
 
