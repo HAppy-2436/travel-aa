@@ -124,11 +124,15 @@ console.log('\n—— 4. 分摊明细生成 ——');
 
 console.log('\n—— 5. AI 消费洞察 & 报告 ——');
 {
+  // 带上 splits：引擎的"可结算"判定要求有分摊明细
+  // （amount>0 但 splits=[] 的账单不参与结算，否则"付款人记了实付、却无人承担份额"会让账不平）。
+  // 这里只补字段，不改变金额口径与断言里的数字。
+  const sp = (n) => [{ memberId: 'u1', amount: n }];
   const bills = [
-    { amount: 3200, category: 'hotel', payerName: '小明', description: '酒店4晚' },
-    { amount: 680, category: 'food', payerName: '小明', description: '晚餐' },
-    { amount: 2800, category: 'ticket', payerName: '小王', description: '迪士尼门票' },
-    { amount: 450, category: 'transport', payerName: '小李', description: '地铁+出租车' }
+    { amount: 3200, category: 'hotel', payerName: '小明', description: '酒店4晚', splits: sp(3200) },
+    { amount: 680, category: 'food', payerName: '小明', description: '晚餐', splits: sp(680) },
+    { amount: 2800, category: 'ticket', payerName: '小王', description: '迪士尼门票', splits: sp(2800) },
+    { amount: 450, category: 'transport', payerName: '小李', description: '地铁+出租车', splits: sp(450) }
   ];
   const insight = AI.generateInsight({
     room: { name: '国庆东京行', destination: '东京', startDate: '2024-10-01', endDate: '2024-10-07' },

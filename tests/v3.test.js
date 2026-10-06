@@ -347,9 +347,22 @@ function mb(bills) { return AI.netBalances(bills, MEMBERS); }
     const half = AI.buildPlaceholder({ amount: 320, description: '只记得金额' });
     ok('只缺付款人时 missing 只有 payer', half.missing.length === 1 && half.missing[0] === 'payer', JSON.stringify(half.missing));
 
-    const full = AI.buildPlaceholder({ amount: 320, payer: 'u1', description: '补齐了' });
+    // 传 members 时自动生成均分 → 补齐后即可结算
+    const full = AI.buildPlaceholder({ amount: 320, payer: 'u1', description: '补齐了', members: MEMBERS });
     ok('补齐后 needsCompletion = false', full.needsCompletion === false);
+    ok('补齐后自动生成均分分摊', full.splits.length === MEMBERS.length, JSON.stringify(full.splits.map((s) => s.amount)));
     ok('补齐后可以参与结算', AI.isSettleable(full) === true);
+
+    // 不传 members：splits 留空，但**不算"没补齐"**（缺 splits 不是用户要补的字段），
+    // 真正的防线在 isSettleable —— 空分摊单不参与结算，否则 Σ净余额 = amount
+    const noMembers = AI.buildPlaceholder({ amount: 320, payer: 'u1' });
+    ok('不传 members 时 missing 不含 splits（不是用户该补的字段）',
+      noMembers.missing.length === 0, JSON.stringify(noMembers.missing));
+    ok('★ 但空分摊单不可结算（防止账不平）', AI.isSettleable(noMembers) === false);
+    ok('★ 空分摊单被排除后账恒平', AI.netBalances([noMembers], MEMBERS).balanced === true,
+      String(AI.netBalances([noMembers], MEMBERS).balances.reduce((s, b) => s + b.amount, 0)));
+    ok('★ 空分摊单会被审计点名', AI.auditBills([Object.assign({ id: 'x1', currency: 'CNY', rate: 1 },
+      noMembers)], MEMBERS).issues.some((i) => i.type === 'missing-splits'));
 
     const list = [ph, half,
       mkBill({ id: 'ok1', payer: 'u1', amount: 100, splits: equalSplits(100, MEMBERS) })];

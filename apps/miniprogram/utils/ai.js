@@ -446,11 +446,15 @@
    */
   function generateInsight(ctx) {
     var room = ctx.room || {};
-    // ⚠️ 洞察/报告一律用**人民币口径**，且排除调整单：
+    // 洞察/报告一律用**人民币口径**，且排除调整单与"不可结算"的账单：
     //    直接用 Number(b.amount) 会把日元账单（如 24000 JPY）当成 24000 元人民币累加，
     //    曾让统计页显示"合计 ¥46400"（真值 ¥3507.2）。
     //    调整单 amount 恒为 0 且是零和再分配，计入只会污染均值与占比。
-    var bills = settleableBills(ctx.bills || []).filter(function (b) { return !b.isAdjustment; });
+    //    "有金额但没分摊"的账单（splits=[]）也必须排除 —— 它不参与结算，
+    //    计入洞察会让"合计"与结算页对不上（实测差 100）。
+    var bills = settleableBills(ctx.bills || []).filter(function (b) {
+      return !b.isAdjustment;
+    });
     var members = ctx.members || [];
     var total = round2(bills.reduce(function (s, b) { return s + billCNY(b); }, 0));
     var n = Math.max(1, members.length);
@@ -849,10 +853,68 @@
     bills = bills || [];
     var issues = [];
 
+    // 0) 兜底不变量检查（放在最前，因为它是**唯一能覆盖全部组合**的一道闸）
+    //
+    //    审计是"能不能放心结算"的最后一道闸，不能对破坏不变量的数据放行。
+    //    此前 auditBills 只查"分摊合计≠金额"，于是这些情况全部漏检、还给 100 分：
+    //      · amount>0 但 splits 为空（钱凭空出现）
+    //      · 调整单自身不零和
+    //      · 调整单指向的原账单已删除（孤儿调整单）
+    //      · 外币缺 rate 快照 / rate≤0
+    //    现在直接调用 netBalances —— 它是唯一口径正确的实现，balanced 就是判据。
+    if (typeof netBalances === 'function') {
+      var nb = netBalances(bills, members || []);
+      if (nb.balanced === false) {
+        var sumBal = round2(nb.balances.reduce(function (s, x) { return s + x.amount; }, 0));
+        issues.push({
+          type: 'unbalanced', severity: 'high',
+          billIds: [],
+          message: '账目不平：各人净余额合计 ¥' + sumBal.toFixed(2) + '（应恒为 0），共 ' + nb.balances.length + ' 人有余额',
+          suggestion: '检查是否有「有金额但没填分摊」的账单、或有调整单指向的账单已被删除'
+        });
+      }
+      (nb.orphans || []).forEach(function (o) {
+        issues.push({
+          type: 'orphan-adjustment', severity: 'high',
+          billIds: [o.id],
+          message: '调整单「' + o.id + '」指向的原账单已不存在',
+          suggestion: '删除该调整单，或恢复它对应的原账单'
+        });
+      });
+    }
+
+    // 0') 调整单必须自身零和（总额未变时）
+    var v = validateAdjustments(bills);
+    (v.bad || []).forEach(function (x) {
+      issues.push({
+        type: 'unbalanced-adjustment', severity: 'high',
+        billIds: [x.id],
+        message: '调整单「' + x.id + '」自身不零和（合计 ¥' + x.sum.toFixed(2) + '），会把差额当成新消费重复计入总额',
+        suggestion: '删除该调整单并重新生成，或检查生成时传入的原账单'
+      });
+    });
+
+    // 0'') 有金额却没有分摊明细 —— 付款人记了实付、却无人承担份额
+    bills.forEach(function (b) {
+      if (!b || b.isAdjustment) return;
+      if (b.status === 'draft' || b.needsCompletion || b.voided) return;
+      if ((Number(b.amount) || 0) > 0 && (!Array.isArray(b.splits) || !b.splits.length)) {
+        issues.push({
+          type: 'missing-splits', severity: 'high',
+          billIds: [b._id || b.id],
+          message: '「' + (b.description || b.desc || '消费') + '」¥' + (Number(b.amount) || 0).toFixed(2) + ' 没有分摊明细',
+          suggestion: '补上分摊（重新分摊该笔账单），否则这笔钱在结算时会凭空消失'
+        });
+      }
+    });
+
     // 1) 疑似重复账单：同金额 + 说明相近 + 时间差 < 10 分钟
+    //    跳过金额≤0 的单（占位单会被误报"¥0.00 录了两次"）
     for (var i = 0; i < bills.length; i++) {
       for (var j = i + 1; j < bills.length; j++) {
         var a = bills[i], b = bills[j];
+        if (billCNY(a) <= 0 || billCNY(b) <= 0) continue;
+        if (a.isAdjustment || b.isAdjustment) continue;
         var sameAmount = Math.abs(billCNY(a) - billCNY(b)) < 0.01;
         var closeTime = billTime(a) && billTime(b) && Math.abs(billTime(a) - billTime(b)) < 10 * 60 * 1000;
         if (sameAmount && closeTime && simText(a.description || a.desc, b.description || b.desc)) {
@@ -1875,27 +1937,44 @@
    * 之所以让补齐后状态变回 normal：占位只是"临时不确定"的标记，
    * 补齐后它就该像普通账单一样算钱；若一直挂 draft 会永远算不进去。
    *
-   * @param {Object} partial  { amount?, payer?, description?, currency? }
+   * ⚠️ splits 的处理：
+   *    · 传了 `partial.members` → 按均分自动生成（推荐，避免产出"有金额没分摊"的账单）
+   *    · 没传就留空，但**不算进 missing** —— "缺 splits"不是用户该补的字段，
+   *      UI 会在用户确认记账时按房间成员生成（demo 的 makeBill / 小程序表单都这么做）
+   *    真正的防线在 `isSettleable()`：`amount>0 但 splits=[]` 的账单不参与结算，
+   *    否则"付款人记了实付、却无人承担份额"会让 Σ净余额 = amount。
+   *
+   * @param {Object} partial  { amount?, payer?, description?, currency?, members?, splits? }
    * @returns {Object} 占位/普通账单
    */
   function buildPlaceholder(partial) {
     partial = partial || {};
+    var amount = Number(partial.amount) || 0;
     var missing = [];
-    if (!(Number(partial.amount) > 0)) missing.push('amount');
+    if (!(amount > 0)) missing.push('amount');
     if (!partial.payer) missing.push('payer');
+
+    var splits = partial.splits;
+    if (!splits && amount > 0 && partial.members && partial.members.length) {
+      var parts = allocateEvenly(amount, partial.members.length);
+      splits = partial.members.map(function (m, i) {
+        return { memberId: m.id, memberName: m.name, amount: parts[i] };
+      });
+    }
+
     var needs = missing.length > 0;
     return {
       status: needs ? 'draft' : 'normal',
       missing: missing,
       canSettle: !needs,
       needsCompletion: needs,
-      amount: Number(partial.amount) || 0,
+      amount: amount,
       currency: partial.currency || 'CNY',
       description: partial.description || '（待补：一笔没记清的消费）',
       category: partial.category || 'other',
       payer: partial.payer || null,
       payerName: partial.payerName || '',
-      splits: partial.splits || []
+      splits: splits || []
     };
   }
 
@@ -1913,8 +1992,12 @@
     if (bill.status === 'draft' || bill.status === 'placeholder') return false;
     if (bill.needsCompletion) return false;
     if (bill.voided) return false;
-    // 普通账单金额为 0 视为未记清，不参与结算
-    return (Number(bill.amount) || 0) > 0;
+    if (!((Number(bill.amount) || 0) > 0)) return false;
+    // ⚠️ 必须有分摊明细：`amount>0 但 splits=[]` 的账单会破坏"账恒平"
+    //    （付款人记了实付、却没人承担份额 → Σ净余额 = amount）。
+    //    实测 `buildPlaceholder({amount:88,payer:'u1'})` 曾产出这种单，Σ=88。
+    if (!Array.isArray(bill.splits) || !bill.splits.length) return false;
+    return true;
   }
 
   /**

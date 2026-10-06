@@ -241,8 +241,8 @@ async function main() {
       room: { name: '国庆东京行', destination: '东京', startDate: '2024-10-01', endDate: '2024-10-07' },
       members: MEMBERS,
       bills: [
-        { amount: 3200, category: 'hotel', description: '酒店4晚', payerName: '小明', createdAt: '2024-10-01T10:00:00' },
-        { amount: 680, category: 'food', description: '晚餐', payerName: '小明', createdAt: '2024-10-02T10:00:00' }
+        { amount: 3200, category: 'hotel', description: '酒店4晚', payerName: '小明', createdAt: '2024-10-01T10:00:00', splits: [{ memberId: 'u1', amount: 3200 }] },
+        { amount: 680, category: 'food', description: '晚餐', payerName: '小明', createdAt: '2024-10-02T10:00:00', splits: [{ memberId: 'u1', amount: 680 }] }
       ]
     };
     const n = await AI.generateNarrative(ctx);
