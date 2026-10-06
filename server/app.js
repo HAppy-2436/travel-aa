@@ -327,33 +327,93 @@ app.get('/api/rooms/:roomId/bills', (req, res) => {
 });
 
 // 添加账单
+/**
+ * 账单写入校验（POST /api/bills 与 PUT /api/bills/:id 共用）
+ *
+ * ============================================================
+ * 为什么必须收在写入端（这些洞都是实测出来的）
+ *   ① 容差 0.05 + "先校验后取整"：`amount:100, splits:[100.04]` 落库后
+ *      库内 Σsplits ≠ amount；`amount:100.999, splits:[100.999]` 落库成 101/100.999
+ *   ② splits 里的 memberId 可以不是房间成员：结算端 `if (balanceMap[id])` 静默丢行
+ *      → 实测 `/settle` 各人合计 99.96（幽灵那 100 消失）
+ *   ③ `rate:-1` 直接放行 → 落库 cny_amount=-12000，房间 total_expense 变负
+ *   ④ 空 splits 也能落库
+ *
+ * 校验口径：**统一以「分」为单位比较，容差 0**。
+ * ============================================================
+ * @returns {string|null} 错误信息；null 表示通过
+ */
+function validateBillInput({ amount, splits, currency, rate, roomId, payerId }) {
+  const amt = Number(amount);
+  if (!isFinite(amt) || amt <= 0) return '金额必须大于 0';
+  if (amt > 1e7) return '金额超出合理范围（上限 1000 万）';
+  // 不允许超过两位小数 —— 否则落库时会悄悄进位（实测 100.999 → 101），
+  // 而 splits 仍是 100.999，库内 Σsplits ≠ amount
+  const amtCents = Math.round(amt * 100);
+  if (Math.abs(amt * 100 - amtCents) > 1e-6) return '金额最多两位小数';
+
+  const list = Array.isArray(splits) ? splits : [];
+  if (!list.length) return '必须提供分摊明细（有金额却没人承担会让账不平）';
+
+  const cur = String(currency || 'CNY').toUpperCase();
+  if (!/^[A-Z]{3}$/.test(cur)) return '币种代码不合法（应为 3 位字母，如 CNY / JPY）';
+
+  if (cur !== 'CNY') {
+    const r = Number(rate);
+    if (rate != null && rate !== '' && (!isFinite(r) || r <= 0 || r > 1e4)) {
+      return '汇率不合法（必须是 0 到 10000 之间的正数）';
+    }
+  }
+
+  // 分摊金额也必须是两位小数以内
+  for (const s of list) {
+    const v = Number(s && s.amount);
+    if (!isFinite(v)) return '分摊金额必须是数字';
+    if (Math.abs(v * 100 - Math.round(v * 100)) > 1e-6) return '分摊金额最多两位小数';
+  }
+
+  // 分摊成员必须是该房间成员（防止结算端静默丢行）
+  if (roomId) {
+    const memberIds = new Set(
+      db.prepare('SELECT user_id FROM room_members WHERE room_id = ?').all(roomId).map((m) => m.user_id)
+    );
+    if (memberIds.size) {
+      const ghosts = list.filter((s) => s && s.memberId && !memberIds.has(s.memberId)).map((s) => s.memberId);
+      if (ghosts.length) return `分摊成员不属于该房间：${[...new Set(ghosts)].join('、')}`;
+    }
+    if (payerId && memberIds.size && !memberIds.has(payerId)) {
+      return '付款人不是该房间成员';
+    }
+  }
+
+  // 分单位比较、容差 0：保证库内 Σsplits === amount
+  const splitCents = list.reduce((s, x) => s + Math.round((Number(x && x.amount) || 0) * 100), 0);
+  if (splitCents !== amtCents) {
+    return `分摊合计（${(splitCents / 100).toFixed(2)}）必须严格等于账单金额（${(amtCents / 100).toFixed(2)}）`;
+  }
+  return null;
+}
+
 app.post('/api/bills', (req, res) => {
   try {
     const { roomId, payerId, payerName, amount, description, category, splitType, splits, imageUrl, createdBy,
       currency, rate, orderNo, source } = req.body;
 
-    // 校验
-    if (!roomId || !amount || amount <= 0) {
-      return res.status(400).json({ success: false, error: '金额必须大于0' });
-    }
-    if (!payerId) {
-      return res.status(400).json({ success: false, error: '请选择付款人' });
-    }
+    if (!roomId) return res.status(400).json({ success: false, error: '缺少房间 ID' });
+    if (!payerId) return res.status(400).json({ success: false, error: '请选择付款人' });
 
-    // 校验分摊金额
-    const totalSplit = (splits || []).reduce((s, x) => s + (x.amount || 0), 0);
-    if (Math.abs(totalSplit - amount) > 0.05) {
-      return res.status(400).json({ 
-        success: false, 
-        error: `分摊金额(${totalSplit.toFixed(2)})与账单金额(${amount})不符` 
-      });
-    }
+    // 统一校验（分单位、容差 0、成员/汇率/分摊齐备）
+    const verr = validateBillInput({ amount, splits, currency, rate, roomId, payerId });
+    if (verr) return res.status(400).json({ success: false, error: verr });
 
     const billId = genId();
-    const finalAmount = Math.round(amount * 100) / 100;
+    // ⚠️ 落库金额必须与"已校验过的分摊合计"一致 —— 先按分取整再换算，
+    //    避免 `amount:100.999` 被四舍五入成 101 而 splits 仍是 100.999
+    const amountCents = Math.round(Number(amount) * 100);
+    const finalAmount = amountCents / 100;
     // 多币种：记账时快照汇率与折算额（结算按快照折算，不漂移）
     const cur = (currency || 'CNY').toUpperCase();
-    const finalRate = cur === 'CNY' ? 1 : (Number(rate) || AI.getRates()[cur] || 1);
+    const finalRate = cur === 'CNY' ? 1 : (Number(rate) > 0 ? Number(rate) : (AI.getRates()[cur] || 1));
     const cnyAmount = Math.round(finalAmount * finalRate * 100) / 100;
 
     db.prepare(`
@@ -391,24 +451,28 @@ app.put('/api/bills/:billId', (req, res) => {
     if (finalAmount <= 0) return res.status(400).json({ success: false, error: '金额必须大于0' });
 
     const finalSplits = splits || JSON.parse(bill.splits || '[]');
-    const totalSplit = finalSplits.reduce((s, x) => s + (x.amount || 0), 0);
-    if (Math.abs(totalSplit - finalAmount) > 0.05) {
-      return res.status(400).json({
-        success: false,
-        error: `分摊金额(${totalSplit.toFixed(2)})与账单金额(${finalAmount})不符`
-      });
-    }
 
+    // 与 POST 用同一套校验（分单位、容差 0、成员/汇率/分摊齐备）
+    const verr = validateBillInput({
+      amount: finalAmount, splits: finalSplits,
+      currency: currency || bill.currency, rate: rate != null ? rate : bill.rate,
+      roomId: bill.room_id, payerId: payerId || bill.payer_id,
+    });
+    if (verr) return res.status(400).json({ success: false, error: verr });
+
+    // 落库金额与已校验的分摊合计严格一致
+    const finalAmountFixed = Math.round(Number(finalAmount) * 100) / 100;
     const cur = (currency || bill.currency || 'CNY').toUpperCase();
-    const finalRate = cur === 'CNY' ? 1 : (Number(rate) || bill.rate || AI.getRates()[cur] || 1);
-    const cnyAmount = Math.round(finalAmount * finalRate * 100) / 100;
+    const finalRate = cur === 'CNY' ? 1
+      : (Number(rate) > 0 ? Number(rate) : (Number(bill.rate) > 0 ? Number(bill.rate) : (AI.getRates()[cur] || 1)));
+    const cnyAmount = Math.round(finalAmountFixed * finalRate * 100) / 100;
 
     db.prepare(`
       UPDATE bills SET amount = ?, description = ?, category = ?, payer_id = ?, payer_name = ?,
         split_type = ?, splits = ?, currency = ?, rate = ?, cny_amount = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).run(
-      finalAmount, description != null ? description : bill.description,
+      finalAmountFixed, description != null ? description : bill.description,
       category || bill.category, payerId || bill.payer_id, payerName != null ? payerName : bill.payer_name,
       splitType || bill.split_type, JSON.stringify(finalSplits), cur, finalRate, cnyAmount, bill.id
     );
@@ -564,12 +628,26 @@ app.post('/api/ctrip/import', (req, res) => {
     }
 
     // 直接入账
+    //
+    // ⚠️ 这条路径**绕过了 POST /api/bills 的全部校验**，早期会把
+    //    「成员为空 → payer='' + splits=[]」的幽灵账单直接落库：
+    //    结算时 balanceMap[''] 不存在 → 付款人那份钱凭空消失且账不平。
+    //    现在落库前**逐笔复用同一套校验**，不合规的跳过并在响应里说明。
     const insert = db.prepare(`
       INSERT INTO bills (id, room_id, payer_id, payer_name, amount, description, category, split_type, splits, image_url, created_by, currency, rate, cny_amount, order_no, source)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const created = [];
+    const skipped = [];
     drafts.forEach(d => {
+      // 付款人必须存在（房间成员为空时 ctrip 会给出空串）
+      if (!d.payer) { skipped.push({ orderNo: d.orderNo || '', reason: '未指定付款人（房间可能没有成员）' }); return; }
+      const verr = validateBillInput({
+        amount: d.amount, splits: d.splits, currency: d.currency, rate: d.rate,
+        roomId, payerId: d.payer,
+      });
+      if (verr) { skipped.push({ orderNo: d.orderNo || '', reason: verr }); return; }
+
       const billId = genId();
       insert.run(
         billId, roomId, d.payer, d.payerName, d.amount, d.description, d.category, d.splitType,
@@ -577,9 +655,12 @@ app.post('/api/ctrip/import', (req, res) => {
       );
       created.push({ id: billId, ...d });
     });
-    recomputeRoomStats(roomId);
+    if (created.length) recomputeRoomStats(roomId);
 
-    res.json({ success: true, bills: created, message: `已导入 ${created.length} 笔订单` });
+    const msg = skipped.length
+      ? `已导入 ${created.length} 笔，跳过 ${skipped.length} 笔（${skipped.map(s => s.reason).join('；')}）`
+      : `已导入 ${created.length} 笔订单`;
+    res.json({ success: true, bills: created, skipped, message: msg });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
   }

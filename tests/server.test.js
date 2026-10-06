@@ -181,6 +181,89 @@ async function waitReady(proc, ms = 25000) {
     const bNoPayer = await req('POST', '/api/bills', { roomId, amount: 100, splits: [] });
     ok('缺付款人 → 400', bNoPayer.status === 400);
 
+    /* ===== 3'. 写入端校验（这些洞实测曾全部能落库，破坏账恒平）=====
+       ⚠️ 用一个**独立的房间**做校验测试，避免污染后面用例依赖的账单条数。 */
+    section("3'. 写入端校验：分单位 / 容差 0 / 成员 / 汇率 / 分摊");
+
+    const vroom = await req('POST', '/api/rooms', { userId: 't_v1', nickname: '校验员', name: '校验专用房间' });
+    const vroomId = vroom.data.room.id;
+    await req('POST', '/api/rooms/join', { roomCode: vroom.data.room.room_code, userId: 't_v2', nickname: '陪跑' });
+
+    const bTol = await req('POST', '/api/bills', {
+      roomId: vroomId, payerId: 't_v1', amount: 100, description: '容差绕过',
+      splits: [{ memberId: 't_v1', amount: 100.04 }],
+    });
+    ok('★ 分摊差 0.04 → 400（原容差 0.05 会放行）', bTol.status === 400, bTol.data && bTol.data.error);
+
+    const bTol2 = await req('POST', '/api/bills', {
+      roomId: vroomId, payerId: 't_v1', amount: 100, description: '尾数绕过',
+      splits: [{ memberId: 't_v1', amount: 99.97 }],
+    });
+    ok('★ 分摊差 0.03 → 400', bTol2.status === 400, bTol2.data && bTol2.data.error);
+
+    const bPrecision = await req('POST', '/api/bills', {
+      roomId: vroomId, payerId: 't_v1', amount: 100.999, description: '小数超两位',
+      splits: [{ memberId: 't_v1', amount: 100.999 }],
+    });
+    ok('★ 金额小数超两位 → 400（不允许把 100.999 悄悄进位成 101）', bPrecision.status === 400,
+      bPrecision.data && bPrecision.data.error);
+
+    const bGhost = await req('POST', '/api/bills', {
+      roomId: vroomId, payerId: 't_v1', amount: 100, description: '幽灵成员',
+      splits: [{ memberId: 'not_in_room', amount: 100 }],
+    });
+    ok('★ 分摊成员不属于房间 → 400（原来放行，结算时那笔钱消失）', bGhost.status === 400,
+      bGhost.data && bGhost.data.error);
+
+    const bPayerGhost = await req('POST', '/api/bills', {
+      roomId: vroomId, payerId: 'not_in_room', amount: 100, description: '幽灵付款人',
+      splits: [{ memberId: 't_v1', amount: 100 }],
+    });
+    ok('★ 付款人不是房间成员 → 400', bPayerGhost.status === 400, bPayerGhost.data && bPayerGhost.data.error);
+
+    const bEmptySplit = await req('POST', '/api/bills', {
+      roomId: vroomId, payerId: 't_v1', amount: 100, description: '空分摊',
+    });
+    ok('★ 空分摊 → 400（有金额却无人承担会让账不平）', bEmptySplit.status === 400,
+      bEmptySplit.data && bEmptySplit.data.error);
+
+    const bNegRate = await req('POST', '/api/bills', {
+      roomId: vroomId, payerId: 't_v1', amount: 12000, currency: 'JPY', rate: -1, description: '负汇率',
+      splits: [{ memberId: 't_v1', amount: 12000 }],
+    });
+    ok('★ 负汇率 → 400（原来落库 cny_amount=-12000，房间总额变负）', bNegRate.status === 400,
+      bNegRate.data && bNegRate.data.error);
+
+    const bBadCur = await req('POST', '/api/bills', {
+      roomId: vroomId, payerId: 't_v1', amount: 100, currency: '人民币', description: '非法币种',
+      splits: [{ memberId: 't_v1', amount: 100 }],
+    });
+    ok('非法币种（中文/非 3 字母）→ 400', bBadCur.status === 400, bBadCur.data && bBadCur.data.error);
+
+    const bBadAmount = await req('POST', '/api/bills', {
+      roomId: vroomId, payerId: 't_v1', amount: 'abc', splits: [{ memberId: 't_v1', amount: 1 }],
+    });
+    ok('非数字金额 → 400', bBadAmount.status === 400);
+
+    const bHuge = await req('POST', '/api/bills', {
+      roomId: vroomId, payerId: 't_v1', amount: 1e9, splits: [{ memberId: 't_v1', amount: 1e9 }],
+    });
+    ok('金额超上限 → 400', bHuge.status === 400);
+
+    const bOk = await req('POST', '/api/bills', {
+      roomId: vroomId, payerId: 't_v1', payerName: '校验员', amount: 100, description: '合法',
+      splits: [{ memberId: 't_v1', amount: 50 }, { memberId: 't_v2', amount: 50 }],
+    });
+    ok('★ 合法分摊（分单位严格相等）仍能落库', bOk.status === 200 && bOk.data.success, bOk.data && bOk.data.error);
+    if (bOk.status === 200) {
+      const okCents = (bOk.data.bill.splits || []).reduce((s, x) => s + Math.round(x.amount * 100), 0);
+      ok('★ 落库后 Σsplits 与 amount 分单位严格相等',
+        okCents === Math.round(bOk.data.bill.amount * 100), `${okCents} vs ${Math.round(bOk.data.bill.amount * 100)}`);
+    }
+    ok('校验期间的非法请求没有落库（房间账单数 = 1）',
+      (await req('GET', `/api/rooms/${vroomId}/bills`)).data.bills.length === 1,
+      String((await req('GET', `/api/rooms/${vroomId}/bills`)).data.bills.length));
+
     // 外币账单：汇率快照
     const bJpy = await req('POST', '/api/bills', {
       roomId, payerId: 't_u2', payerName: '小红', amount: 12000, currency: 'JPY',
