@@ -9,25 +9,36 @@
 
 | 交付物 | 位置 | 说明 |
 |---|---|---|
-| **网页 Demo（主交付物）** | `demo/index.html` | **单文件、双击即开、离线可用**，无需服务器与任何 API Key |
+| **网页 Demo（主交付物）** | `demo/index.html` | **离线可用、无需服务器与任何 API Key**；需要同目录一起拷贝（见下方说明） |
 | 微信小程序端 | `apps/miniprogram/` | 原生小程序（5 个页面），演示数据模式可独立跑 |
 | 微信云函数 | `apps/cloudfunctions/` | login / 房间 / 账单 / 成员 / ocr / settle 等 9 个 |
 | 可选后端 API | `server/` | Express + SQLite，提供 AI 增强（不启动也不影响 Demo） |
 
-**给评委/观众看的就是 `demo/index.html`**，打开后：右上角 `＋` 加到 3~4 台手机 → 点 `▶ 自动演示`，或点 `🎬 导览` 按 8 步讲解。
+> ⚠️ **「单文件双击即开」是错的，别这么说**。`demo/index.html` 通过 `<script src>` 引用了三份
+> **UMD 共享内核**（`apps/miniprogram/utils/{ai,ctrip,sync}.js`）与 `demo/assets/vision-samples.js`，
+> 还从 Google Fonts 取字体（取不到会自动回退系统字体，排版仍正常）。
+> 所以正确说法是：**整个项目目录拷过去，双击 `demo/index.html` 即可离线运行**；
+> 只发一个 html 文件会白屏。
+
+**给评委/观众看的就是 `demo/index.html`**，打开后：工具条中间 `＋` 加到 3~4 台手机 → 点 `▶ 自动演示`，或点 `🎬 导览` 按 8 步讲解。
+**刷新不丢**（`localStorage`）与**多窗口实时同步**（`BroadcastChannel`）都是自动探测的：
+探测得到就启用、探测不到就降级为单页联动，工具条上的同步徽标会**如实显示当前处在哪一档**。
+实测 Edge/Chrome 下 `file://` 双击打开也能刷新不丢；想看真实跨窗口同步，就再开一个标签页打开同一路径
+（用本地服务器打开如 `npx serve .` 最稳）。
 
 ---
 
 ## 🚀 5 分钟跑起来
 
 ```bash
-# ① 网页 Demo：直接双击 demo/index.html（Chrome / Edge）
-#    开讲前点右上角「🩺 自检」，出现 13/13 PASS 即可放心演示
+# ① 网页 Demo：双击 demo/index.html（Chrome / Edge）
+#    开讲前点工具条「🩺 自检」，出现 20/20 PASS 即可放心演示
 
-# ② 跑测试（Node ≥ 18，无需安装任何依赖）
-node tests/ai.test.js        # 共享算法内核 62 项
-node tests/v2.test.js        # 多币种/结算/审计/预算/订单 115 项
-node tests/demo.check.js     # Demo 完整性（含 onclick 交叉校验）
+# ② 跑全量验收（Node ≥ 20，无需安装任何依赖）
+node tests/run-all.js        # 9 套测试一把梭；等价于 npm test
+#    也可以单跑某一套：
+node tests/ai.test.js        # 共享算法内核
+node tests/v3.test.js        # V3 旅行记账语义（抹零/代购/多退少补/暂估改价）
 
 # ③ 可选：自建后端 + AI 增强（不配 Key 也能启动，自动降级到本地规则引擎）
 cd server && npm install && npm start     # http://localhost:3000/api/health
@@ -70,26 +81,38 @@ travel-aa/
 │   ├── miniprogram/          # 微信小程序（pages + utils 共享内核）
 │   └── cloudfunctions/       # 微信云函数（9 个）
 ├── server/                   # 可选后端 API（Express + SQLite）
-├── tests/                    # 三套自动化测试
+├── tests/                    # 9 套自动化验收（run-all.js 统一编排）
 ├── docs/                     # 文档（含 archive/ 已废弃内容）
+├── .github/workflows/ci.yml  # CI：Node 20/22 上跑 npm test
 └── project.config.json       # 微信开发者工具配置（已指向 apps/）
 ```
 
-**共享算法内核**：`apps/miniprogram/utils/ai.js`（AI 解析/审计/预算/洞察/结算口径）与 `ctrip.js`（携程订单解析）为 UMD 模块，
+**共享算法内核**：`apps/miniprogram/utils/` 下的 `ai.js`（AI 解析/审计/预算/洞察/结算口径）、
+`ctrip.js`（携程订单解析）、`sync.js`（多窗口合并/墓碑/rev）为 UMD 模块，
 **小程序、网页 Demo、Node 服务端三端复用同一份代码**——算法只维护一处，不会出现三份实现互相漂移。
 
 ---
 
 ## ✅ 验收标准（交接前已全部通过）
 
+一条命令看全部：`node tests/run-all.js`（或 `npm test`）。任何一套失败即退出码非 0，可直接接 CI
+（`.github/workflows/ci.yml`）。运行器还有两道**防假绿**闸门：测试文件缺失算失败、每套有项数下限。
+
 | 验收项 | 命令 / 方式 | 结果 |
 |---|---|---|
-| 算法内核单测 | `node tests/ai.test.js` | 62 / 62 |
-| V2 能力单测 | `node tests/v2.test.js` | 115 / 115 |
-| Demo 完整性 | `node tests/demo.check.js` | 全通过 |
+| 算法内核单测 | `node tests/ai.test.js` | 62 项 |
+| V2 能力单测 | `node tests/v2.test.js` | 115 项 |
+| V3 旅行记账语义 | `node tests/v3.test.js` | 246 项 |
+| 同步内核单测 | `node tests/sync.test.js` | 54 项 |
+| 相对路径检查 | `node tests/requires.check.js` | 全部可解析 |
+| 交付物可打开性 | `node tests/resource.check.js` | `file://` 下资源齐备 |
+| Demo 完整性 | `node tests/demo.check.js` | onclick 交叉校验全通过 |
+| 服务器集成测试 | `node tests/server.test.js` | 77 项 |
 | Demo 功能自检 | 打开 `demo/index.html#selftest` | `SELFTEST 20/20 ALL-PASS` |
-| **交互验收（真实点击）** | 打开 `demo/index.html#uitest` | `UITEST 20/20 ALL-PASS` |
+| **交互验收（真实点击）** | 打开 `demo/index.html#uitest` | `UITEST 54/54 ALL-PASS`（含无障碍） |
 | 导览可用性 | 打开 `demo/index.html#tourtest` | `TOURTEST 8/8 ALL-PASS` |
+
+> 项数以实际输出为准；`run-all.js` 里的下限会跟着一起收紧，防止测试被悄悄掏空。
 
 ---
 
@@ -102,6 +125,8 @@ travel-aa/
 | `docs/架构与实现.md` | 技术架构、数据模型、算法口径、AI 分层设计 |
 | `docs/部署与配置.md` | 自建后端部署 / 小程序云开发部署 / AI 通道配置 |
 | `docs/竞品分析与差异化.md` | 参赛材料：竞品对比与差异化定位 |
+| `docs/UI排版规范.md` | 手机内字号阶梯与对比度要求（改样式前先看） |
+| `docs/待办与路线图.md` | 已知缺口与后续计划（含"刻意不做"的说明） |
 | `docs/扩展方案.md`、`docs/优化文档.md` | 过程记录（V2 扩展方案、V1 优化台账） |
 | `docs/archive/` | 已废弃内容（早期 4 套视觉方案等） |
 
