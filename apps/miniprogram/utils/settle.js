@@ -23,12 +23,25 @@ function calculateSettlement(members, bills) {
     balanceMap[m.id] = { ...m, amount: 0 };
   });
 
-  bills.forEach(bill => {
-    if (!bill || !bill.splits) return;
+  // 只结算「集体账」：私账（人情账）不进 AA，占位单/作废单也不参与
+  const settleable = (bills || []).filter(b => {
+    if (!b || !b.splits) return false;
+    if (b.status === 'draft' || b.status === 'placeholder' || b.needsCompletion || b.voided) return false;
+    const scope = b.scope || (b.splitType === 'sole' ? 'personal' : 'group');
+    return scope === 'group';
+  });
+
+  settleable.forEach(bill => {
     const cny = billCNY(bill);
     const rawAmount = Number(bill.amount) || 0;
     // 外币账单：分摊明细按 "折算额/原币额" 同比例折算，sum(折算分摊) === 折算账单额
-    const scale = rawAmount > 0 ? cny / rawAmount : 1;
+    //
+    // ⚠️ 调整单（多退少补 / 暂估改价）的 amount 恒为 0，rawAmount>0 不成立，
+    //    早期实现会退化成 scale=1 —— 把"原币口径的 splits"当人民币直接扣减，
+    //    而贷方走 billCNY（已折算）→ **单侧折算**，日元偏差 1/0.048 ≈ 20.8 倍。
+    //    且两侧 Σ 恰好都为 0，所以"账恒平"断言与全部测试都不会发现。
+    //    修法：amount 为 0 时改用账单自身快照汇率（调整单的 rate 沿用原账单汇率）。
+    const scale = rawAmount > 0 ? cny / rawAmount : (Number(bill.rate) > 0 ? Number(bill.rate) : 1);
     // 付款人应收金额
     if (balanceMap[bill.payer]) {
       balanceMap[bill.payer].amount += cny;

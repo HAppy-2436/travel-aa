@@ -1652,6 +1652,7 @@
     var paid = {};      // 实付
     var share = {};     // 有效份额
     var nameOf = {};
+    var orphans = [];   // 孤儿调整单（指向的原账单已删除）
 
     (members || []).forEach(function (m) { nameOf[m.id] = m.name; });
 
@@ -1667,11 +1668,21 @@
       touch(b.payer, b.payerName);
       if (b.payer != null) paid[b.payer] = round2(paid[b.payer] + billCNY(b, rates));
     });
-    // 有效份额累加器。外币账单的 splits 是**原币**金额，必须乘以记账时快照汇率
-    // 换成人人民币，否则日元账单会被当人民币计入（曾把账算歪约 12000 倍量级）。
-    function addShares(splitList, rate) {
-      var r = Number(rate);
-      if (!isFinite(r) || r <= 0) r = 1;
+    // 有效份额累加器。外币账单的 splits 是**原币**金额，必须换成人民币，
+    // 否则日元账单会被当人民币计入（曾把账算歪约 12000 倍量级）。
+    //
+    // ⚠️ 汇率兜底必须与 billCNY 一致：billCNY 在缺 rate 时会退回按币种表折算，
+    //    而这里早期把缺失/非法 rate 直接归一成 1 → **份额按 1:1、实付按汇率表**，
+    //    同一张账单两侧口径不同 → Σ净余额 ≠ 0（实测缺 rate 的 24000 JPY 得 Σ=-22848）。
+    //    修法：rate 非法时退回该账单币种的汇率表值。
+    function rateFor(b) {
+      var r = Number(b && b.rate);
+      if (isFinite(r) && r > 0) return r;
+      var cur = (b && b.currency) || 'CNY';
+      if (cur === 'CNY') return 1;
+      return getRate(cur, rates) || 1;
+    }
+    function addShares(splitList, r) {
       (splitList || []).forEach(function (s) {
         touch(s.memberId, s.memberName);
         if (s.memberId == null) return;
@@ -1679,15 +1690,12 @@
       });
     }
 
-    normal.forEach(function (b) { addShares(b.splits, b.rate); });
+    normal.forEach(function (b) { addShares(b.splits, rateFor(b)); });
 
     // 调整单：全部计入有效份额（不依赖 adjustsBillId 是否填写，避免漏算）
     adjust.forEach(function (a) {
-      // 调整单的 splits 与它所属基础账单**同币种口径** → 用基础账单的汇率折算；
-      // 找不到基础账单时退回用调整单自身汇率（此时它是独立一笔）。
-      var owner = normal.filter(function (b) { return (b.id || b._id) === a.adjustsBillId; })[0];
-      var useRate = owner ? owner.rate : a.rate;
-      addShares(a.splits, useRate);
+      // 调整单的 splits 与它所属基础账单**同币种口径** → 用基础账单的汇率折算
+      var base = normal.filter(function (b) { return (b.id || b._id) === a.adjustsBillId; })[0];
 
       // 只有"总额真的变了"的调整单才会改变实付：
       //   暂估改价 3200→3560：垫付人后来又补付 360 → 实付 3560
@@ -1699,16 +1707,27 @@
       var netDelta = a.totalDelta != null
         ? Number(a.totalDelta)
         : (a.isAdjustment && a.reason === 'exclude' ? 0 : (Number(a.delta) || 0));
-      if (Math.abs(netDelta) < 0.005) return;
+      var hasDelta = Math.abs(netDelta) >= 0.005;
 
-      var base = normal.filter(function (b) { return (b.id || b._id) === a.adjustsBillId; })[0];
-      if (!base) return;                       // 无归属调整单不动实付
+      // ⚠️ 孤儿调整单（它指向的原账单已被删除）：
+      //    早期实现会先 addShares 把份额算进去，再 `if (!base) return` 跳过实付
+      //    → 份额加、实付不加 → Σ净余额 ≠ 0（实测 CNY 得 -360、JPY 得 -38.4）。
+      //    现在：能定位基础账单就按它的汇率与垫付人处理；定位不到就整单跳过，
+      //    宁可少一笔调整也不允许破坏账恒平。
+      if (!base) {
+        if (hasDelta || (a.splits && a.splits.length)) {
+          orphans.push({ id: a.id || a._id || '(无 id)', adjustsBillId: a.adjustsBillId || null });
+        }
+        return;
+      }
+
+      addShares(a.splits, rateFor(base));
+      if (!hasDelta) return;
+
       var payer = base.payer;
       if (payer == null) return;
-      var r = Number(base.rate);
-      if (!isFinite(r) || r <= 0) r = 1;
       touch(payer, base.payerName);
-      paid[payer] = round2(paid[payer] + netDelta * r);
+      paid[payer] = round2(paid[payer] + netDelta * rateFor(base));
     });
 
     var ids = Object.keys(paid).concat(Object.keys(share)).filter(function (v, i, arr) {
@@ -1726,15 +1745,30 @@
     var total = round2(balances.reduce(function (s, x) { return s + x.amount; }, 0));
     var foreign = normal.some(function (b) { return b.currency && b.currency !== 'CNY'; });
 
+    /* 三种"总额"要分清，否则界面会互相打架（曾出现同一房间 5 个不同数字）：
+         groupTotal      —— 集体账面额（不含调整单的调价差）
+         adjustmentDelta —— 调整单带来的总额变化（暂估改价 / 补记；排除成员时为 0）
+         grandTotal      —— 含调价差的实际集体支出 = groupTotal + adjustmentDelta
+       展示口径建议：房间页显示 groupTotal，结算页显示 grandTotal。 */
+    var groupTotal = round2(normal.reduce(function (s, b) { return s + billCNY(b, rates); }, 0));
+    var adjustmentDelta = round2(adjust.reduce(function (s, a) {
+      var d = a.totalDelta != null ? Number(a.totalDelta) : (a.reason === 'exclude' ? 0 : (Number(a.delta) || 0));
+      var base = normal.filter(function (b) { return (b.id || b._id) === a.adjustsBillId; })[0];
+      if (!base) return s;
+      return s + d * rateFor(base);
+    }, 0));
+
     return {
       balances: balances,
-      total: round2(normal.reduce(function (s, b) { return s + billCNY(b, rates); }, 0)),
+      // 保留 total 供旧调用方使用 = 含调价差的实际集体支出（与结算净额同一口径）
+      total: round2(groupTotal + adjustmentDelta),
+      groupTotal: groupTotal,
+      adjustmentDelta: adjustmentDelta,
       paid: paid,
       shares: share,
       foreign: foreign,
       balanced: Math.abs(total) < 0.05,
-      // 若有损耗行，损耗额单独说明（它不属任何成员）
-      loss: adjust.length ? null : null
+      orphans: orphans
     };
   }
 

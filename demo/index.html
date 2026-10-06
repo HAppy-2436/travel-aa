@@ -543,9 +543,16 @@ function catLabel(cat) {
 function curSym(code) {
   return { CNY: '¥', JPY: '¥', USD: '$', KRW: '₩', THB: '฿', EUR: '€', HKD: 'HK$' }[code] || '¥';
 }
+/* HTML 转义。
+   ⚠️ 单引号**必须**转 —— 本项目大量把值拼进内联 onclick 的单引号 JS 字面量里，例如
+        onclick="askDeleteBill('u1','b1','<账单说明>')"
+      若说明里含单引号即可逃逸出字符串执行任意脚本（实测 `x');window.__PWN=1;//` 点击即执行）。
+      esc() 早期只转 & " < >，漏了单引号 → 存储型 XSS。
+      彻底做法是改用 data-* + 事件委托、不再拼接 JS 字符串；此处先补上转义。 */
 function esc(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
     .replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 function getCatIcon2(cat) {
@@ -1408,12 +1415,38 @@ function copyReminder(userId,roomId){
   showToast(userId,'💬 话术已复制：'+text.slice(0,18)+'…');
 }
 
+/* 结算：**统一调用内核 AI.netBalances**，不再就地实现。
+   ============================================================
+   为什么必须这样（血泪史）：
+   本项目曾有 3~4 份各自的结算实现（demo 内联、utils/settle.js、server/app.js、
+   云函数 settle），口径各写各的，结果：
+     · 调整单 amount=0 → `scale = raw>0 ? cny/raw : 1` 退化成 1
+       → 原币 splits 被当人民币扣减，日元偏差 1/0.048 ≈ 20.8 倍
+     · 修的时候又用 groupSpend 过滤，把调整单**整单丢掉**
+       → 暂估改价 / 多退少补在结算页完全失效（总额 1152 而非 1190.4）
+     · 两处口径的 Σ 都恰好为 0，"账恒平"断言与 9 套测试全都发现不了
+   内核 netBalances 已正确处理：私账/占位单排除、调整单份额、调整单的实付增量、
+   外币快照、孤儿调整单。**唯一正确口径，三端一律走它。** */
 function calcSettlement(room,bills){
+  if(!room||!room.members)return{balances:[],transfers:[],totalExpense:0,hasForeign:false};
+  if(AI&&AI.netBalances){
+    var nb=AI.netBalances(bills,room.members);
+    var balances=nb.balances.map(function(b){return{id:b.memberId,name:b.memberName,amount:b.amount}});
+    var transfers=[];var debtors=balances.filter(function(b){return b.amount<-0.01}).map(function(b){return{id:b.id,name:b.name,amount:b.amount}});var creditors=balances.filter(function(b){return b.amount>0.01}).map(function(b){return{id:b.id,name:b.name,amount:b.amount}});
+    var i=0,j=0;
+    while(i<debtors.length&&j<creditors.length){var amt=Math.min(-debtors[i].amount,creditors[j].amount);if(amt>0.01)transfers.push({from:debtors[i].id,fromName:debtors[i].name,to:creditors[j].id,toName:creditors[j].name,amount:Math.round(amt*100)/100});debtors[i].amount+=amt;creditors[j].amount-=amt;if(Math.abs(debtors[i].amount)<0.01)i++;if(Math.abs(creditors[j].amount)<0.01)j++}
+    return{balances:balances,transfers:transfers,totalExpense:nb.total,hasForeign:nb.foreign,balanced:nb.balanced};
+  }
+  /* 内核缺失时的降级实现（正常不会走到；保留以免内核加载失败时整页崩） */
   var balMap={};room.members.forEach(function(m){balMap[m.id]={id:m.id,name:m.name,amount:0}});
-  var hasForeign=false;
-  var totalCNY=0;
+  var hasForeign=false,totalCNY=0;
   bills.forEach(function(bill){
-    var cny=billCNY(bill);var raw=Number(bill.amount)||0;var scale=raw>0?cny/raw:1;
+    if(!bill||!bill.splits||bill.isAdjustment)return;
+    var scope=bill.scope||(bill.splitType==='sole'?'personal':'group');
+    if(scope!=='group')return;
+    if(bill.status==='draft'||bill.needsCompletion||bill.voided)return;
+    var cny=billCNY(bill);var raw=Number(bill.amount)||0;
+    var scale=raw>0?cny/raw:(Number(bill.rate)>0?Number(bill.rate):1);
     if(bill.currency&&bill.currency!=='CNY')hasForeign=true;
     totalCNY+=cny;
     if(balMap[bill.payer])balMap[bill.payer].amount+=cny;
@@ -1421,8 +1454,8 @@ function calcSettlement(room,bills){
   });
   var balances=Object.values(balMap).map(function(b){return{id:b.id,name:b.name,amount:Math.round(b.amount*100)/100}}).filter(function(b){return Math.abs(b.amount)>0.01}).sort(function(a,b){return b.amount-a.amount});
   var transfers=[];var debtors=balances.filter(function(b){return b.amount<-0.01}).map(function(b){return{id:b.id,name:b.name,amount:b.amount}});var creditors=balances.filter(function(b){return b.amount>0.01}).map(function(b){return{id:b.id,name:b.name,amount:b.amount}});
-  var i=0,j=0;
-  while(i<debtors.length&&j<creditors.length){var amt=Math.min(-debtors[i].amount,creditors[j].amount);if(amt>0.01)transfers.push({from:debtors[i].id,fromName:debtors[i].name,to:creditors[j].id,toName:creditors[j].name,amount:Math.round(amt*100)/100});debtors[i].amount+=amt;creditors[j].amount-=amt;if(Math.abs(debtors[i].amount)<0.01)i++;if(Math.abs(creditors[j].amount)<0.01)j++}
+  var i2=0,j2=0;
+  while(i2<debtors.length&&j2<creditors.length){var amt2=Math.min(-debtors[i2].amount,creditors[j2].amount);if(amt2>0.01)transfers.push({from:debtors[i2].id,fromName:debtors[i2].name,to:creditors[j2].id,toName:creditors[j2].name,amount:Math.round(amt2*100)/100});debtors[i2].amount+=amt2;creditors[j2].amount-=amt2;if(Math.abs(debtors[i2].amount)<0.01)i2++;if(Math.abs(creditors[j2].amount)<0.01)j2++}
   return{balances:balances,transfers:transfers,totalExpense:Math.round(totalCNY*100)/100,hasForeign:hasForeign};
 }
 
