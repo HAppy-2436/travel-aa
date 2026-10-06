@@ -549,7 +549,11 @@ app.post('/api/ctrip/import', (req, res) => {
       members = db.prepare('SELECT * FROM room_members WHERE room_id = ?').all(roomId)
         .map(m => ({ id: m.user_id, name: m.nickname }));
     }
-    const drafts = CTRIP.importOrders(text, members, { payerId, splitWith });
+    // ⚠️ 必须把汇率表传进去：ctrip.js 在缺 rates 时会把外币汇率兜底成 1，
+    //    导致「24000 日元」被当成「24000 元人民币」落库（虚增约 20 倍），
+    //    房间总额 / 结算 / 审计全部错。实测：不传 rates → cnyAmount=24000；
+    //    传 rates → cnyAmount=1152（正确）。
+    const drafts = CTRIP.importOrders(text, members, { payerId, splitWith, rates: AI.getRates() });
 
     if (!drafts.length) {
       return res.json({ success: true, bills: [], message: '未识别到有效订单（需含金额）' });

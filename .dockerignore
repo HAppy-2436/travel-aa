@@ -1,0 +1,42 @@
+# ============================================================
+# 构建上下文是**项目根目录**（见 docker-compose.yml 的 context: ..），
+# 本文件必须放在**根目录**才能生效（放 server/ 下对根上下文无效）。
+#
+# 目的：
+#  1) 不要把本地依赖打进镜像 —— 尤其是**Windows 编译的 better-sqlite3**
+#     会覆盖容器内 npm ci 装好的 Linux 版，导致运行即崩
+#  2) 不要把密钥与数据库固化进镜像层
+#  3) 缩小构建上下文，加快构建
+# ============================================================
+
+# 依赖
+**/node_modules
+**/miniprogram_npm
+
+# 运行时产物（数据库 / 日志）
+**/data
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/*.log
+
+# 密钥与本地配置（绝不打进镜像）
+**/.env
+**/.env.*
+
+# 版本控制与文档（容器不需要）
+.git
+.gitignore
+.gitattributes
+docs
+tests
+demo
+CHANGELOG.md
+*.md
+
+# 编辑器 / 系统
+.idea
+.vscode
+.DS_Store
+Thumbs.db
+desktop.ini

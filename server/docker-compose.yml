@@ -2,21 +2,28 @@ version: '3.8'
 
 services:
   travel-aa:
-    build: .
+    # ⚠️ 构建上下文必须是**项目根目录**：server/app.js 需要 ../apps/... 的共享内核，
+    #    若写 `build: .`（上下文=server/），容器内 /apps 不存在
+    #    → 启动即 MODULE_NOT_FOUND（已实测复现）。
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
     container_name: travel-aa-api
     restart: unless-stopped
     ports:
       - "3000:3000"
     volumes:
-      # 持久化数据库
+      # 持久化数据库（路径相对本 compose 文件所在的 server/ 目录）
       - ./data:/app/data
+    # 让容器读到 server/.env 里配置的 LLM / 腾讯云 OCR 密钥
+    env_file:
+      - .env
     environment:
       - NODE_ENV=production
       - PORT=3000
-      # 腾讯云OCR配置（可选）
-      - TENCENT_SECRET_ID=${TENCENT_SECRET_ID}
-      - TENCENT_SECRET_KEY=${TENCENT_SECRET_KEY}
-    # 资源限制（1核1G完全够）
+      # 腾讯云 OCR 配置（可选；也可只在 .env 里写）
+      - TENCENT_SECRET_ID=${TENCENT_SECRET_ID:-}
+      - TENCENT_SECRET_KEY=${TENCENT_SECRET_KEY:-}
     deploy:
       resources:
         limits:
