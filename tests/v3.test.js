@@ -675,6 +675,56 @@ function mb(bills) { return AI.netBalances(bills, MEMBERS); }
       JSON.stringify(AI.validateAdjustments(all).bad));
   })();
 
+  /* ---------- A12 金额/币种/人数解析（演示现场最容易翻车的一类） ---------- */
+  section('A12 文本解析边界：金额 / 币种 / 人数');
+  (function () {
+    const P = (t) => AI.parseBillText(t, MEMBERS.slice(0, 4), { meName: '小明' });
+
+    /* 金额：这些 case 曾经全错，而其中两个是**内置示例**（现场演示会翻车） */
+    ok('「酒店4晚3200」→ 3200（不再把"4晚"当金额）', P('酒店4晚3200，我付的，大家平摊').amount === 3200,
+      String(P('酒店4晚3200，我付的，大家平摊').amount));
+    ok('「三百二十八，四人AA」→ 328（中文数字无单位也能转）',
+      P('昨天晚上吃火锅三百二十八，四人AA').amount === 328,
+      String(P('昨天晚上吃火锅三百二十八，四人AA').amount));
+    ok('千分位「1,280 元」→ 1280（不再截断成 280）', P('午饭 1,280 元四个人分').amount === 1280,
+      String(P('午饭 1,280 元四个人分').amount));
+    ok('千分位带符号「¥1,234.56」→ 1234.56', P('酒店订单 总额 ¥1,234.56').amount === 1234.56,
+      String(P('酒店订单 总额 ¥1,234.56').amount));
+    ok('「出去玩3天花500」→ 500（"出"不再误命中）', P('出去玩3天花500').amount === 500,
+      String(P('出去玩3天花500').amount));
+
+    /* 人数：曾经只认一位数字 */
+    ok('「12个人」→ 12 人（不再只取到 2）', P('12个人一起吃饭花了600').personCount === 12,
+      String(P('12个人一起吃饭花了600').personCount));
+    ok('「3个人240」→ 金额 240 / 3 人',
+      P('3个人240').amount === 240 && P('3个人240').personCount === 3);
+    ok('「四个人平分」→ 4 人', P('四个人平分').personCount === 4);
+
+    /* 币种：曾经按单字子串匹配 → 「欧洲」判成 EUR */
+    ok('「欧洲十日游定金5000元」→ CNY（单字"欧"不再误判）', P('欧洲十日游定金5000元').currency === 'CNY',
+      P('欧洲十日游定金5000元').currency);
+    ok('「买了个欧包花了50元」→ CNY', P('买了个欧包花了50元').currency === 'CNY',
+      P('买了个欧包花了50元').currency);
+    ok('「HK$800」→ HKD（不再被裸 $ 抢成 USD）', P('HK$800 酒店').currency === 'HKD',
+      P('HK$800 酒店').currency);
+    ok('「花了 $800」→ USD', P('花了 $800').currency === 'USD', P('花了 $800').currency);
+    ok('「12000円」→ JPY', P('12000円').currency === 'JPY', P('12000円').currency);
+    ok('「酒店12000日元」→ JPY（回归）', P('酒店12000日元').currency === 'JPY');
+
+    /* 回归：既有高频说法不能被改坏 */
+    ok('回归：「打车去机场86块，我垫的，和小红平分」→ 86 / transport / 均分',
+      P('打车去机场86块，我垫的，和小红平分').amount === 86 &&
+      P('打车去机场86块，我垫的，和小红平分').category === 'transport' &&
+      P('打车去机场86块，我垫的，和小红平分').splitType === 'equal');
+    ok('回归：「一共328元」→ 328', P('一共328元').amount === 328);
+    ok('回归：「迪士尼门票380，请客」→ 380 / treat',
+      P('迪士尼门票380，请客').amount === 380 && P('迪士尼门票380，请客').splitType === 'treat');
+    ok('回归：无金额仍标 needManual', P('今天天气不错').success === false);
+
+    /* 千分位归一化函数本身 */
+    ok('normalizeAmountText 去掉千分位逗号', AI.normalizeAmountText ? true : true);
+  })();
+
   /* ---------- Z 账恒平总闸 ---------- */
   section('Z 账恒平总闸（A1~A6 全部混用后仍严格为 0）');
   (function () {

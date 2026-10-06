@@ -129,15 +129,36 @@
 
   var MONEY_UNITS = '(?:块钱|块|元|圆|蚊)';
 
+  /* 数量量词：把"4晚 / 3天 / 2人"这类计数从金额候选里排除。
+     不带量词的兜底正则曾把「酒店4晚3200」解析成 amount=4（演示现场翻车）。 */
+  var QUANTIFIERS = '(?:晚|天|日|夜|人|位|个|张|间|瓶|份|杯|碗|只|件|套|次|顿|斤|克|公里|km|小时|点|折)';
+
+  /**
+   * 金额文本预处理（匹配前统一做）
+   *   去掉千分位逗号：`¥1,234.56` → `¥1234.56`
+   *   携程订单 / 银行短信 / OCR 文本几乎都带千分位，不处理会被截断成 `1`
+   *   （实测 `午饭 1,280 元` → 280；`总额 ¥1,234.56` → 1，缩小 1000 倍）
+   */
+  function normalizeAmountText(text) {
+    var s = String(text == null ? '' : text);
+    s = s.replace(/(\d),(?=\d{3}(?:\D|$))/g, '$1');    // 半角
+    s = s.replace(/(\d)，(?=\d{3}(?:\D|$))/g, '$1');   // 全角
+    return s;
+  }
+
   /**
    * 金额提取（按置信度优先级匹配）
    */
-  function extractAmount(text) {
+  function extractAmount(rawText) {
+    var text = normalizeAmountText(rawText);
     var patterns = [
       // 显式语义词："花了328"、"实付¥128.5"、"一共240"
-      { re: /(?:实付|应付|支付|付款|消费|合计|总计|总额|共计|花了|花掉|收了|付了|掏了|出|一共|总共|人均)[^\d]{0,6}[¥￥$]?(\d+(?:\.\d{1,2})?)/, take: 1 },
+      // ⚠️ "出" 必须收窄：单字「出」会命中「出去玩3天花500」→ amount=3。
+      //    改为只认「我出/他出/出了」这类真正的付款语义。
+      { re: /(?:实付|应付|支付|付款|消费|合计|总计|总额|共计|花了|花掉|收了|付了|掏了|我出|他出|她出|出了|一共|总共|人均)[^\d]{0,6}[¥￥$]?(\d+(?:\.\d{1,2})?)/, take: 1 },
       // "3个人240" → 取人数后面的金额
-      { re: /\d+\s*[个人][^0-9]{0,6}(\d+(?:\.\d{1,2})?)/, take: 1 },
+      // 人数允许 1~2 位（原来只认一位 → "12个人一起吃饭花了600" 只取到 2）
+      { re: /\d{1,2}\s*[个人][^0-9]{0,6}(\d+(?:\.\d{1,2})?)/, take: 1 },
       // "¥128.5"
       { re: /[¥￥$](\d+(?:\.\d{1,2})?)/, take: 1 },
       // "86块 / 328元"
@@ -146,8 +167,9 @@
       { re: /(\d+(?:\.\d{1,2})?)\s*(?:美元|美金|日元|日币|韩元|泰铢|欧元|英镑|港币|港元|新币|新加坡元|人民币)/, take: 1 },
       // 金额式小数："128.50"
       { re: /(\d+\.\d{2})/, take: 1 },
-      // 裸数字兜底（排除"3个人"的人数；避免 lookbehind 以兼容小程序 JS 引擎）
-      { re: /(^|[^0-9.])(\d{1,7}(?:\.\d{1,2})?)(?!\s*[个人])/, take: 2 }
+      // 裸数字兜底：排除"3个人"的人数，也排除"4晚/3天/2张"这类量词计数
+      // （避免 lookbehind 以兼容小程序 JS 引擎）
+      { re: new RegExp('(^|[^0-9.])(\\d{1,7}(?:\\.\\d{1,2})?)(?!\\s*(?:[个人]|' + QUANTIFIERS + '))'), take: 2 }
     ];
     for (var i = 0; i < patterns.length; i++) {
       var m = text.match(patterns[i].re);
@@ -161,23 +183,63 @@
 
   /**
    * 币种识别
+   *
+   * ⚠️ 三级优先，且**不使用单字键**（'欧' / '$' 这种）：
+   *    早期对词典按插入序做 `indexOf` 子串匹配，单字「欧」会把
+   *    「欧洲十日游定金5000元」判成 EUR（→ ¥39000），「买了个欧包花了50元」
+   *    同样中招；'$' 还会把「HK$800」判成 USD（'$' 在词典里先命中）。
+   * 现在：
+   *    ① 明确的币种符号（带上下文，HK$/A$ 等长符号优先）
+   *    ② 币种词 / 代码，且要求**词边界**（前后不是汉字）
+   *    ③ 兜底 CNY
    */
   function extractCurrency(text) {
-    var lower = text.toLowerCase();
-    var keys = Object.keys(CURRENCY_WORDS);
-    for (var i = 0; i < keys.length; i++) {
-      if (lower.indexOf(keys[i].toLowerCase()) !== -1) {
-        return CURRENCY_WORDS[keys[i]];
-      }
+    var s = String(text || '');
+    var lower = s.toLowerCase();
+
+    // ① 符号（长符号优先，避免 HK$ 被当成 $）
+    var SYMBOLS = [
+      [/hk\$|hkd/i, 'HKD'], [/mop\$|mop\b/i, 'MOP'], [/s\$|sgd/i, 'SGD'],
+      [/us\$|usd/i, 'USD'], [/a\$|aud/i, 'AUD'], [/c\$|cad/i, 'CAD'],
+      [/€|eur\b/i, 'EUR'], [/£|gbp\b/i, 'GBP'],
+      [/₩|krw\b/i, 'KRW'], [/฿|thb\b/i, 'THB'], [/円|jpy\b/i, 'JPY'],
+      [/\$/, 'USD'],                       // 裸 $ 默认美元（上面长符号已先判 HK$/US$/A$/C$）
+      [/¥|￥|rmb\b|cny\b/i, 'CNY']
+    ];
+    for (var i = 0; i < SYMBOLS.length; i++) {
+      if (SYMBOLS[i][0].test(s)) return SYMBOLS[i][1];
+    }
+
+    // ② 币种词（要求前一个字不是汉字，避免「欧包」这类误命中；词本身是完整词）
+    var WORD_MAP = [
+      ['美元', 'USD'], ['美金', 'USD'], ['美刀', 'USD'],
+      ['日元', 'JPY'], ['日币', 'JPY'], ['日圆', 'JPY'],
+      ['韩元', 'KRW'], ['韩币', 'KRW'],
+      ['泰铢', 'THB'], ['欧元', 'EUR'], ['英镑', 'GBP'],
+      ['港币', 'HKD'], ['港元', 'HKD'], ['澳门币', 'MOP'],
+      ['新币', 'SGD'], ['新加坡元', 'SGD'], ['人民币', 'CNY']
+    ];
+    var HAN = /[\u4e00-\u9fa5]/;
+    for (var j = 0; j < WORD_MAP.length; j++) {
+      var w = WORD_MAP[j][0];
+      var idx = lower.indexOf(w);
+      if (idx === -1) continue;
+      // 左邻字是汉字 → 说明这是更长词的一部分（如「欧」+「包」不是「欧元」），跳过。
+      // 注意：这里比较的是"币种词的首字"是否被当作别的词的一部分，
+      // 因此只需检查左邻——「五百欧元」左邻是数字，正常命中。
+      var before = idx > 0 ? lower[idx - 1] : '';
+      if (HAN.test(before)) continue;
+      return WORD_MAP[j][1];
     }
     return 'CNY';
   }
 
   /**
-   * 人数识别（"3个人AA"、"四个人平分"）
+   * 人数识别（"3个人AA"、"四个人平分"、"12个人"）
+   * ⚠️ 早期字符类只认一位数字 → 「12个人一起吃饭」被解析成 2 人。
    */
   function extractPersonCount(text) {
-    var m = text.match(/([一二两三四五六七八九十\d])\s*个?人/);
+    var m = String(text || '').match(/(\d{1,2}|[一二两三四五六七八九十])\s*个?人/);
     if (!m) return null;
     var raw = m[1];
     var n = /\d/.test(raw) ? parseInt(raw, 10) : CN_NUM[raw];
@@ -679,6 +741,16 @@
     // 中文数字 + 金额单位/币种词 → 阿拉伯数字
     var moneyWords = '块钱|块|元|圆|蚊|美元|美金|日元|日币|韩元|泰铢|欧元|英镑|港币|港元|新币|新加坡元|人民币';
     s = s.replace(new RegExp('([零一二两三四五六七八九十百千万]+)\\s*(?=(' + moneyWords + '))', 'g'), function (m, cn) {
+      var n = cnNumToNumber(cn);
+      return n !== null ? String(n) : m;
+    });
+
+    // 中文数字**不带单位**也要归一化：「昨天晚上吃火锅三百二十八，四人AA」
+    // 早期只在后面紧跟金额单位时才转，于是这句话 amount=null / success=false
+    // —— 而它正是内置示例之一，现场演示会直接翻车。
+    // 约束：至少含"十/百/千/万"其一（排除"一个/两个"这类量词），
+    //       且后面**不能**是量词（避免把"四人"转成 4 影响人数识别）。
+    s = s.replace(new RegExp('([零一二两三四五六七八九十百千万]*[十百千万][零一二两三四五六七八九十]*)\\s*(?!(' + QUANTIFIERS + '|' + moneyWords + '))', 'g'), function (m, cn) {
       var n = cnNumToNumber(cn);
       return n !== null ? String(n) : m;
     });
