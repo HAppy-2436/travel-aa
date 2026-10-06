@@ -558,7 +558,7 @@ function renderPhones(){
   for(var i=0;i<State.phoneCount;i++){
     var user=USERS[i];var phone=document.createElement('div');
     phone.className='pu';phone.id='phone-'+user.id;
-    phone.innerHTML='<div class="pl"><div><div class="pn" style="color:'+user.color+'">'+user.name+'</div><div class="pr2">'+user.role+'</div></div></div><div class="cap" id="cap-'+user.id+'" style="display:none;"></div><div class="pf"><div class="pn2"></div><div class="pbt pw"></div><div class="pbt vu"></div><div class="pbt vd"></div><div class="ps"><div class="app" id="app-'+user.id+'"></div><div class="toast" id="toast-'+user.id+'"></div><div class="co" id="confirm-'+user.id+'"><div class="cb2"><div class="ci">🗑️</div><div class="ct" id="confirmTitle-'+user.id+'">删除账单？</div><div class="cd" id="confirmDesc-'+user.id+'">此操作不可撤销</div><div class="cbs"><button class="btn lt" onclick="cancelConfirm(\''+user.id+'\')">取消</button><button class="btn dg" onclick="doConfirm(\''+user.id+'\')">删除</button></div></div></div><div class="hi"></div></div></div>';
+    phone.innerHTML='<div class="pl"><div><div class="pn" style="color:'+esc(user.color)+'">'+esc(user.name)+'</div><div class="pr2">'+esc(user.role)+'</div></div></div><div class="cap" id="cap-'+user.id+'" style="display:none;"></div><div class="pf"><div class="pn2"></div><div class="pbt pw"></div><div class="pbt vu"></div><div class="pbt vd"></div><div class="ps"><div class="app" id="app-'+user.id+'"></div><div class="toast" id="toast-'+user.id+'"></div><div class="co" id="confirm-'+user.id+'"><div class="cb2"><div class="ci">🗑️</div><div class="ct" id="confirmTitle-'+user.id+'">删除账单？</div><div class="cd" id="confirmDesc-'+user.id+'">此操作不可撤销</div><div class="cbs"><button class="btn lt" onclick="cancelConfirm(\''+user.id+'\')">取消</button><button class="btn dg" onclick="doConfirm(\''+user.id+'\')">删除</button></div></div></div><div class="hi"></div></div></div>';
     stage.appendChild(phone);renderApp(user);
     if (CAPTION[user.id]) setCaption(user.id, CAPTION[user.id]);
   }
@@ -615,7 +615,7 @@ function renderHome(user,myRooms){
   else{myRooms.forEach(function(room){
     var bills=State.bills.filter(function(b){return b.roomId===room.id});
     var total=bills.reduce(function(s,b){return s+billCNY(b)},0);
-    html+='<div class="rc" onclick="openRoom(\''+user.id+'\',\''+room.id+'\')"><div class="rt"><div class="rn">'+room.name+'</div><div class="rco"><small>房间号</small>'+room.code+'</div></div><div class="rs"><div><div class="rsv">'+room.members.length+'</div><div class="rsl">成员</div></div><div><div class="rsv">'+bills.length+'</div><div class="rsl">账单</div></div><div><div class="rsv" style="color:var(--pri)">¥'+total.toFixed(0)+'</div><div class="rsl">总消费</div></div></div></div>';
+    html+='<div class="rc" onclick="openRoom(\''+user.id+'\',\''+room.id+'\')"><div class="rt"><div class="rn">'+esc(room.name)+'</div><div class="rco"><small>房间号</small>'+esc(room.code)+'</div></div><div class="rs"><div><div class="rsv">'+room.members.length+'</div><div class="rsl">成员</div></div><div><div class="rsv">'+bills.length+'</div><div class="rsl">账单</div></div><div><div class="rsv" style="color:var(--pri)">¥'+total.toFixed(0)+'</div><div class="rsl">总消费</div></div></div></div>';
   });}
   return html;
 }
@@ -1065,8 +1065,8 @@ function renderCapture(userId,roomId){
       html+='<div class="ca" onclick="ocrStartScan(\''+userId+'\')"><div class="cai">📸</div><div class="cat">点击拍照或选择图片<br><span style="font-size:10px;color:var(--g300)">支持 JPG / PNG / HEIC</span></div></div>';
       var md=MOCK_OCR[st.billType];
       html+='<div class="fl">示例账单预览</div><div class="mbi">';
-      if(md.items.length===1){var item=md.items[0];html+='<div class="mbt">'+md.typeLabel+'</div><div class="mbs">'+item.time+'</div><div class="mbr"><span>商户</span><span>'+item.merchant+'</span></div><div class="mbr"><span>商品</span><span>'+item.desc+'</span></div><div class="mbr tot"><span>实付金额</span><span>¥'+item.amount.toFixed(2)+'</span></div>';}
-      else{html+='<div class="mbt">'+md.typeLabel+'</div><div class="mbs">'+md.items.length+' 笔交易</div>';md.items.forEach(function(item){html+='<div class="mbr"><span>'+item.desc+'</span><span>¥'+item.amount.toFixed(2)+'</span></div>';});html+='<div class="mbr tot"><span>合计</span><span>¥'+md.items.reduce(function(s,i){return s+i.amount},0).toFixed(2)+'</span></div>';}
+      if(md.items.length===1){var item=md.items[0];html+='<div class="mbt">'+esc(md.typeLabel)+'</div><div class="mbs">'+esc(item.time)+'</div><div class="mbr"><span>商户</span><span>'+esc(item.merchant)+'</span></div><div class="mbr"><span>商品</span><span>'+esc(item.desc)+'</span></div><div class="mbr tot"><span>实付金额</span><span>¥'+item.amount.toFixed(2)+'</span></div>';}
+      else{html+='<div class="mbt">'+esc(md.typeLabel)+'</div><div class="mbs">'+md.items.length+' 笔交易</div>';md.items.forEach(function(item){html+='<div class="mbr"><span>'+esc(item.desc)+'</span><span>¥'+item.amount.toFixed(2)+'</span></div>';});html+='<div class="mbr tot"><span>合计</span><span>¥'+md.items.reduce(function(s,i){return s+i.amount},0).toFixed(2)+'</span></div>';}
       html+='</div>';
     }
   }else if(st.step==='scanning'){
@@ -1077,7 +1077,7 @@ function renderCapture(userId,roomId){
     if(md2.items.length>1)html+='<div class="fl" style="margin-bottom:10px;">识别到 '+md2.items.length+' 笔消费，点击选择要导入的</div>';
     html+='<div class="ors">';
     md2.items.forEach(function(item,idx){
-      html+='<div class="orc '+(st.selected.has(idx)?'sel':'')+'" onclick="ocrToggleItem(\''+userId+'\','+idx+')"><div class="ort"><div class="ord">'+item.desc+'</div><div class="ora">¥'+item.amount.toFixed(2)+'</div></div><div class="orm"><span class="orb '+md2.badge+'">'+md2.typeLabel+'</span> <span class="oc">✓ '+item.confidence+'%</span> &nbsp;'+item.merchant+' · '+item.time+'</div></div>';
+      html+='<div class="orc '+(st.selected.has(idx)?'sel':'')+'" onclick="ocrToggleItem(\''+userId+'\','+idx+')"><div class="ort"><div class="ord">'+esc(item.desc)+'</div><div class="ora">¥'+item.amount.toFixed(2)+'</div></div><div class="orm"><span class="orb '+esc(md2.badge)+'">'+esc(md2.typeLabel)+'</span> <span class="oc">✓ '+item.confidence+'%</span> &nbsp;'+esc(item.merchant)+' · '+esc(item.time)+'</div></div>';
     });
     html+='</div>';
     var selCount=st.selected.size;
