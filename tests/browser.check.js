@@ -86,9 +86,10 @@ async function runMode(mode, hash, expectKey, waitMs) {
   const modes = [
     ['selftest', '#selftest', 'SELFTEST', 3000],
     ['tourtest', '#tourtest', 'TOURTEST', 3000],
-    /* uitest 里含一次完整的 #auto 自动演示（24 个分镜，每镜都有停顿），
-       所以等待时间要给够；不够就会在演示跑完前读到中间态。 */
-    ['uitest', '#uitest', 'UITEST', 120000],
+    /* uitest 里含多次完整的/片段的 #auto 自动演示（24 个分镜，节奏刻意放慢到
+       约 82 秒一轮，讲者/评委要读得完解说），所以等待时间要给足；
+       不够就会在演示跑完前读到中间态。CI 机器更慢，这里留足余量。 */
+    ['uitest', '#uitest', 'UITEST', 300000],
   ];
 
   let bad = 0;

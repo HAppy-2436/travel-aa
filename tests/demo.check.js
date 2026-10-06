@@ -182,8 +182,9 @@ report('★ fitPhones 先量后缩（顺序反了会缩错）', (function () {
   const apply = seg.indexOf("stage.style.transform = 'translateX(");
   return measure > -1 && apply > -1 && measure < apply;
 })());
-report('★ 纵向也按实测分配：给 .wrap 留出解说栏高度的 padding-top',
-  /wrap\.style\.paddingTop = \(barH \+ 12\)/.test(html) && /pfs\[k\]\.style\.height/.test(html));
+report('★ 纵向按实测分配：手机高度由 --phone-h 决定（网页版不能出现半截手机）',
+  /root\.style\.setProperty\('--phone-h'/.test(html) && /height:var\(--phone-h,660px\)/.test(html) &&
+  /wrap\.style\.paddingTop = top \+ 'px'/.test(html));
 report('★ 演示解说栏只在 present 下显示（不影响常规视图）',
   /\.pshow\{display:none\}/.test(html) && /body\.present \.pshow\{[\s\S]{0,90}?display:block/.test(html));
 report('★ 演示模式隐藏人名行，并把"谁在操作"并进字幕条（否则会被解说栏盖住）',
@@ -201,6 +202,39 @@ report('★ 导览：可调自动播放速度（三档循环，定时器按新�
   /setInterval\(tourTick, TOUR_SPEEDS\[tourState\.speed\]\)/.test(html));
 report('★ 导览：按钮文案同步更新（不再等 260ms 的定时器）',
   /function updateTourControls\s*\(/.test(html) && /updateTourControls\(\);\s*\n\s*renderTourStep\(\)/.test(html));
+
+// ============ 10++. 网页版外壳（这是提交给评委看的形态） ============
+report('★ 网页版：手机高度由 --phone-h 决定，且 renderPhones 后必重量（否则首屏看不到完整手机）',
+  /height:var\(--phone-h,660px\)/.test(html) &&
+  /renderPhones\(\);\s*\n\s*fitPhones\(\)/.test(html) &&
+  /setProperty\('--phone-h'/.test(html));
+report('★ 网页版：高度自校正（量真实底边再收/放，不是靠公式凑）',
+  /for \(var pass = 0; pass < 4; pass\+\+\)/.test(html) &&
+  /getBoundingClientRect\(\)\.bottom - \(vh - 8\)/.test(html) &&
+  /PHONE_MIN/.test(html) && /PHONE_MAX/.test(html));
+report('★ 网页版：常驻解说条（普通模式也看得到"这一步在做什么"）',
+  /<div class="narr" id="narrBar"/.test(html) && /id="shellNarr"/.test(html) &&
+  /body\.present \.narr\{display:none\}/.test(html));
+report('★ 网页版：解说条与浮动栏共用同一份内容（不出现两套说法）',
+  /\['presentStep', 'presentProg', 'presentNarr'\], \['shellStep', 'shellProg', 'shellNarr'\]/.test(html));
+report('★ 网页版：品牌行只放产品定位，不再被解说词覆盖',
+  /var TAGLINE = /.test(html) && /if\(sub\)sub\.textContent=TAGLINE/.test(html) &&
+  !/sub\.textContent = '每个手机 = 一个真实用户/.test(html));
+report('★ 网页版：人数只有 setPhoneCount 一个写入口（?n= 也走它）',
+  /if \(m\) setPhoneCount\(/.test(html));
+report('★ 网页版：手机舞台下方有"给评委看的一屏"（定位 / 五层能力 / 验收证据 / 诚实边界）',
+  /id="judgeSection"/.test(html) && /会听/.test(html) && /诚实边界/.test(html) && /jnItems/.test(html));
+report('★ 评委面板的验收数字不是写死的：页内自检/交互验收跑完会写入真实结果',
+  /var SUITE_STATS = \{ suites: \d+, items: \d+ \}/.test(html) &&
+  /id="jnSelf">—</.test(html) && /id="jnUI">—</.test(html) &&
+  /setJudgeResult\('self'/.test(html) && /setJudgeResult\('ui'/.test(html) && /fillJudgeStats\(\)/.test(html));
+report('★ 网页版：工具条吸顶（滚动时也点得到「自动演示」）',
+  /\.tbar\{display:flex;[\s\S]{0,200}?position:sticky;top:0/.test(html));
+report('★ 自动演示可调速（三档，作用在每个 sleep 上）',
+  /var AUTO_SPEEDS = \[/.test(html) && /function cycleAutoSpeed\s*\(/.test(html) &&
+  /ms \* AUTO_SPEEDS\[autoSpeed\]/.test(html));
+report('★ 单步「下一步」在闸门注册前被点也不丢（实测点一次没反应）',
+  /gateWaived/.test(html) && /if \(gateWaived\) \{ gateWaived = false; return go\(\); \}/.test(html));
 
 // ============ 11. 共享 AI 引擎浏览器形态冒烟 ============
 const aiSrc = fs.readFileSync(path.join(__dirname, '..', 'apps', 'miniprogram', 'utils', 'ai.js'), 'utf8');
