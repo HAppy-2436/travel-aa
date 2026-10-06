@@ -36,3 +36,5 @@ desktop.ini
 /dom*.html
 /err*.txt
 /tmp/
+# run-all.js 把每套测试的输出重定向到这个目录以便解析项数（见 tests/run-all.js）
+tests/.output/

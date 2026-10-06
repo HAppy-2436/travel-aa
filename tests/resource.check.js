@@ -95,7 +95,17 @@ function ok(name, cond, extra) {
   ok('工具条：重置入口', acts.some((t) => /重置/.test(t)));
   ok('工具条：自动演示为唯一主行动（.cb.pr）', !!d.querySelector('.tbar .cb.pr'),
     (d.querySelector('.tbar .cb.pr') || {}).textContent);
-  ok('工具条不再是 8 个等重按钮（`.cb` 数量 ≤ 5）', acts.length <= 5, acts.length + ' 个按钮');
+  ok('工具条不再是 8 个等重按钮（操作按钮 `.cb` 数量 ≤ 5）', acts.length <= 5, acts.length + ' 个按钮');
+  /* 状态徽标不是按钮：引擎/同步状态是"显示"，不该混进操作入口计数 */
+  ok('工具条：同步状态徽标（role=status，可被读屏播报）',
+    !!d.getElementById('syncBadge') && d.getElementById('syncBadge').getAttribute('role') === 'status',
+    (d.getElementById('syncBadge') || {}).textContent);
+  ok('工具条：状态徽标不使用 .cb 类（避免与操作按钮混淆）',
+    !d.querySelector('.tbar .cb.dot') && !d.getElementById('syncBadge').classList.contains('cb'));
+  /* 人数步进器必须是真 <button>：原来的 <i onclick> 键盘到不了 */
+  const stepBtns = Array.from(d.querySelectorAll('.tbar .stepper button'));
+  ok('★ 人数步进器用真 <button>（键盘可达）', stepBtns.length === 2,
+    stepBtns.map((b) => b.getAttribute('aria-label') || b.textContent).join(' / '));
 
   /* 3. 核心算法在浏览器形态下可用 */
   if (window.AI) {

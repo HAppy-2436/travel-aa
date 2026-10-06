@@ -1,14 +1,14 @@
 {
   "name": "travel-aa",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "private": true,
   "description": "TravelAA · 旅行 AA 记账（携程高校 AI HACKATHON）——根级验收入口",
   "scripts": {
     "test": "node tests/run-all.js",
-    "test:core": "node tests/ai.test.js && node tests/v2.test.js",
+    "test:core": "node tests/ai.test.js && node tests/v2.test.js && node tests/v3.test.js",
     "test:sync": "node tests/sync.test.js",
     "test:paths": "node tests/requires.check.js",
-    "test:demo": "node tests/demo.check.js",
+    "test:demo": "node tests/demo.check.js && node tests/resource.check.js",
     "test:server": "node tests/server.test.js",
     "test:browser": "node tests/browser.check.js"
   },

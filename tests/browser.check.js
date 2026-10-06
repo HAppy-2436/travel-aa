@@ -62,11 +62,18 @@ async function runMode(mode, hash, expectKey, waitMs) {
 
   const title = window.document.title || '';
   const panel = window.document.getElementById('testPanel');
+  /* ⚠️ 不能按 spans[1] 取结论：`<span>名称 <span>补充</span></span><span class="test-ok">`
+     的第二个 span 往往是**补充说明**而不是 PASS/FAIL，会把失败项误判成通过。
+     直接按语义类名取。 */
   const rows = panel ? Array.from(panel.querySelectorAll('.test-row')).map((el) => {
-    const spans = el.querySelectorAll('span');
-    return { name: spans[0] ? spans[0].textContent.trim() : '', verdict: spans[1] ? spans[1].textContent.trim() : '' };
+    const nameEl = el.querySelector('span');
+    const verdictEl = el.querySelector('.test-ok,.test-no');
+    return {
+      name: nameEl ? nameEl.textContent.trim() : '',
+      verdict: verdictEl ? verdictEl.textContent.trim() : '',
+    };
   }) : [];
-  const fails = rows.filter((r) => r.verdict === 'FAIL');
+  const fails = rows.filter((r) => r.verdict !== 'PASS');
   const allPass = new RegExp('^' + expectKey + ' \\d+/\\d+ ALL-PASS$').test(title);
 
   dom.window.close();
@@ -104,12 +111,16 @@ async function runMode(mode, hash, expectKey, waitMs) {
       continue;
     }
     r.fails.forEach((f) => console.log(`  ❌ ${f.name}`));
+    /* 页面运行时报错必须**算失败**，不能只当警告：
+       以前只在旁边打一行 ⚠️ 就算过，于是"某个 onclick 抛异常但自检项照样 PASS"
+       这种最危险的假绿会被漏掉。 */
     if (r.errors.length) {
-      r.errors.slice(0, 5).forEach((e) => console.log(`  ⚠️  页面报错：${e}`));
+      r.errors.slice(0, 5).forEach((e) => console.log(`  ❌ 页面运行时报错：${e}`));
     }
-    const ok = r.allPass && r.fails.length === 0;
+    const ok = r.allPass && r.fails.length === 0 && r.errors.length === 0;
     if (!ok) bad++;
-    console.log(`  ${ok ? '✅' : '❌'} ${r.mode}：${r.total - r.fails.length}/${r.total} 通过`);
+    console.log(`  ${ok ? '✅' : '❌'} ${r.mode}：${r.total - r.fails.length}/${r.total} 通过` +
+      (r.errors.length ? ` · 运行时报错 ${r.errors.length} 处` : ''));
     summary.push({ mode, ok, title: r.title });
   }
 
