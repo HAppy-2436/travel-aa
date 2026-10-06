@@ -11,6 +11,27 @@
 body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:#fff;min-height:100vh;overflow-x:auto;-webkit-font-smoothing:antialiased}
 .bg{position:fixed;inset:0;background:radial-gradient(ellipse 60% 40% at 20% 10%,rgba(255,107,53,0.06),transparent 60%),radial-gradient(ellipse 50% 50% at 80% 80%,rgba(100,100,255,0.04),transparent 60%);z-index:0}
 .wrap{position:relative;z-index:1;max-width:1600px;margin:0 auto;padding:28px 32px}
+/* ===== 演示模式（body.present）=====
+   自动演示 / 导览时让**观众完全不需要滚动鼠标**：
+   隐藏演示台以外的部件，并把手机高度自适应窗口。
+   实测各部件高度合计（1080 窗口下）：
+     wrap 56 + 标题区 110 + 工具条 48 + 舞台 padding 56
+     + 手机单元(人名 60 + 字幕 32 + 手机 660) 752 + 底部提示 26 ≈ 1010px
+   → 1080 窗口刚好够、笔记本 900 窗口必然要滚动。
+   另外 .stage 的 min-height:calc(100vh - 200px) 会强行撑高舞台，一并去掉。 */
+body.present .wrap{padding:10px 24px 14px}
+body.present .hdr{display:none}
+/* 演示时工具条也让位：手机底部按钮（＋记一笔 / 拍照 / 结算）不能被裁掉。
+   退出入口见右上角固定的 .present-exit（不占文档流）。 */
+body.present .tbar{display:none}
+body.present .stage{padding:0;min-height:0}
+body.present .fh{display:none}
+body.present .pu{gap:10px}
+/* 手机高度 = 视口 − (wrap 上下 24 + 人名行 ~56 + 字幕条 ~46 + 余量 12) */
+body.present .pf{height:calc(100vh - 138px)}
+/* 演示模式下的退出入口：固定在右上角，不占文档流 */
+.present-exit{display:none}
+body.present .present-exit{display:block;position:fixed;top:14px;right:18px;z-index:60}
 /* ===== 演示台（手机外面的壳）=====
    三组语义，避免"8 个按钮等重、找不到主行动"：
      ① 状态：引擎徽标收成小圆点
@@ -48,11 +69,13 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:#ff
 .pr2{font-size:11px;color:rgba(255,255,255,.45);background:rgba(255,255,255,.05);padding:3px 10px;border-radius:100px;margin-top:6px}
 /* 演示字幕：自动演示时标出"这一步在演示哪个功能"，让观众看得懂。
    保持紧凑（不挤占舞台垂直空间，也不把工具栏顶到换行）。 */
-/* 字幕条：宽度对齐内屏（手机壳 320 - padding 2×10 = 300），单行省略 */
-.cap{width:300px;max-width:100%;margin:8px 0 0;padding:6px 12px;border-radius:100px;background:var(--pri);color:#fff;
-  font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:600;line-height:1.35;text-align:center;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;
-  box-shadow:0 3px 12px rgba(255,107,53,.28);animation:capin .3s cubic-bezier(.4,0,.2,1)}
+/* 字幕条：宽度对齐内屏（手机壳 320 - 2×10 = 300），单行省略。
+   用户反馈"每一步的功能字太小看不清、没突出" → 字号 10→14px、加粗、加左侧强调。 */
+.cap{width:300px;max-width:100%;margin:10px 0 0;padding:8px 14px;border-radius:12px;background:var(--pri);color:#fff;
+  font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;line-height:1.3;letter-spacing:.2px;
+  text-align:center;box-sizing:border-box;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  box-shadow:0 4px 16px rgba(255,107,53,.35);animation:capin .3s cubic-bezier(.4,0,.2,1)}
 @keyframes capin{from{opacity:0;transform:translateY(-5px) scale(.95)}to{opacity:1;transform:none}}
 /* 手机壳：降对比（原来底 #08080c → 壳 #0c0c0c → 屏 #fff 三层强对比 + 80px 重投影） */
 .pf{width:320px;max-width:100%;height:660px;background:#151517;border-radius:50px;padding:10px;position:relative;box-shadow:0 0 0 1.5px rgba(255,255,255,.09),0 18px 48px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.05)}
@@ -343,6 +366,7 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:#ff
   <div class="stage" id="phonesStage"></div>
   <div class="fh" id="hintBar">💡 点工具栏 <b>＋</b> 加到 3~4 台手机（每台 = 一个真实用户）· 所有手机实时同步</div>
 </div>
+<button class="cb present-exit" onclick="exitPresent()" title="退出演示模式">✕ 退出演示</button>
 
 <!-- 共享算法内核（与小程序、服务端同一份代码，UMD 三端复用；纯本地计算，无网络依赖） -->
 <script src="../apps/miniprogram/utils/ai.js"></script>
@@ -1511,6 +1535,17 @@ function removePhone(){if(State.phoneCount<=1){showToast('u1','至少保留 1 �
 function resetAll(){State.rooms=[];State.bills=[];State.nextRoomId=1;State.nextBillId=1;USERS.forEach(function(u){u._page='home';u._roomId=null;u._form=null;u._ai=null;u._aiText='';u._narr=null;u._narrLoading=false;u._listening=false;u._sampleIdx=null;u._visionResult=null});ocrState={};pendingDelete={};if(typeof clearCaptions==='function')clearCaptions();tourExit();closeSelfTest();renderPhones()}
 
 /* ============================================================
+   演示模式：开演时隐藏标题/工具条、手机自适应高度
+   —— 目的：观众看自动演示时**不需要滚动鼠标**（用户明确反馈）
+   ============================================================ */
+function enterPresent() { document.body.classList.add('present'); }
+function exitPresent() {
+  document.body.classList.remove('present');
+  var sub = document.getElementById('hdrSub');
+  if (sub) sub.textContent = '每个手机 = 一个真实用户 · 操作实时同步 · 展示多人AA完整流程';
+}
+
+/* ============================================================
    自动演示：分镜脚本（每一步都真实切页面，顶部字幕同步解说）
    不是"后台加数据"，而是把 u1/u2/u3 当真人在操作来演
    ============================================================ */
@@ -1535,6 +1570,7 @@ async function autoDemo() {
   };
   try {
     resetAll();
+    enterPresent();                     // 演示模式：一屏装下，不用滚鼠标
     USERS.slice(0, State.phoneCount).forEach(function (u) { u._page = 'home'; u._roomId = null; });
     say('① 每台手机 = 一个真实用户 · 操作实时同步');
     await sleep(1200);
@@ -1740,12 +1776,15 @@ async function autoDemo() {
     clearCaptions();
     say('演示结束 · 点「🎬 导览」听逐步讲解，点「🔄 重置」可重播');
     showToast('u1', '🎬 自动演示完成');
+    await sleep(2200);
+    exitPresent();                      // 演示结束回到常规布局
   } catch (e) {
     if (e && e.__stageHold) {
-      /* 定格模式：保留字幕与画面，不显示"演示中断" */
+      /* 定格模式：保留字幕与画面（以及演示模式），不显示"演示中断" */
       if (typeof window !== 'undefined') window.__autoDemoHeld = true;
     } else {
       say('演示中断：' + (e && e.message));
+      exitPresent();
     }
   } finally {
     if (!(typeof window !== 'undefined' && window.__autoDemoHeld)) {
@@ -1832,6 +1871,7 @@ function ensureTourDom() {
 }
 function startTour() {
   ensureTourDom();
+  enterPresent();          // 导览同样进演示模式：一屏装下，不用滚鼠标
   tourState.idx = 0; tourState.auto = false;
   document.getElementById('tourCard').style.display = 'block';
   document.getElementById('tourMask').style.display = 'block';
