@@ -2310,93 +2310,93 @@ function tourSetup(uid, page) {
   return u;
 }
 
+/* ============================================================
+   一键导览（演讲者模式）：**15 步**，覆盖全部 40 项功能
+   ------------------------------------------------------------
+   两条设计原则（都是被反馈逼出来的）：
+     ① **同类功能合并**成一步。29 步一屏一个功能太碎，讲的人累、听的人散；
+        把"币种/分类/分摊"并在一步、"改分摊/调整单/占位"并在一步，
+        步数减半而功能一项不少（40/40 仍由 tourCoverage() 强制校验）。
+     ② 每步都要有一个人在做这件事。4 台手机各有 3~4 个环节，
+        不允许出现"第 4 个人啥都不干"。
+   高亮走 data-feat 语义锚点而不是样式类名，排版重构不会让高亮失效。
+   ============================================================ */
 var TOUR_STEPS = [
-  { sel: '#phonesStage', covers: ['phone-count'], title: '4 台手机 = 4 位真实成员', script: '每台手机就是一个真实用户，各自垫钱、各自记账。工具条的「− 4 人 ＋」是人数步进器：本轮把 4 位成员都摆上，后面每个人都会动手 —— 没有"凑数的人"。',
+  { sel: '#phonesStage', covers: ['phone-count'], title: '4 台手机 = 4 位真实成员',
+    script: '每台手机就是一个真实用户，各自垫钱、各自记账。建议加到 4 台开场 —— 接下来的每一步都由不同的人在操作，没有凑数的人。',
     before: function () { ensureAllPhones(); USERS.slice(0, 4).forEach(function (u) { goPhone(u.id, 'room'); }); } },
 
-  { sel: '.tbar [data-feat="sync"]', covers: ['sync'], title: '同步：两个窗口真的联动，刷新不丢', script: '徽标是运行时探测出来的、不虚报：只有真的探测到第二个窗口才显示「🔗 多窗口已同步」，否则显示「💾 已开启本地留存」。现场跑法：再开一个标签页打开同一路径，一个窗口记一笔，另一个窗口秒级出现；刷新任一窗口数据都还在。',
+  { sel: '.tbar', covers: ['sync', 'a11y'], title: '演示台：真实同步 + 无障碍',
+    script: '徽标是运行时探测的、不虚报：真的探测到第二个窗口才显示「🔗 多窗口已同步」，否则显示「💾 已开启本地留存」（刷新不丢是真的）。现在按 Tab，焦点环会走到下一个可点元素，按 Enter 就能激活整张卡片，按 Esc 逐层关弹窗；所有文字对比度都过了 WCAG 2.1 AA。',
     before: function () { ensureAllPhones(); } },
 
-  { sel: '.tbar', covers: ['a11y'], title: '无障碍：键盘 · 读屏 · 对比度', script: '现在按 Tab —— 焦点环会走到下一个可点元素上；按 Enter 就能激活整张卡片，不用鼠标。按 Esc 可以逐层关掉弹窗/导览/演示模式。所有文字对比度都过了 WCAG 2.1 AA（品牌橙当文字从 2.84:1 提到 6.00:1），弹层都带 role="dialog" 与标题关联，读屏能念出来。',
-    before: function () { ensureAllPhones(); } },
-
-  { sel: '#app-u1 [data-feat="room-header"]', covers: ['room-create-join'], title: '创建 / 加入旅行房间', script: '小明创建「国庆东京行」，拿到 6 位房间号 888666；小红、小李、小王各自输入房间号加入，全员共享一本账。',
+  { sel: '#app-u1 [data-feat="room-header"]', covers: ['room-create-join', 'budget', 'members'], title: '房间首页：房间号 · 预算 · 成员',
+    script: '小明创建「国庆东京行」拿到 6 位房间号 888666，小红、小李、小王各自输房间号加入，全员共享一本账。往下依次是：人均预算 × 人数 = 总预算的燃烧率与"日均还能花多少"，以及成员区（未结清前不能把成员移出，否则那笔钱会凭空消失）。',
     before: function () { tourSetup('u1', 'room'); } },
 
-  { sel: '#app-u1 [data-feat="budget"]', covers: ['budget', 'members'], title: '预算燃烧率 + 成员管理', script: '人均预算 × 人数 = 总预算，进度条实时给燃烧率与"日均还能花多少"，快超支会提前预警。成员区是本房间的人；未结清前不能把成员移出（否则那笔钱会凭空消失）。',
-    before: function () { tourSetup('u1', 'room'); } },
+  { sel: '#app-u1 [data-feat="ai-parse"]', covers: ['ai-parse', 'manual', 'payer'], title: '会听：一句话记账（也可以手填）',
+    script: '「打车去机场86块，我垫的，和小红小李平分」—— 口语数字自动归一化，金额、分类、付款人、分摊对象一次填好。不想说话就直接填：金额是唯一必填项，付款人默认自己，点一下就能改成"这顿是他垫的"。',
+    before: function () { var u = tourSetup('u1', 'add'); u._aiText = AI_SAMPLES[0]; u._ai = null; u._adv = false; renderApp(u); } },
 
-  { sel: '#app-u1 [data-feat="ai-parse"]', covers: ['ai-parse'], title: '会听①：说一句话就能记账', script: '「打车去机场86块，我垫的，和小红小李平分」—— 口语数字自动归一化，金额、分类、付款人、分摊对象一次填好，还能听懂"我请客""不参与AA"。',
-    before: function () { var u = tourSetup('u1', 'add'); u._aiText = AI_SAMPLES[0]; u._ai = null; renderApp(u); } },
+  { sel: '#app-u4 [data-feat="voice"]', covers: ['voice', 'ownership', 'personal-total'], title: '小王：语音记账 + 我的私账',
+    script: '第 4 位成员小王用语音记「迪士尼门票380，我付的，大家平摊」，识别结果直接填进表单。他给自己买伴手礼时把「算谁的」改成"我的私账"：只有他花钱、只有他看得到小计，不进 AA、不影响别人，但会累计到"我这次到底花了多少"。',
+    before: function () {
+      var u = tourSetup('u4', 'add');
+      u._aiText = '迪士尼门票380，我付的，大家平摊'; u._ai = null; aiParseBill('u4');
+      ensurePersonalSample();
+    } },
 
-  { sel: '#app-u4 [data-feat="voice"]', covers: ['voice'], title: '会听②：语音输入（小王来说这句）', script: '第 4 位成员小王用语音记账：点麦克风说一句，识别结果直接填进「说一句就能记」。这里没有"看客"—— 4 台手机各有各的任务。',
-    before: function () { var u = tourSetup('u4', 'add'); u._aiText = '迪士尼门票380，我付的，大家平摊'; u._ai = null; aiParseBill('u4'); } },
-
-  { sel: '#app-u1 [data-feat="amount"]', covers: ['manual', 'payer'], title: '手动填表：金额是唯一必填', script: '不想说话就直接填：金额是唯一必填项，说明留空就用分类名。付款人默认自己，需要时点一下换成别人（"这顿是他垫的"）。',
-    before: function () { var u = tourSetup('u1', 'add'); u._ai = null; u._aiText = ''; u._adv = false; renderApp(u); } },
-
-  { sel: '#app-u1 [data-feat="more-options"]', covers: ['more-options', 'category', 'split-type'], title: '更多选项默认收起：一次记账只要 ~5 个决定', script: '分类、分摊方式、币种、抹零全部收进「更多选项」，默认不展开。一次记账要做的决定从 ~24 个降到 ~5 个 —— 这是"小而美"的关键取舍。展开后就能改分类、选「均分 / 我请客」。',
-    before: function () { var u = tourSetup('u1', 'add'); u._adv = false; renderApp(u); } },
-
-  { sel: '#app-u3 [data-feat="currency"]', covers: ['currency'], title: '多币种：按记账当时的汇率快照', script: '小李在日本记 12000 日元：选币种后金额下方立刻显示「≈ ¥576（按记账时汇率 0.048 快照）」。汇率在记账那一刻定下来，之后结算不再受汇率波动影响 —— 这是旅行记账最容易扯皮的地方。',
-    before: function () { var u = tourSetup('u3', 'add'); u._adv = true; u._form = { amount: '12000', desc: '京都一日游交通', category: 'transport', payer: 'u3', splitType: 'equal', currency: 'JPY' }; renderApp(u); } },
-
-  { sel: '#app-u1 [data-feat="rounding"]', covers: ['rounding'], title: '智能抹零：出境游不用算零头', script: '12780 日元一键凑成 12800，差额 20 单独记成「抹零损耗」并入分摊 —— 账单合计**仍然严格等于金额**，账不会因为凑整而不平。',
-    before: function () { var u = tourSetup('u1', 'add'); u._adv = true; u._form = { amount: '12780', desc: '札幌居酒屋晚餐', category: 'food', payer: 'u1', splitType: 'equal', currency: 'JPY' }; u._form.rounded = false; u._form.lossAmount = 0; renderApp(u); } },
-
-  { sel: '#app-u4 [data-feat="ownership"]', covers: ['ownership'], title: 'AA 还是「我的私账」（人情账）', script: '小王给自己买伴手礼，「算谁的」选「我的私账」：只有他花钱、只有他看得到小计，不进 AA、不影响别人，但会累计到"我这次到底花了多少"。一句话，不给术语。',
-    before: function () { var u = tourSetup('u4', 'add'); u._form = { amount: '1280', desc: '给自己买的伴手礼', category: 'shopping', payer: 'u4', splitType: 'sole', currency: 'CNY' }; renderApp(u); } },
-
-  { sel: '#app-u4 [data-feat="personal-total"]', covers: ['personal-total'], title: '私账小计：我到底花了多少', script: '小王回到房间页：备注区单独一行「我的私账 ¥1280（1 笔，未计入 AA）」。集体账看大家的，"我花了多少"看自己的 —— 两本账分开，互不干扰。',
-    before: function () { ensurePersonalSample(); tourSetup('u4', 'room'); } },
-
-  { sel: '#app-u2 [data-feat="ocr"]', covers: ['ocr'], title: '会看：票据识别批量入账', script: '小红上传微信账单截图 → 识别出多笔消费 → 勾选要入账的 → 一次批量记完。纸票、电子发票同理。未连 AI 通道时页面明确标注用的是内置样例，不冒充模型实时输出。',
+  { sel: '#app-u2 [data-feat="ocr"]', covers: ['ocr'], title: '小红：票据识别批量入账',
+    script: '小红上传微信账单截图 → 识别出多笔消费 → 勾选要入账的 → 一次批量记完；纸票、电子发票同理。未连 AI 通道时页面明确标注用的是内置样例，不冒充模型实时输出。',
     before: function () { var u = tourSetup('u2', 'capture'); var st = ocrState['u2']; st.tab = 'ocr'; ocrSelectType('u2', 'wechat_list'); renderApp(u); } },
 
-  { sel: '#app-u1 [data-feat="ctrip-order"]', covers: ['ctrip-order', 'order-list'], title: '会读单：携程订单直接变成账单', script: '粘贴携程订单确认信息，机票/酒店/门票自动解析成 AA 账单，多笔结果可勾选入账 —— 「行程即账本」，旅行场景最省事的一步。',
-    before: function () { var u = tourSetup('u1', 'capture'); var st = ocrState['u1']; st.tab = 'order'; st.orderSel = new Set(); if (CTRIP && CTRIP.CTrip_SAMPLES[0]) { st.orderText = CTRIP.CTrip_SAMPLES[0].text; orderParse('u1'); } } },
+  { sel: '#app-u1 [data-feat="vision-order"]', covers: ['ctrip-order', 'order-list', 'vision-order'], title: '会读单：携程订单文本 + 订单截图',
+    script: '一段订单文本就能解析成机票/酒店/门票账单，多笔结果可勾选入账；直接贴一张订单截图也行 —— 识别出订单号、内容、金额、出行人，确认后一键入账。「行程即账本」，这是旅行场景最省事的一步。',
+    before: function () { var u = tourSetup('u1', 'capture'); var st = ocrState['u1']; st.tab = 'order'; st.orderSel = new Set(); st.visionResult = null; if (CTRIP && CTRIP.CTrip_SAMPLES[0]) { st.orderText = CTRIP.CTrip_SAMPLES[0].text; orderParse('u1'); } } },
 
-  { sel: '#app-u4 [data-feat="vision-order"]', covers: ['vision-order'], title: '订单截图识别（小王贴截图）', script: '连截图都能读：小王直接贴一张携程酒店订单截图，识别出订单号/内容/金额/出行人，确认后一键入账。已连 AI 通道时走多模态模型实时识别，离线时标注为内置样例。',
-    before: function () { var u = tourSetup('u4', 'capture'); var st = ocrState['u4']; st.tab = 'order'; st.visionResult = null; renderApp(u); } },
+  { sel: '#app-u3 [data-feat="currency"]', covers: ['currency', 'more-options', 'category', 'split-type'], title: '小李：更多选项 · 多币种按当时汇率快照',
+    script: '分类、分摊方式、币种、抹零全部收进「更多选项」，默认不展开 —— 一次记账要做的决定从 ~24 个降到 ~5 个。展开后：小李在日本记 12000 日元，金额下方立刻显示「≈ ¥576（按记账时汇率 0.048 快照）」，汇率在记账那一刻定下来，之后结算不再受波动影响。',
+    before: function () { var u = tourSetup('u3', 'add'); u._adv = true; u._form = { amount: '12000', desc: '京都一日游交通', category: 'transport', payer: 'u3', splitType: 'equal', currency: 'JPY' }; renderApp(u); } },
 
-  { sel: '#app-u2 [data-feat="bill-list"]', covers: ['bill-list', 'delete-bill'], title: '账单列表：来源角标 + 二次确认删除（小红看）', script: '每笔都标了来源（🤖 AI 记账 / 📷 识别 / 🧳 携程订单），私账与调整单各有角标，一眼分得清。小红发现自己记错一笔，点 ✕ 删除 —— 必须二次确认，不能一点就没。',
+  { sel: '#app-u1 [data-feat="rounding"]', covers: ['rounding'], title: '智能抹零：出境游不用算零头',
+    script: '12780 日元一键凑成 12800，差额 20 单独记成「抹零损耗」并入分摊 —— 账单合计**仍然严格等于金额**，账不会因为凑整而不平。这是"小而美"里最实用的一个。',
+    before: function () { var u = tourSetup('u1', 'add'); u._adv = true; u._form = { amount: '12780', desc: '札幌居酒屋晚餐', category: 'food', payer: 'u1', splitType: 'equal', currency: 'JPY', rounded: false, lossAmount: 0 }; renderApp(u); } },
+
+  { sel: '#app-u4 [data-feat="reshare"]', covers: ['reshare', 'reestimate', 'placeholder'], title: '小王改分摊 · 暂估改价 · 口头占位',
+    script: '三种"事后才发现"的账：① 小王发现缆车票他没坐，点开那笔账单把自己移出分摊，剩余的人自动重分 —— 原账单保留，只追加一张零和调整单；② 酒店先按 24000 暂估、退房实际 24800，系统追加补偿单按原比例补收，原账留痕；③ 想不起来谁付的钱，先记一笔"待补"占位，结算页会提醒补齐，占位单不计入结算。',
+    before: function () {
+      var room = ensureV3Samples();
+      tourSetup('u4', 'room');
+      var b = State.bills.filter(function (x) { return x.roomId === room.id && !x.isAdjustment && (Number(x.amount) || 0) > 0 }).pop();
+      if (b) openBillDetail('u4', b.id);
+    } },
+
+  { sel: '#app-u2 [data-feat="bill-list"]', covers: ['bill-list', 'delete-bill'], title: '小红：账单流水 + 删除二次确认',
+    script: '每笔都标了来源（🤖 AI 记账 / 📷 识别 / 🧳 携程订单），私账与调整单各有角标，一眼分得清。小红发现自己记错一笔，点 ✕ 删除 —— 必须二次确认，不能一点就没，删完房间总额与笔数自动重算。',
     before: function () { ensureV3Samples(); tourSetup('u2', 'room'); } },
 
-  { sel: '#app-u4 [data-feat="reshare"]', covers: ['reshare'], title: '多退少补：改「这笔谁该摊」（小王改）', script: '小王发现缆车票他其实没坐：点开那笔账单，把「小王」从分摊名单里去掉，剩余的人自动重新等分。**原账单保留**，只追加一张零和调整单 —— 历史留痕、账仍然恒平。',
-    before: function () { var room = ensureAllPhones(); tourSetup('u4', 'room'); var b = State.bills.filter(function (x) { return x.roomId === room.id && !x.isAdjustment && (Number(x.amount) || 0) > 0 }).pop(); if (b) openBillDetail('u4', b.id); } },
-
-  { sel: '#app-u3 [data-feat="adjust-bill"]', covers: ['reestimate'], title: '暂估改价：原账留痕 + 零和补偿（小李查看）', script: '小李翻账单时看到：酒店先按 24000 日元暂估入账，退房实际 24800 —— 原账单没被改掉，而是多出一张带「调整单」角标的补偿单，按原比例补收 800。历史留痕，账也没乱。',
+  { sel: '#app-u3 [data-feat="audit"]', covers: ['audit'], title: '小李：AI 账单审计先替你把账查一遍',
+    script: '重复记账、分摊合计对不上金额、异常大额、缺少分摊 —— 给出健康度评分与逐条建议。与其等结算时吵架，不如记完就发现。',
     before: function () { ensureV3Samples(); tourSetup('u3', 'room'); } },
 
-  { sel: '#app-u3 [data-feat="placeholder-bill"]', covers: ['placeholder'], title: '口头占位：没记清先占位（小李记的）', script: '小李想不起来雪场装备是谁付的：先记一笔"待补"占位，结算页会提醒还差几笔没补齐。占位单**不计入结算**，不会把账算歪 —— 宁可先占位，也不要凭记忆瞎填一个数。',
-    before: function () { ensureV3Samples(); tourSetup('u3', 'room'); } },
+  { sel: '#app-u4 [data-feat="settle-total"]', covers: ['settle-total', 'balances', 'settle-transfers', 'settle-readiness', 'settle-progress'], title: '小王一键清账：账恒平 + 最简转账 + 结清闭环',
+    script: '总消费按人民币口径汇总（外币按快照汇率折算），下面是各人应收应付 —— 所有净余额之和严格等于 0，这就是「账恒平」。贪心配对给出最少转账笔数：不是"每个人都转给垫付人"，而是让该收的直接收、该给的直接给。页面还会先自查有没有占位单没补齐。算出方案只是第一步 —— 每笔右边可以标「我转了」，进度变成"已结清 N / M 笔 · 还剩 ¥xxx"，全打完显示 🎉，状态跟着同步快照走、两个窗口都看得见，也能撤销。',
+    before: function () {
+      /* ⚠️ 导览**不能改动账目**：这里刻意不调用 toggleSettled。
+         之前为了演示"已结清"的进度状态去标了一笔，结果讲解走一遍就把人家的账
+         标成"已转账"了（实测 `#uitest` 里前面的导览步骤污染了后面的结算闭环用例）。
+         进度条在 0 / M 状态下同样可见、同样被高亮，讲清楚就行。 */
+      ensureV3Samples();
+      tourSetup('u4', 'settle');
+    } },
 
-  { sel: '#app-u3 [data-feat="audit"]', covers: ['audit'], title: 'AI 账单审计：先替你把账查一遍（小李查）', script: '小李点开 AI 审计：重复记账、分摊合计对不上金额、异常大额、缺少分摊 —— 给出健康度评分与逐条建议。与其等结算时吵架，不如记完就发现。',
-    before: function () { ensureV3Samples(); tourSetup('u3', 'room'); } },
-
-  { sel: '#app-u4 [data-feat="settle-total"]', covers: ['settle-total', 'balances'], title: '会算账：一键清账 + 账恒平（小王来结）', script: '小王点结算：总消费按人民币口径汇总（外币按快照汇率折算），下面是每个人的应收应付。所有净余额之和**严格等于 0**，这就是「账恒平」。',
-    before: function () { ensureV3Samples(); tourSetup('u4', 'settle'); } },
-
-  { sel: '#app-u3 [data-feat="settle-transfers"]', covers: ['settle-transfers'], title: '最简转账：笔数最少 = 尴尬最少（小李核对）', script: '小李点开最简转账核对：贪心配对给出最少笔数 —— 不是"每个人都转给垫付人"，而是让该收的直接收、该给的直接给，把 n 笔压到最少。少转一笔，少吃一顿饭的尴尬。',
+  { sel: '#app-u3 [data-feat="share-card"]', covers: ['share-card', 'reminder', 'narrative'], title: '小李：结清卡片 · 催账话术 · 旅行小作文',
+    script: '一键生成可复制的「结清卡片」发到群里（总消费/人均/笔数/分类占比），再配一句不尴尬的催账话术；还有按账单自动生成的旅行小作文与完整报告，可一键复制。旅行记账不光要算得清，还要说得出口。',
     before: function () { ensureV3Samples(); tourSetup('u3', 'settle'); } },
 
-  { sel: '#app-u4 [data-feat="settle-progress"]', covers: ['settle-progress'], title: '结清闭环：谁已经转了', script: '算出方案只是第一步，现实里最常问的是"小王那笔给了没"。每个转账右边有「我转了」，点一下打勾、进度条变成「已结清 1 / 3 笔 · 还剩 ¥xxx」；全打完显示「🎉 全部结清」。这个状态跟着房间一起同步，两个窗口都看得见，也能撤销。',
-    before: function () { ensureV3Samples(); tourSetup('u4', 'settle'); } },
-
-  { sel: '#app-u2 [data-feat="settle-readiness"]', covers: ['settle-readiness'], title: '结算前置校验：占位/调整单都提示（小红查）', script: '小红打开结算页，页面先自查：还有占位单没补齐就提醒"还差几笔"；有调整单就说明"已按调整后份额结算"。不让一笔没记清的账悄悄漏过去。',
-    before: function () { ensureV3Samples(); tourSetup('u2', 'settle'); } },
-
-  { sel: '#app-u3 [data-feat="share-card"]', covers: ['share-card', 'reminder'], title: '会说话：结清卡片 + 礼貌催账话术（小李发群）', script: '小李一键生成可复制的「结清卡片」发到群里（总消费/人均/笔数/分类占比），再配一句不尴尬的催账话术。旅行记账不光要算得清，还要说得出口。',
-    before: function () { ensureV3Samples(); tourSetup('u3', 'settle'); } },
-
-  { sel: '#app-u2 [data-feat="narrative"]', covers: ['narrative'], title: 'AI 旅行小作文 + 旅行报告（小红生成）', script: '小红按账单自动生成这次旅行的小作文与完整报告，可一键复制发朋友圈。离线也能生成（内核模板保底），连着 AI 通道时用大模型润色。',
-    before: function () { ensureV3Samples(); tourSetup('u2', 'settle'); } },
-
-  { sel: '#app-u2 [data-feat="stats-category"]', covers: ['stats-category', 'stats-daily', 'stats-insight', 'stats-source'], title: '会复盘：分类占比 · 每日趋势 · AI 洞察', script: '小红打开 STATS：分类占比、每日消费与趋势（越花越多还是越花越省）、AI 消费洞察与建议、入账方式统计。旅行结束不只是"花了多少"，而是"花在哪了"。',
-    before: function () { ensureV3Samples(); tourSetup('u2', 'stats'); } },
-
-  { sel: '#app-u4 [data-feat="stats-personal"]', covers: ['stats-personal'], title: '复盘：我的私账明细（小王视角）', script: '最后一屏是小王的视角：私账单独一块，写着"自己花的 ¥1280"和"这次旅行我总共花了 ¥xxxx = 集体账分摊后的个人部分 + 私账"。同一份数据，每个人看到的重点不同。',
-    before: function () { ensurePersonalSample(); ensureV3Samples(); tourSetup('u4', 'stats'); } }
+  { sel: '#app-u2 [data-feat="stats-category"]', covers: ['stats-category', 'stats-daily', 'stats-insight', 'stats-source', 'stats-personal'], title: '小红会复盘：分类 · 趋势 · 洞察 · 我的私账',
+    script: '分类占比、每日消费与趋势（越花越多还是越花越省）、AI 消费洞察与建议、入账方式统计；私账单独一块，写着"自己花的"和"这次旅行我总共花了多少 = 集体账分摊后的个人部分 + 私账"。同一份数据，每个人看到的重点不同 —— 这是收尾最好的一屏。',
+    before: function () { ensurePersonalSample(); ensureV3Samples(); tourSetup('u2', 'stats'); } }
 ];
 var tourState = { idx: 0, auto: false, timer: null };
 
@@ -2456,16 +2456,17 @@ function ensureTourDom() {
     '</div>';
   document.body.appendChild(card);
 }
-function startTour() {
+function startTour(opts) {
   ensureTourDom();
   enterPresent();          // 导览同样进演示模式：一屏装下，不用滚鼠标
   document.body.classList.add('touring');   // 但工具条要留着（前几步要讲演示台）
   tourState.idx = 0; tourState.auto = false;
+  if (opts && opts.idx != null) tourState.idx = Math.max(0, Math.min(TOUR_STEPS.length - 1, opts.idx));
   document.getElementById('tourCard').style.display = 'block';
   document.getElementById('tourMask').style.display = 'block';
   renderTourStep();
   a11yEnhance(document.getElementById('tourCard'));
-  showToast('u1', '🎬 导览开始 · 共 ' + TOUR_STEPS.length + ' 步');
+  showToast('u1', '🎬 导览开始 · 共 ' + TOUR_STEPS.length + ' 步（覆盖全部 ' + FEATURES.length + ' 项功能）');
 }
 function renderTourStep() {
   var step = TOUR_STEPS[tourState.idx];
@@ -2502,7 +2503,9 @@ function renderTourStep() {
     if (scr) scr.textContent = step.script;
     if (dots) {
       var d = '';
-      TOUR_STEPS.forEach(function (_, i) { d += '<div class="tour-dot ' + (i === tourState.idx ? 'on' : '') + '"></div>'; });
+      TOUR_STEPS.forEach(function (_, i) {
+        d += '<div class="tour-dot' + (i === tourState.idx ? ' on' : '') + '"></div>';
+      });
       dots.innerHTML = d;
     }
     if (nextBtn) nextBtn.textContent = (tourState.idx === TOUR_STEPS.length - 1) ? '完成 ✓' : '下一步 →';
@@ -2574,7 +2577,11 @@ function runSelfTest() {
     cov.coveredCount + '/' + cov.total + ' 项' +
     (cov.missing.length ? (' · 未覆盖：' + cov.missing.slice(0, 3).join('、')) : '') +
     (cov.unknown.length ? (' · 清单里没有：' + cov.unknown.join('、')) : ''));
-  add('导览步骤齐备（≥20 步，每步都声明 covers）', TOUR_STEPS.length >= 20 && TOUR_STEPS.every(function (s) { return (s.covers || []).length > 0; }),
+  /* 步数上限同样是守卫：导览曾经从 8 步一路加到 29 步（太碎、讲不完），
+     所以既要求"每步都声明 covers"，也要求"不许越加越长" —— 同类功能要合并。 */
+  add('导览步数克制（12~20 步）且每步都声明 covers',
+    TOUR_STEPS.length >= 12 && TOUR_STEPS.length <= 20 &&
+    TOUR_STEPS.every(function (s) { return (s.covers || []).length > 0; }),
     TOUR_STEPS.length + ' 步 · 声明覆盖 ' + TOUR_STEPS.reduce(function (n, s) { return n + (s.covers || []).length; }, 0) + ' 项');
   /* 每台手机都得有活儿干：4 台手机必须各自出现在导览里 */
   (function () {

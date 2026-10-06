@@ -103,7 +103,7 @@ report('功能清单 FEATURES 存在且成规模', /var FEATURES = \[/.test(html
   (html.match(/\{ id: '[a-z-]+', name: '/g) || []).length >= 35,
   (html.match(/\{ id: '[a-z-]+', name: '/g) || []).length + ' 项');
 report('导览步骤声明 covers（功能 → 步骤可双向校验）', /covers: \[/.test(html) &&
-  (html.match(/covers: \[/g) || []).length >= 25, (html.match(/covers: \[/g) || []).length + ' 步声明了覆盖');
+  (html.match(/covers: \[/g) || []).length >= 12, (html.match(/covers: \[/g) || []).length + ' 步声明了覆盖');
 report('tourCoverage() 覆盖校验存在并进 #selftest', /function tourCoverage\s*\(/.test(html) && /tourCoverage\(\)/.test(html));
 report('导览高亮走 data-feat 语义锚点（不依赖样式类名）', (html.match(/data-feat="/g) || []).length >= 30,
   (html.match(/data-feat="/g) || []).length + ' 个锚点');
@@ -116,7 +116,11 @@ report('人数只有一个写入口 setPhoneCount', /function setPhoneCount\s*\(
 report('自动演示保证 4 台手机上场', /setPhoneCount\(4\)/.test(html));
 // 第 4 位成员（小王 u4）必须真的参与：导览与自动演示都要有他的环节
 const u4InTour = (html.match(/#app-u4 \[data-feat=/g) || []).length;
-report('★ 第 4 位成员（小王）在导览里有多处环节', u4InTour >= 4, u4InTour + ' 处（导览）');
+report('★ 第 4 位成员（小王）在导览里有多处环节', u4InTour >= 3, u4InTour + ' 处（导览）');
+report('★ 修掉"越加越长"：导览步骤数 ≤ 18 且每步都声明 covers',
+  (html.match(/covers: \[/g) || []).length <= 18 && (html.match(/covers: \[/g) || []).length >= 12,
+  (html.match(/covers: \[/g) || []).length + ' 步（同类功能已合并）');
+report('★ 不再有"核心/进阶"双机制（合并后多余）', !/tier: 'adv'/.test(html) && !/showAdv/.test(html));
 report('★ 第 4 位成员在自动演示里动手（语音/截图/私账/改分摊/结清）', /voice/.test(html) && /visionRecognize\('u4'/.test(html) && /openBillDetail\('u4'/.test(html),
   '语音 + 截图识别 + 多退少补 + 结清闭环');
 
