@@ -529,7 +529,9 @@ function makeBill(room, opts) {
     source: opts.source || 'manual',
     roundedLoss: opts.roundedLoss || 0,
     timeStr: opts.timeStr || '刚刚',
-    createdAt: opts.createdAt || new Date().toISOString()
+    /* ⚠️ 走 toIsoSafe：createdAt 可能来自模型输出/OCR 的"2024年10月1日"这类值，
+       直接 new Date(x).toISOString() 会抛 RangeError，把整页打死 */
+    createdAt: (AI && AI.toIsoSafe) ? AI.toIsoSafe(opts.createdAt) : (opts.createdAt || new Date().toISOString())
   };
 }
 
@@ -824,6 +826,7 @@ function renderStats(userId,roomId){
   var myP=AI&&AI.personalSpend?AI.personalSpend(allBills,userId):{total:0,count:0,list:[]};
   var html='<div class="hs" style="padding:8px 0 16px;"><div class="hl">SPENDING REPORT</div><div class="ht">消费统计</div><div style="font-size:11px;color:var(--g400);margin-top:4px;">'+esc(scopeName)+'</div></div>';
   html+='<div class="og"><div class="oi"><div class="ol">TOTAL / 集体账</div><div class="ov">¥'+money(total,0)+'</div></div><div class="oi"><div class="ol">BILLS / 笔数</div><div class="ov sm">'+bills.length+'</div></div></div>';
+  if(room)html+='<button class="btn lt" data-feat="export-csv" style="width:100%;margin-bottom:8px;" onclick="exportCsv(\''+userId+'\',\''+roomId+'\')">📥 导出这本账（CSV，含私账与调整单）</button>';
 
   /* ---- 我的私账（人情账）：不进 AA 的零碎钱，只有本人可见 ---- */
   if(myP.count>0){
@@ -882,6 +885,63 @@ function renderStats(userId,roomId){
   });
   return html;
 }
+/* ============================================================
+   导出 CSV：把这本账导成表格，方便报销 / 对账 / 发群里留底
+   ------------------------------------------------------------
+   · 纯函数 buildCsv() 只产出文本，下载单独做 —— 无头环境没有 Blob/URL 也能测；
+   · 带 UTF-8 BOM，Excel 双击打开中文不乱码（不带 BOM 会变乱码，实测常见坑）；
+   · 私账**照样导出**并标在「归属」列：私账的意义就是"只有自己知道花了多少"，
+     导出时把它悄悄丢掉才是错的。
+   ============================================================ */
+function csvCell(v){
+  var s=(v==null?'':String(v));
+  return /[",\r\n]/.test(s) ? ('"'+s.replace(/"/g,'""')+'"') : s;
+}
+function buildCsv(roomId){
+  var room=State.rooms.filter(function(r){return r.id===roomId})[0];
+  if(!room)return '';
+  var bills=State.bills.filter(function(b){return b.roomId===roomId})
+    .slice().sort(function(a,b){return String(a.createdAt||'').localeCompare(String(b.createdAt||''))});
+  var head=['日期','说明','分类','币种','金额','汇率','折合人民币','付款人','分摊明细','归属','入账来源','标记'];
+  var rows=bills.map(function(b){
+    var scope=(b.scope||(b.splitType==='sole'?'personal':'group'))==='personal'?'私账(不进AA)':'集体AA';
+    var parts=(b.splits||[]).filter(function(s){return Math.abs(Number(s.amount)||0)>0.004})
+      .map(function(s){return (s.memberName||s.memberId)+' '+(Number(s.amount)||0).toFixed(2)}).join(' / ');
+    var mark=b.isAdjustment?('调整单'+(b.adjustsBillId?(' → '+b.adjustsBillId):''))
+      :((b.status==='draft'||b.needsCompletion)?'未记清(未计入结算)':'');
+    return [String(b.createdAt||'').slice(0,10),b.description||'',catLabel(b.category),b.currency||'CNY',
+      (Number(b.amount)||0).toFixed(2),String(Number(b.rate)||1),billCNY(b).toFixed(2),
+      b.payerName||b.payer||'',parts,scope,sourceLabel(b.source),mark];
+  });
+  var lines=[head].concat(rows).map(function(r){return r.map(csvCell).join(',')});
+  return '\uFEFF'+lines.join('\r\n');
+}
+function exportCsv(userId,roomId){
+  var csv=buildCsv(roomId);
+  if(!csv){showToast(userId,'没有可导出的账单');return false}
+  var room=State.rooms.filter(function(r){return r.id===roomId})[0];
+  var count=csv.split('\r\n').length-1;
+  var name=(room?room.name:'旅行账')+'-'+new Date().toISOString().slice(0,10)+'.csv';
+  var ok=false;
+  try{
+    if(typeof Blob==='function'&&typeof URL!=='undefined'&&URL.createObjectURL){
+      var url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+      var a=document.createElement('a');a.href=url;a.download=name;
+      document.body.appendChild(a);a.click();
+      setTimeout(function(){if(a.parentNode)a.parentNode.removeChild(a);URL.revokeObjectURL(url)},0);
+      ok=true;
+    }
+  }catch(e){ok=false}
+  if(!ok&&navigator.clipboard&&navigator.clipboard.writeText){
+    /* 无 Blob 的环境（部分小程序 WebView / 无头浏览器）退化为复制到剪贴板 */
+    navigator.clipboard.writeText(csv);ok=true;
+    showToast(userId,'📋 已复制 '+count+' 笔账单（CSV），粘贴到表格即可');
+    return true;
+  }
+  showToast(userId,ok?('📥 已导出 '+count+' 笔账单（CSV）'):'导出失败，请改用复制方案');
+  return ok;
+}
+
 function phoneGoStats(userId,roomId){
   var user=USERS.find(function(u){return u.id===userId});if(!user)return;
   user._page='stats';if(roomId)user._roomId=roomId;
@@ -1280,7 +1340,9 @@ function visionImport(userId,roomId){
     payer:userId,payerName:u?u.name:'',amount:o.amount,
     description:o.title||'携程订单',category:(CTRIP&&CTRIP.TYPE_META[o.type]?CTRIP.TYPE_META[o.type].category:'other'),
     source:'ctrip',timeStr:o.date||'订单截图',
-    createdAt:o.date?new Date(o.date).toISOString():new Date().toISOString()
+    /* 截图识别的日期来自**模型输出**，完全可能是"2024年10月1日""10/1"这类值 ——
+       直接 new Date(x).toISOString() 会抛 RangeError 把整页打死（点一下就白屏） */
+    createdAt:AI.toIsoSafe?AI.toIsoSafe(o.date):new Date().toISOString()
   }));
   st.visionResult=null;
   u._page='room';u._roomId=roomId;
@@ -1322,7 +1384,7 @@ function orderImport(userId,roomId){
       splits:(draft.splits||[]).map(function(s){return{memberId:s.memberId,memberName:s.memberName,amount:s.amount}}),
       source:'ctrip',
       timeStr:o.date||'携程订单',
-      createdAt:o.date?new Date(o.date).toISOString():new Date().toISOString()
+      createdAt:AI.toIsoSafe?AI.toIsoSafe(o.date):new Date().toISOString()
     }));
     count++;
   });
@@ -1418,6 +1480,13 @@ function renderSettle(userId,roomId){
     }else if(adjCount){
       html+='<div class="os" data-feat="settle-readiness" style="margin-top:16px;">🧾 '+adjNote+'</div>';
     }
+  }
+
+  /* ---- 数据一致性告警：账单里出现非本房间成员 ---- */
+  if(settlement.unknownMembers&&settlement.unknownMembers.length){
+    html+='<div class="os" data-feat="settle-unknown" style="margin-top:16px;border-color:var(--red);color:var(--red);">⚠️ 账单里有不在本房间的人：'+
+      esc(settlement.unknownMembers.map(function(x){return x.name}).join('、'))+
+      '（多半是成员被移出过）。他们仍按原账参与结算以保证账恒平，请核对后再转账。</div>';
   }
 
   /* ---- 结清卡片（可复制的分享文案） ---- */
@@ -1520,7 +1589,7 @@ function calcSettlement(room,bills){
     var transfers=[];var debtors=balances.filter(function(b){return b.amount<-0.01}).map(function(b){return{id:b.id,name:b.name,amount:b.amount}});var creditors=balances.filter(function(b){return b.amount>0.01}).map(function(b){return{id:b.id,name:b.name,amount:b.amount}});
     var i=0,j=0;
     while(i<debtors.length&&j<creditors.length){var amt=Math.min(-debtors[i].amount,creditors[j].amount);if(amt>0.01)transfers.push({from:debtors[i].id,fromName:debtors[i].name,to:creditors[j].id,toName:creditors[j].name,amount:Math.round(amt*100)/100});debtors[i].amount+=amt;creditors[j].amount-=amt;if(Math.abs(debtors[i].amount)<0.01)i++;if(Math.abs(creditors[j].amount)<0.01)j++}
-    return{balances:balances,transfers:transfers,totalExpense:nb.total,hasForeign:nb.foreign,balanced:nb.balanced};
+    return{balances:balances,transfers:transfers,totalExpense:nb.total,hasForeign:nb.foreign,balanced:nb.balanced,unknownMembers:nb.unknownMembers||[]};
   }
   /* 内核缺失时的降级实现（正常不会走到；保留以免内核加载失败时整页崩） */
   var balMap={};room.members.forEach(function(m){balMap[m.id]={id:m.id,name:m.name,amount:0}});
@@ -2219,7 +2288,8 @@ var FEATURES = [
   { id: 'stats-daily', name: '复盘②：每日消费趋势' },
   { id: 'stats-insight', name: '复盘③：AI 消费洞察' },
   { id: 'stats-source', name: '复盘④：入账方式统计' },
-  { id: 'stats-personal', name: '复盘⑤：我的私账明细' }
+  { id: 'stats-personal', name: '复盘⑤：我的私账明细' },
+  { id: 'export-csv', name: '导出 CSV（含私账与调整单，Excel 可直接打开）' }
 ];
 
 function tourCoverage() {
@@ -2394,8 +2464,8 @@ var TOUR_STEPS = [
     script: '一键生成可复制的「结清卡片」发到群里（总消费/人均/笔数/分类占比），再配一句不尴尬的催账话术；还有按账单自动生成的旅行小作文与完整报告，可一键复制。旅行记账不光要算得清，还要说得出口。',
     before: function () { ensureV3Samples(); tourSetup('u3', 'settle'); } },
 
-  { sel: '#app-u2 [data-feat="stats-category"]', covers: ['stats-category', 'stats-daily', 'stats-insight', 'stats-source', 'stats-personal'], title: '小红会复盘：分类 · 趋势 · 洞察 · 我的私账',
-    script: '分类占比、每日消费与趋势（越花越多还是越花越省）、AI 消费洞察与建议、入账方式统计；私账单独一块，写着"自己花的"和"这次旅行我总共花了多少 = 集体账分摊后的个人部分 + 私账"。同一份数据，每个人看到的重点不同 —— 这是收尾最好的一屏。',
+  { sel: '#app-u2 [data-feat="stats-category"]', covers: ['stats-category', 'stats-daily', 'stats-insight', 'stats-source', 'stats-personal', 'export-csv'], title: '小红会复盘：分类 · 趋势 · 洞察 · 我的私账',
+    script: '分类占比、每日消费与趋势（越花越多还是越花越省）、AI 消费洞察与建议、入账方式统计；私账单独一块，写着"自己花的"和"这次旅行我总共花了多少 = 集体账分摊后的个人部分 + 私账"。同一份数据，每个人看到的重点不同。最后可以一键「导出这本账」成 CSV（带 BOM，Excel 双击不乱码；私账与调整单都带标记），报销、对账、留底都用得上。',
     before: function () { ensurePersonalSample(); ensureV3Samples(); tourSetup('u2', 'stats'); } }
 ];
 var tourState = { idx: 0, auto: false, timer: null };
@@ -3301,6 +3371,33 @@ function runUITest() {
       /* 撤销后必须真的清掉，否则"已转"会永远留着 */
       add('★ 结算闭环：撤销后房间状态里不留痕迹',
         !room.settled || !room.settled[t.from + '>' + t.to], JSON.stringify(room.settled || {}));
+    })();
+
+    /* 19. 导出 CSV：纯函数可校验；无头环境没有 Blob 时也不能抛 */
+    (function () {
+      var room = ensureDemoRoom();
+      ensurePersonalSample();
+      /* 造一笔"说明里带逗号和引号"的账单 —— 不转义的话导出的表格会整列错位 */
+      State.bills.push(makeBill(room, { payer: 'u1', payerName: '小明', amount: 12.5,
+        description: '晚餐,带了"朋友"一起', category: 'food', source: 'manual' }));
+      var csv = buildCsv(room.id);
+      var lines = csv.split('\r\n');
+      var expectedRows = State.bills.filter(function (b) { return b.roomId === room.id; }).length;
+      add('★ 导出 CSV：带 UTF-8 BOM + 表头 + 每笔一行（Excel 双击不乱码）',
+        csv.charCodeAt(0) === 0xFEFF && /日期/.test(lines[0]) && /折合人民币/.test(lines[0]) &&
+        lines.length === expectedRows + 1,
+        (lines.length - 1) + ' 行 / 账单 ' + expectedRows + ' 笔');
+      var trickyLine = lines.filter(function (l) { return l.indexOf('晚餐') >= 0; })[0] || '';
+      add('★ 导出 CSV：说明里的逗号与引号正确转义（否则表格错列）',
+        trickyLine.indexOf('"晚餐,带了""朋友""一起"') >= 0, trickyLine.slice(0, 56));
+      add('★ 导出 CSV：私账标在「归属」列，而不是被悄悄丢掉',
+        /私账\(不进AA\)/.test(csv), (csv.match(/私账\(不进AA\)/g) || []).length + ' 笔私账');
+      add('★ 导出 CSV：调整单带标记（对账时看得懂）',
+        /调整单/.test(csv) || State.bills.filter(function (b) { return b.isAdjustment; }).length === 0,
+        State.bills.filter(function (b) { return b.isAdjustment; }).length + ' 笔调整单');
+      var threw = false;
+      try { exportCsv('u2', room.id); } catch (e) { threw = true; }
+      add('★ 导出 CSV：无 Blob 的环境不抛异常（降级为复制/提示）', !threw);
     })();
 
     /* 17. 自动演示：必须真的切页面（不是"后台默默加数据"），

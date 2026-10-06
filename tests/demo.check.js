@@ -124,6 +124,29 @@ report('★ 不再有"核心/进阶"双机制（合并后多余）', !/tier: 'ad
 report('★ 第 4 位成员在自动演示里动手（语音/截图/私账/改分摊/结清）', /voice/.test(html) && /visionRecognize\('u4'/.test(html) && /openBillDetail\('u4'/.test(html),
   '语音 + 截图识别 + 多退少补 + 结清闭环');
 
+// ============ 9+. 本轮审计修掉的问题（防回归） ============
+report('★ 日期不再裸用 new Date(x).toISOString()（非法值会抛 RangeError 白屏）',
+  !/new Date\(o\.date\)\.toISOString/.test(html) && /AI\.toIsoSafe/.test(html));
+report('★ 导出 CSV 存在且是纯函数 buildCsv（无头环境可校验）',
+  /function buildCsv\s*\(/.test(html) && /function exportCsv\s*\(/.test(html) && /\\uFEFF/.test(html));
+report('★ CSV 入口挂了语义锚点', /data-feat="export-csv"/.test(html));
+report('★ 导出 CSV 进了功能清单并被导览讲到',
+  /id: 'export-csv'/.test(html) && /'export-csv'/.test(html));
+report('★ 结算页会告警"账单里有非本房间成员"',
+  /data-feat="settle-unknown"/.test(html) && /unknownMembers/.test(html));
+report('★ 云函数 addBill 透传 scope/roundedLoss（否则私账被当集体账、抹零丢失）', (function () {
+  const f = path.join(__dirname, '..', 'apps', 'cloudfunctions', 'addBill', 'index.js');
+  if (!fs.existsSync(f)) return false;
+  const src = fs.readFileSync(f, 'utf8');
+  return /scope:/.test(src) && /roundedLoss/.test(src);
+})());
+report('★ 服务端时间戳是带 Z 的 ISO-8601 UTC（CURRENT_TIMESTAMP 会让每日统计漂 8 小时）', (function () {
+  const f = path.join(__dirname, '..', 'server', 'database.js');
+  if (!fs.existsSync(f)) return false;
+  const src = fs.readFileSync(f, 'utf8');
+  return !/DEFAULT CURRENT_TIMESTAMP/.test(src) && /strftime\('%Y-%m-%dT%H:%M:%fZ','now'\)/.test(src);
+})());
+
 report('★ 导览先滚动再量位置（否则高亮框会停在屏幕外）', (function () {
   const i = html.indexOf('function renderTourStep');
   if (i < 0) return false;

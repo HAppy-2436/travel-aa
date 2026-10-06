@@ -300,6 +300,58 @@ async function main() {
     eq('批量解析3单', orders.length, 3);
   }
 
+  /* ============================================================
+     边界回归（探针找出来的真实问题，逐条钉住）
+     ============================================================ */
+  console.log('\n—— Z 边界回归：安全日期 / 中文小数 / 千分位 / 口径一致 ——');
+
+  /* Z1. toIsoSafe：非法日期绝不能抛（模型输出/用户输入都可能给这类值） */
+  {
+    ok('toIsoSafe 存在', typeof AI.toIsoSafe === 'function');
+    const bad = ['2024年10月1日', '', null, undefined, '待定', 'abc', {}, NaN];
+    let threw = 0;
+    bad.forEach((v) => {
+      try { AI.toIsoSafe(v); } catch (e) { threw++; }
+    });
+    ok('★ toIsoSafe 对 8 种非法值都不抛异常', threw === 0, threw + ' 次抛异常');
+    ok('toIsoSafe 能认「2024年10月1日」', AI.toIsoSafe('2024年10月1日').slice(0, 10) === '2024-10-01',
+      AI.toIsoSafe('2024年10月1日'));
+    ok('toIsoSafe 保留合法 ISO', AI.toIsoSafe('2024-10-01T09:00:00.000Z').slice(0, 10) === '2024-10-01');
+    /* 原生行为对照：确认这个 helper 确实在解决真实问题 */
+    let nativeThrew = false;
+    try { new Date('2024年10月1日').toISOString(); } catch (e) { nativeThrew = true; }
+    ok('（对照）原生 new Date(中文日期).toISOString() 会抛', nativeThrew);
+  }
+
+  /* Z2. 中文小数点：曾经错 24 倍 */
+  {
+    eq('中文小数「一百二十三点五」', AI.cnNumToNumber('一百二十三点五'), 123.5);
+    eq('中文小数「三点五」', AI.cnNumToNumber('三点五'), 3.5);
+    const p = AI.parseBillText('一百二十三点五元', MEMBERS, { meName: '小明' });
+    eq('★ 「一百二十三点五元」= 123.5（曾错成 5）', p.amount, 123.5);
+    eq('「一百二十三块」仍是 123（没被改坏）', AI.parseBillText('一百二十三块', MEMBERS, { meName: '小明' }).amount, 123);
+    eq('「三百二十八」仍是 328', AI.parseBillText('三百二十八', MEMBERS, { meName: '小明' }).amount, 328);
+    ok('口语「一百五」仍是 150', AI.parseBillText('一百五', MEMBERS, { meName: '小明' }).amount === 150);
+    /* 「点」也是量词（3点/8点），别把时间当金额 */
+    ok('「下午三点开会花了200」取 200（不是 3）',
+      AI.parseBillText('下午三点开会花了200', MEMBERS, { meName: '小明' }).amount === 200);
+  }
+
+  /* Z3. 千分位：多点写法不能截成 1.23 */
+  {
+    eq('「1.234.567」按千分位解析', AI.parseBillText('花了1.234.567元', MEMBERS, { meName: '小明' }).amount, 1234567);
+    eq('「12,345.678」仍按逗号千分位', AI.parseBillText('12,345.678', MEMBERS, { meName: '小明' }).amount, 12345.67);
+    eq('「¥1,234.56」仍正确', AI.parseBillText('午饭 ¥1,234.56', MEMBERS, { meName: '小明' }).amount, 1234.56);
+  }
+
+  /* Z4. 抹零不能把账单抹成 0（否则落库就是 0 元单，还会被结算排除） */
+  {
+    const r = AI.smartRound(0.4, 'CNY');
+    ok('★ smartRound(0.4) 不抹成 0', r.rounded === 0.4 && r.changed === false, JSON.stringify(r));
+    ok('smartRound(12780,JPY) 仍抹到 12800', AI.smartRound(12780, 'JPY').rounded === 12800);
+    ok('smartRound(0) 不变', AI.smartRound(0, 'CNY').rounded === 0);
+  }
+
   console.log('\n========================================');
   console.log('V2 通过 ' + passed + ' 项，失败 ' + failed + ' 项');
   console.log('========================================');

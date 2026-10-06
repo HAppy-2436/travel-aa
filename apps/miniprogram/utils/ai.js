@@ -143,7 +143,59 @@
     var s = String(text == null ? '' : text);
     s = s.replace(/(\d),(?=\d{3}(?:\D|$))/g, '$1');    // 半角
     s = s.replace(/(\d)，(?=\d{3}(?:\D|$))/g, '$1');   // 全角
+    // 多点千分位（欧陆/记账软件常见写法）："1.234.567" 里的点其实是千分位。
+    // 实测不处理会被金额正则当成小数，取到 **1.23**（错 100 万倍）。
+    // 判据：出现 ≥2 个点，且第一个点之后每段都是 3 位数字，且最后一段也是 3 位
+    //      （即没有真正的两位小数尾巴）→ 把点全部去掉。
+    if ((s.match(/\./g) || []).length >= 2) {
+      var md = /(^|[^\d.])(\d{1,3}(?:\.\d{3}){2,})(?!\.?\d)/.exec(s);
+      if (md) {
+        var fixed = md[2].split('.').join('');
+        s = s.slice(0, md.index) + md[1] + fixed + s.slice(md.index + md[0].length);
+      }
+    }
     return s;
+  }
+
+  /**
+   * 安全的时间戳转换。
+   *
+   * 为什么要它：`new Date(坏值).toISOString()` 会抛 RangeError: Invalid time value，
+   * 而这类值真的会来 —— 多模态模型返回的日期可能是「2024年10月1日」「10/1」「待定」，
+   * 用户手填也可能给任意字符串。实测 `new Date('2024年10月1日').toISOString()` 直接崩，
+   * 崩点在"导入订单"这种用户主动点击的路径上 → 点一下就白屏。
+   * 非法值一律退回 fallback（默认当前时间），绝不抛异常。
+   */
+  function toIsoSafe(v, fallback) {
+    var t;
+    if (v instanceof Date) t = v.getTime();
+    else if (typeof v === 'number') t = v;
+    else if (v) {
+      var str = String(v).trim();
+      /* 中文/斜杠日期先规范化成 ISO 再交给 Date。
+         ⚠️ 不能只做 replace：'2024年10月1日' → '2024-10-1 ' 里的 **单位数月份**
+         不符合 ISO 严格格式，V8 会退回"实现相关"解析，可能直接 Invalid Date
+         （实测 toIsoSafe('2024年10月1日') 拿不到 2024-10-01）。所以要补齐两位。
+         纯 ISO 字符串（如 '2024-10-01T09:00:00.000Z'）原样交给 Date，别动它 —— 
+         重建会丢掉时区后缀，把 UTC 变成"本地时间"。 */
+      if (/[年月日]/.test(str) || /\//.test(str)) {
+        var m = /(\d{4})\s*[年/\-.]\s*(\d{1,2})\s*[月/\-.]\s*(\d{1,2})\s*日?/.exec(str);
+        if (m) {
+          var pad = function (n) { return ('0' + n).slice(-2); };
+          var hm = /(\d{1,2})\s*[:：时]\s*(\d{1,2})/.exec(str);
+          str = m[1] + '-' + pad(m[2]) + '-' + pad(m[3]) +
+            (hm ? ('T' + pad(hm[1]) + ':' + pad(hm[2]) + ':00') : '');
+        } else {
+          str = str.replace(/[年月]/g, '-').replace(/日/g, ' ').replace(/\//g, '-');
+        }
+      }
+      t = new Date(str).getTime();
+    } else t = NaN;
+    if (!isFinite(t) || isNaN(t)) {
+      var fb = fallback == null ? Date.now() : (fallback instanceof Date ? fallback.getTime() : new Date(fallback).getTime());
+      t = isFinite(fb) && !isNaN(fb) ? fb : Date.now();
+    }
+    return new Date(t).toISOString();
   }
 
   /**
@@ -695,6 +747,30 @@
   function cnNumToNumber(s) {
     if (!s) return null;
     if (/^\d+$/.test(s)) return parseInt(s, 10);
+
+    // 中文小数点：「一百二十三点五」= 123.5、「三点五」= 3.5。
+    // 实测原来只认整数 → 整串解析到「点」就返回 null，兜底逻辑只捡到末尾的「五」，
+    // 于是「一百二十三点五元」被记成 **5 元**（静默错 24 倍）。
+    var dot = s.search(/[点點]/);
+    if (dot >= 0) {
+      var intPart = cnNumToNumber(s.slice(0, dot));
+      var fracStr = s.slice(dot + 1);
+      var frac = 0, scale = 1;
+      for (var fi = 0; fi < fracStr.length; fi++) {
+        var fch = fracStr[fi];
+        if (fch === '零' || fch === '〇' || fch === '0') { scale *= 10; continue; }
+        var fd = CN_DIGIT[fch];
+        if (fd === undefined) {
+          if (/\d/.test(fch)) fd = parseInt(fch, 10); else return intPart || null;
+        }
+        scale *= 10;
+        frac += fd / scale;
+      }
+      var base = intPart || 0;
+      var val = base + frac;
+      return val > 0 ? Math.round(val * 10000) / 10000 : null;
+    }
+
     var total = 0, section = 0, num = 0, hasUnit = false;
 
     for (var i = 0; i < s.length; i++) {
@@ -744,7 +820,11 @@
 
     // 中文数字 + 金额单位/币种词 → 阿拉伯数字
     var moneyWords = '块钱|块|元|圆|蚊|美元|美金|日元|日币|韩元|泰铢|欧元|英镑|港币|港元|新币|新加坡元|人民币';
-    s = s.replace(new RegExp('([零一二两三四五六七八九十百千万]+)\\s*(?=(' + moneyWords + '))', 'g'), function (m, cn) {
+    // ⚠️ 字符类必须含「点」：中文小数点是「一百二十三点五」这种写法。
+    //    不含它时，下面那条"裸中文数字"正则里的 `(?!QUANTIFIERS)` 会因为
+    //    QUANTIFIERS 里恰好有「点」（表示"3点/8点"）而把「一百二十三」判为量词前缀，
+    //    于是回退成「一百二十」→ 120，剩下的「三点5元」再被兜底捡成 **5 元**。
+    s = s.replace(new RegExp('([零一二两三四五六七八九十百千万点]+)\\s*(?=(' + moneyWords + '))', 'g'), function (m, cn) {
       var n = cnNumToNumber(cn);
       return n !== null ? String(n) : m;
     });
@@ -754,7 +834,7 @@
     // —— 而它正是内置示例之一，现场演示会直接翻车。
     // 约束：至少含"十/百/千/万"其一（排除"一个/两个"这类量词），
     //       且后面**不能**是量词（避免把"四人"转成 4 影响人数识别）。
-    s = s.replace(new RegExp('([零一二两三四五六七八九十百千万]*[十百千万][零一二两三四五六七八九十]*)\\s*(?!(' + QUANTIFIERS + '|' + moneyWords + '))', 'g'), function (m, cn) {
+    s = s.replace(new RegExp('([零一二两三四五六七八九十百千万点]*[十百千万][零一二两三四五六七八九十点]*)\\s*(?!(' + QUANTIFIERS + '|' + moneyWords + '))', 'g'), function (m, cn) {
       var n = cnNumToNumber(cn);
       return n !== null ? String(n) : m;
     });
@@ -1002,7 +1082,10 @@
     options = options || {};
     bills = bills || [];
     var total = (typeof budget === 'object' && budget) ? Number(budget.total) || 0 : Number(budget) || 0;
-    var spent = round2(bills.reduce(function (s, b) { return s + billCNY(b); }, 0));
+    // ⚠️ 口径必须与"集体消费"一致：私账（人情账）不进 AA，占位单没金额 ——
+    //    实测原来直接对全部账单求和，一笔 ¥500 私账会把预算燃烧率从 33% 抬到 50%，
+    //    用户看到"快超支了"其实是被自己买瓶水的钱吓的。groupSpend 已封装该口径。
+    var spent = round2(groupExpenseBills(bills).reduce(function (s, b) { return s + billCNY(b); }, 0));
     var n = Math.max(1, (members || []).length || 1);
 
     // 天数推算
@@ -1071,7 +1154,11 @@
   /**
    * 每日消费分析：按天聚合 + 最贵一天 + 消费趋势
    */
-  function dailyStats(bills) {
+  function dailyStats(bills, options) {
+    options = options || {};
+    // 默认只看集体账（私账/占位单不进"每日消费趋势"）；opts.all=true 可看全部。
+    // 实测原来把私账算进来 → Demo 的统计页与后端的 /daily 数字对不上。
+    if (!options.all) bills = groupExpenseBills(bills);
     bills = bills || [];
     var map = {};
     var byCategory = {};
@@ -1206,6 +1293,12 @@
     }
     rounded = round2(rounded);
     var loss = round2(rounded - raw);
+    // ⚠️ 抹零不能把账单抹成 0：实测 smartRound(0.4,'CNY') → rounded:0、loss:-0.4，
+    //    接着落库就是一笔 0 元账单，还会因 amount<=0 被结算排除，账对不上。
+    //    抹成 0 属于"抹过头"，此时宁可不抹。
+    if (raw > 0 && !(rounded > 0)) {
+      return { original: round2(raw), rounded: round2(raw), loss: 0, step: step, mode: mode, changed: false };
+    }
     return {
       original: round2(raw),
       rounded: rounded,
@@ -1372,6 +1465,26 @@
    * 集体账（AA 口径）：房间总消费只统计这部分 —— 私账不计入，
    * 否则"这次旅行花了多少"会被个人消费撑虚。
    */
+  /**
+   * 集体消费清单（**统计口径**：预算燃烧率 / 每日消费趋势 用这个）。
+   *
+   * 与 groupSpend 的区别（很重要，别混用）：
+   *   · groupSpend  = **可结算口径**：还要求 isSettleable（分摊齐备且 Σsplits==amount）。
+   *     它是"结算时能算清的那部分"，缺分摊的脏单会被排除。
+   *   · 本函数 = **记账口径**：只排除私账(人情账)与未记清的占位单，**不要求分摊齐备**。
+   *     历史账单可能没有 splits（早期数据、外部导入），那些钱确实花了，
+   *     统计里必须算 —— 曾经直接用 groupSpend 导致"预算突然变成 0、每日消费 0 天"。
+   */
+  function groupExpenseBills(bills) {
+    return (bills || []).filter(function (b) {
+      if (!b || b.isAdjustment || b.voided) return false;
+      if (b.status === 'draft' || b.status === 'placeholder' || b.needsCompletion) return false;
+      if (!((Number(b.amount) || 0) > 0)) return false;
+      var scope = b.scope || (isSoleBill(b) ? 'personal' : 'group');
+      return scope === 'group';
+    });
+  }
+
   function groupSpend(bills) {
     var list = (bills || []).filter(function (b) {
       if (!b || b.isAdjustment || !isSettleable(b)) return false;
@@ -1787,6 +1900,16 @@
     var share = {};     // 有效份额
     var nameOf = {};
     var orphans = [];   // 孤儿调整单（指向的原账单已删除）
+    var unknownMembers = [];   // 出现在 splits/payer 里、却不在 room.members 里的人
+    var memberSet = {};
+    var onlyMembers = !!(members && members.length);
+    (members || []).forEach(function (m) { memberSet[m.id] = 1; });
+    function noteUnknown(id, name) {
+      if (id == null || !onlyMembers || memberSet[id]) return;
+      if (!unknownMembers.some(function (x) { return x.id === id; })) {
+        unknownMembers.push({ id: id, name: name || id });
+      }
+    }
 
     (members || []).forEach(function (m) { nameOf[m.id] = m.name; });
 
@@ -1800,6 +1923,7 @@
     // 实付：只有真实消费才产生"谁掏了钱"
     normal.forEach(function (b) {
       touch(b.payer, b.payerName);
+      noteUnknown(b.payer, b.payerName);
       if (b.payer != null) paid[b.payer] = round2(paid[b.payer] + billCNY(b, rates));
     });
     // 有效份额累加器。外币账单的 splits 是**原币**金额，必须换成人民币，
@@ -1819,6 +1943,7 @@
     function addShares(splitList, r) {
       (splitList || []).forEach(function (s) {
         touch(s.memberId, s.memberName);
+        noteUnknown(s.memberId, s.memberName);
         if (s.memberId == null) return;
         share[s.memberId] = round2((share[s.memberId] || 0) + (Number(s.amount) || 0) * r);
       });
@@ -1902,7 +2027,11 @@
       shares: share,
       foreign: foreign,
       balanced: Math.abs(total) < 0.05,
-      orphans: orphans
+      orphans: orphans,
+      // 账单里出现"不在本房间成员列表"的人（改过成员、或脏数据）。
+      // 刻意**不把它们过滤掉**：过滤会让"付款人记了实付、却没人承担份额"，
+      // Σ净余额 ≠ 0，账反而更不平。正确做法是照算 + 报出来，交给 UI/服务端处理。
+      unknownMembers: unknownMembers
     };
   }
 
@@ -1997,6 +2126,14 @@
     //    （付款人记了实付、却没人承担份额 → Σ净余额 = amount）。
     //    实测 `buildPlaceholder({amount:88,payer:'u1'})` 曾产出这种单，Σ=88。
     if (!Array.isArray(bill.splits) || !bill.splits.length) return false;
+    // ⚠️ 还必须"分摊合计 == 金额"（**原币**口径，与 amount 同单位）。
+    //    只查"非空"是不够的：实测 splits=[{u1:1}] 配 amount=100 时 isSettleable 返回 true，
+    //    于是这笔进了结算 —— 付款人记了实付 100、份额只有 1，Σ净余额 = 99，
+    //    结算页直接不平。这类脏数据由 auditBills 报出，但**必须先排除在结算外**，
+    //    否则"可结算"与"账恒平"两个口径自相矛盾。
+    var sum = 0;
+    for (var i = 0; i < bill.splits.length; i++) sum += Number(bill.splits[i] && bill.splits[i].amount) || 0;
+    if (Math.abs(sum - (Number(bill.amount) || 0)) > 0.011) return false;
     return true;
   }
 
@@ -2042,13 +2179,22 @@
    * （曾因 JS 运算符优先级把 `A || B || C && D` 写成 `A || B || (C && D)`，
    *   导致 isAdjustment 过滤对 A、B 两个分支失效，由 #v3demo 核对时抓出。）
    */
-  function pendingBills(bills) {
+  function pendingBills(bills, options) {
+    options = options || {};
     return (bills || []).filter(function (b) {
       if (!b) return false;
       if (b.isAdjustment) return false;                    // 调整单不是"没记清"
       if (b.status === 'draft' || b.status === 'placeholder') return true;
       if (b.needsCompletion) return true;
-      return (Number(b.amount) || 0) <= 0;                 // 缺金额
+      if ((Number(b.amount) || 0) <= 0) return true;        // 缺金额
+      // 分摊合计与金额不符 → isSettleable 会把它排除，必须**同时告诉用户**，
+      // 否则钱会从结算里静默消失（只看到总数变小，不知道少了哪笔）。
+      if (!options.ignoreUnbalanced && Array.isArray(b.splits) && b.splits.length) {
+        var sum = 0;
+        for (var i = 0; i < b.splits.length; i++) sum += Number(b.splits[i] && b.splits[i].amount) || 0;
+        if (Math.abs(sum - (Number(b.amount) || 0)) > 0.011) return true;
+      }
+      return false;
     });
   }
 
@@ -2058,13 +2204,19 @@
   function settlementReadiness(bills) {
     var pending = pendingBills(bills);
     var adjustments = (bills || []).filter(function (b) { return b && b.isAdjustment; });
+    var unbalanced = pending.filter(function (b) {
+      return Array.isArray(b.splits) && b.splits.length && (Number(b.amount) || 0) > 0;
+    }).length;
     return {
       ready: pending.length === 0,
       pendingCount: pending.length,
       pending: pending,
+      unbalancedCount: unbalanced,
       adjustmentCount: adjustments.length,
       message: pending.length
-        ? '还有 ' + pending.length + ' 笔没记清（缺金额或付款人），补齐后账才算得准'
+        ? ('还有 ' + pending.length + ' 笔没记清' +
+           (unbalanced ? ('（其中 ' + unbalanced + ' 笔分摊合计与金额不符，已排除在结算外）') : '（缺金额或付款人）') +
+           '，补齐后账才算得准')
         : '账目齐全，可以结算'
     };
   }
@@ -2239,6 +2391,7 @@
     isSoleBill: isSoleBill,
     personalSpend: personalSpend,
     groupSpend: groupSpend,
+    groupExpenseBills: groupExpenseBills,
     buildAdjustmentForExclusion: buildAdjustmentForExclusion,
     buildAdjustmentForReshare: buildAdjustmentForReshare,
     buildAdjustmentForReestimate: buildAdjustmentForReestimate,
@@ -2246,6 +2399,7 @@
     netBalances: netBalances,
     buildPlaceholder: buildPlaceholder,
     isSettleable: isSettleable,
+    toIsoSafe: toIsoSafe,
     settleableBills: settleableBills,
     effectiveShares: effectiveShares,
     pendingBills: pendingBills,

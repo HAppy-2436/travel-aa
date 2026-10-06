@@ -114,15 +114,15 @@ travel-aa/
 | 验收项 | 命令 / 方式 | 结果 |
 |---|---|---|
 | 算法内核单测 | `node tests/ai.test.js` | 62 项 |
-| V2 能力单测 | `node tests/v2.test.js` | 115 项 |
-| V3 旅行记账语义 | `node tests/v3.test.js` | 246 项 |
+| V2 能力单测 | `node tests/v2.test.js` | 133 项 |
+| V3 旅行记账语义 | `node tests/v3.test.js` | 261 项 |
 | 同步内核单测 | `node tests/sync.test.js` | 54 项 |
 | 相对路径检查 | `node tests/requires.check.js` | 全部可解析 |
 | 交付物可打开性 | `node tests/resource.check.js` | `file://` 下资源齐备 |
-| Demo 完整性 | `node tests/demo.check.js` | 181 项（含功能清单/导览覆盖校验） |
+| Demo 完整性 | `node tests/demo.check.js` | 191 项（含功能清单/导览覆盖/审计回归） |
 | 服务器集成测试 | `node tests/server.test.js` | 77 项 |
 | Demo 功能自检 | 打开 `demo/index.html#selftest` | `SELFTEST 22/22 ALL-PASS` |
-| **交互验收（真实点击）** | 打开 `demo/index.html#uitest` | `UITEST 61/61 ALL-PASS`（含无障碍 / 结算闭环 / 4 台手机都动手） |
+| **交互验收（真实点击）** | 打开 `demo/index.html#uitest` | `UITEST 66/66 ALL-PASS`（含无障碍 / 结算闭环 / CSV 导出 / 4 台手机都动手） |
 | 导览 + 功能覆盖 | 打开 `demo/index.html#tourtest` | `TOURTEST 17/17 ALL-PASS` |
 
 > 项数以实际输出为准；`run-all.js` 里的下限会跟着一起收紧，防止测试被悄悄掏空。

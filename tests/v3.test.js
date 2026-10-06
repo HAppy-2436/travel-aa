@@ -787,6 +787,80 @@ function mb(bills) { return AI.netBalances(bills, MEMBERS); }
     ok('代购账单未把成本转嫁给他人', AI.isSoleBill(bills.find((b) => b.id === 'z2')) === true);
   })();
 
+  /* ============================================================
+     ⚖️ 结算口径守卫（探针实测出来的问题，逐条钉住）
+     ============================================================ */
+  section('⚖️ 结算口径守卫：脏数据既不进结算、也不能静默消失');
+
+  (function () {
+    const mk = (id, amount, payer, extra) => Object.assign({
+      id, roomId: 'r1', payer, payerName: payer, amount, currency: 'CNY', rate: 1,
+      cnyAmount: amount, description: id, category: 'food', splitType: 'equal',
+      splits: AI.allocateEvenly(amount, MEMBERS.length).map((v, i) => ({
+        memberId: MEMBERS[i].id, memberName: MEMBERS[i].name, amount: v,
+      })),
+      createdAt: '2024-10-01T09:00:00.000Z',
+    }, extra || {});
+
+    /* G1. isSettleable 必须校验"分摊合计 == 金额"，而不只是"分摊非空" */
+    const bad = mk('bad', 100, 'u1', { splits: [{ memberId: 'u1', memberName: '小明', amount: 1 }] });
+    ok('★ 分摊合计 ≠ 金额的账单不可结算', AI.isSettleable(bad) === false,
+      'splits 合计 ' + sum(bad.splits.map((s) => s.amount)) + ' vs amount ' + bad.amount);
+    ok('（对照）分摊齐备的账单可结算', AI.isSettleable(mk('good', 100, 'u1')) === true);
+
+    /* G2. 被排除的账单必须**报出来**，否则钱会从结算里静默消失 */
+    const mixed = [mk('a', 300, 'u1'), bad];
+    const ready = AI.settlementReadiness(mixed);
+    ok('★ 分摊不平的账单进 pending（不会被静默忽略）', ready.ready === false && ready.pendingCount === 1,
+      'pending ' + ready.pendingCount + ' · ' + ready.message);
+    ok('★ 明说"已排除在结算外"', ready.unbalancedCount === 1 && /排除在结算外/.test(ready.message), ready.message);
+    ok('（对照）好账单不受影响', AI.settleableBills(mixed).length === 1);
+
+    /* G3. 非本房间成员：**照算不丢**（丢了会导致 Σ≠0），但要报出来 */
+    const room = [{ id: 'u1', name: '小明' }];
+    const withGhost = [mk('g', 300, 'u1', {
+      splits: [{ memberId: 'u1', memberName: '小明', amount: 100 },
+        { memberId: 'ghost', memberName: '幽灵', amount: 200 }],
+    })];
+    const nb = AI.netBalances(withGhost, room);
+    ok('★ 账里出现非成员时上报 unknownMembers',
+      nb.unknownMembers.length === 1 && nb.unknownMembers[0].id === 'ghost',
+      JSON.stringify(nb.unknownMembers));
+    ok('★ 上报的同时仍保持账恒平（不静默丢钱）', nb.balanced === true,
+      'Σ净余额 = ' + sum(nb.balances.map((b) => b.amount)));
+    ok('（对照）成员齐备时 unknownMembers 为空',
+      AI.netBalances([mk('a', 300, 'u1')], MEMBERS).unknownMembers.length === 0);
+
+    /* G4. 统计口径 vs 结算口径：缺 splits 的历史账单要算进统计，但不能进结算 */
+    const historical = { id: 'h', roomId: 'r1', payer: 'u1', payerName: '小明', amount: 500,
+      currency: 'CNY', rate: 1, cnyAmount: 500, description: '历史账单（无 splits）',
+      category: 'food', createdAt: '2024-10-01T09:00:00.000Z' };
+    ok('★ 缺 splits 的历史账单不计入结算', AI.isSettleable(historical) === false);
+    ok('★ 但它仍计入「集体消费」统计（钱确实花了）',
+      AI.groupExpenseBills([historical]).length === 1 &&
+      Math.abs(AI.groupExpenseBills([historical]).reduce((s, b) => s + AI.billCNY(b), 0) - 500) < 0.01);
+    ok('（区分）groupSpend 是可结算口径，会排除它', AI.groupSpend([historical]).total === 0);
+
+    /* G5. 私账/占位单不进统计 */
+    const junk = [
+      mk('c1', 1000, 'u1'),
+      mk('ph', 0, 'u1', { status: 'draft', needsCompletion: true }),
+      mk('me', 500, 'u1', {
+        scope: 'personal', splitType: 'sole',
+        splits: MEMBERS.map((m) => ({ memberId: m.id, memberName: m.name, amount: m.id === 'u1' ? 500 : 0 })),
+      }),
+    ];
+    const spent = AI.groupExpenseBills(junk).reduce((s, b) => s + AI.billCNY(b), 0);
+    ok('★ 私账与占位单不计入集体消费统计', Math.abs(spent - 1000) < 0.01, '合计 ' + spent);
+    const bs = AI.budgetStatus(junk, MEMBERS, 3000, { room: { members: MEMBERS } });
+    ok('★ 预算燃烧率不含私账（曾把 33% 抬成 50%）', Math.abs(bs.percent - 1000 / 3000 * 100) < 0.5,
+      'percent ' + bs.percent + '% · spent ' + bs.spent);
+    const ds = AI.dailyStats(junk);
+    ok('★ 每日消费不含私账', Math.abs(ds.days.reduce((s, d) => s + d.total, 0) - 1000) < 0.01,
+      '合计 ' + ds.days.reduce((s, d) => s + d.total, 0));
+    ok('dailyStats({all:true}) 可看全部', AI.dailyStats(junk, { all: true }).days.reduce((s, d) => s + d.total, 0) === 1500);
+  })();
+
   /* ---------- 汇总 ---------- */
   console.log('\n========================================');
   console.log(`V3 旅行记账语义测试：通过 ${pass} 项，失败 ${fail} 项`);

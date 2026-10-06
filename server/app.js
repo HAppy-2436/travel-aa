@@ -206,15 +206,20 @@ app.post('/api/rooms', (req, res) => {
     const roomCode = genRoomCode();
 
     // 创建房间
+    /* 时间戳显式写入「带 Z 的 ISO-8601 UTC」。
+       ⚠️ 不要用 SQLite 的 CURRENT_TIMESTAMP：它存 'YYYY-MM-DD HH:MM:SS'（UTC 但没 Z），
+       而 JS 的 new Date('2024-10-04 23:00:00') 按**本地时间**解析 —— 东八区下
+       每天 00:00–08:00 记的账会被算到前一天，前端读回后「每日消费」整体漂移 8 小时。 */
+    const nowIso = new Date().toISOString();
     db.prepare(`
-      INSERT INTO rooms (id, name, destination, room_code, creator_id, start_date, end_date)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(roomId, name, destination || '', roomCode, userId, startDate || '', endDate || '');
+      INSERT INTO rooms (id, name, destination, room_code, creator_id, start_date, end_date, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(roomId, name, destination || '', roomCode, userId, startDate || '', endDate || '', nowIso, nowIso);
 
     // 添加创建者为成员
     db.prepare(`
-      INSERT INTO room_members (room_id, user_id, nickname, avatar) VALUES (?, ?, ?, ?)
-    `).run(roomId, userId, nickname || '房主', avatar || '');
+      INSERT INTO room_members (room_id, user_id, nickname, avatar, joined_at) VALUES (?, ?, ?, ?, ?)
+    `).run(roomId, userId, nickname || '房主', avatar || '', nowIso);
 
     const room = db.prepare('SELECT * FROM rooms WHERE id = ?').get(roomId);
     const members = db.prepare('SELECT * FROM room_members WHERE room_id = ?').all(roomId);
@@ -260,8 +265,8 @@ app.post('/api/rooms/join', (req, res) => {
 
     // 加入房间
     db.prepare(`
-      INSERT INTO room_members (room_id, user_id, nickname, avatar) VALUES (?, ?, ?, ?)
-    `).run(room.id, userId, nickname || '新成员', avatar || '');
+      INSERT INTO room_members (room_id, user_id, nickname, avatar, joined_at) VALUES (?, ?, ?, ?, ?)
+    `).run(room.id, userId, nickname || '新成员', avatar || '', new Date().toISOString());
 
     const members = db.prepare('SELECT * FROM room_members WHERE room_id = ?').all(room.id);
     res.json({ success: true, room: { ...room, members } });
@@ -417,20 +422,21 @@ app.post('/api/bills', (req, res) => {
     const cnyAmount = Math.round(finalAmount * finalRate * 100) / 100;
 
     db.prepare(`
-      INSERT INTO bills (id, room_id, payer_id, payer_name, amount, description, category, split_type, splits, image_url, created_by, currency, rate, cny_amount, order_no, source)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO bills (id, room_id, payer_id, payer_name, amount, description, category, split_type, splits, image_url, created_by, currency, rate, cny_amount, order_no, source, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       billId, roomId, payerId, payerName || '', finalAmount,
       description || '', category || 'other', splitType || 'equal',
       JSON.stringify(splits || []), imageUrl || '', createdBy || payerId,
-      cur, finalRate, cnyAmount, orderNo || '', source || ''
+      cur, finalRate, cnyAmount, orderNo || '', source || '',
+      new Date().toISOString()   /* created_at：带 Z 的 ISO-8601 UTC，见 database.js 顶部说明 */
     );
 
     // 更新房间统计（按人民币折算额）
     db.prepare(`
-      UPDATE rooms SET bill_count = bill_count + 1, total_expense = total_expense + ?, updated_at = CURRENT_TIMESTAMP
+      UPDATE rooms SET bill_count = bill_count + 1, total_expense = total_expense + ?, updated_at = ?
       WHERE id = ?
-    `).run(cnyAmount, roomId);
+    `).run(cnyAmount, new Date().toISOString(), roomId);
 
     const bill = db.prepare('SELECT * FROM bills WHERE id = ?').get(billId);
     res.json({ success: true, bill: { ...bill, splits: JSON.parse(bill.splits) } });
@@ -469,12 +475,13 @@ app.put('/api/bills/:billId', (req, res) => {
 
     db.prepare(`
       UPDATE bills SET amount = ?, description = ?, category = ?, payer_id = ?, payer_name = ?,
-        split_type = ?, splits = ?, currency = ?, rate = ?, cny_amount = ?, updated_at = CURRENT_TIMESTAMP
+        split_type = ?, splits = ?, currency = ?, rate = ?, cny_amount = ?, updated_at = ?
       WHERE id = ?
     `).run(
       finalAmountFixed, description != null ? description : bill.description,
       category || bill.category, payerId || bill.payer_id, payerName != null ? payerName : bill.payer_name,
-      splitType || bill.split_type, JSON.stringify(finalSplits), cur, finalRate, cnyAmount, bill.id
+      splitType || bill.split_type, JSON.stringify(finalSplits), cur, finalRate, cnyAmount,
+      new Date().toISOString(), bill.id
     );
 
     // 重算房间总账（避免增量漂移）
@@ -495,8 +502,8 @@ function recomputeRoomStats(roomId) {
     SELECT COUNT(*) as cnt, COALESCE(SUM(cny_amount), 0) as total FROM bills WHERE room_id = ?
   `).get(roomId);
   db.prepare(`
-    UPDATE rooms SET bill_count = ?, total_expense = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
-  `).run(row.cnt, row.total, roomId);
+    UPDATE rooms SET bill_count = ?, total_expense = ?, updated_at = ? WHERE id = ?
+  `).run(row.cnt, row.total, new Date().toISOString(), roomId);
 }
 
 // 删除账单
@@ -526,7 +533,8 @@ app.post('/api/rooms/:roomId/budget', (req, res) => {
     const room = db.prepare('SELECT * FROM rooms WHERE id = ?').get(req.params.roomId);
     if (!room) return res.status(404).json({ success: false, error: '房间不存在' });
 
-    db.prepare('UPDATE rooms SET budget = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(value, room.id);
+    db.prepare('UPDATE rooms SET budget = ?, updated_at = ? WHERE id = ?')
+      .run(value, new Date().toISOString(), room.id);
     res.json({ success: true, budget: value });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
@@ -591,7 +599,8 @@ app.post('/api/rooms/:roomId/settled', (req, res) => {
     const room = db.prepare('SELECT * FROM rooms WHERE id = ?').get(req.params.roomId);
     if (!room) return res.status(404).json({ success: false, error: '房间不存在' });
 
-    db.prepare("UPDATE rooms SET settled_at = datetime('now'), updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(room.id);
+    const nowIso2 = new Date().toISOString();
+    db.prepare('UPDATE rooms SET settled_at = ?, updated_at = ? WHERE id = ?').run(nowIso2, nowIso2, room.id);
     res.json({ success: true, settledAt: db.prepare('SELECT settled_at FROM rooms WHERE id = ?').get(room.id).settled_at });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
@@ -634,8 +643,8 @@ app.post('/api/ctrip/import', (req, res) => {
     //    结算时 balanceMap[''] 不存在 → 付款人那份钱凭空消失且账不平。
     //    现在落库前**逐笔复用同一套校验**，不合规的跳过并在响应里说明。
     const insert = db.prepare(`
-      INSERT INTO bills (id, room_id, payer_id, payer_name, amount, description, category, split_type, splits, image_url, created_by, currency, rate, cny_amount, order_no, source)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO bills (id, room_id, payer_id, payer_name, amount, description, category, split_type, splits, image_url, created_by, currency, rate, cny_amount, order_no, source, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const created = [];
     const skipped = [];
@@ -651,7 +660,7 @@ app.post('/api/ctrip/import', (req, res) => {
       const billId = genId();
       insert.run(
         billId, roomId, d.payer, d.payerName, d.amount, d.description, d.category, d.splitType,
-        JSON.stringify(d.splits), '', d.payer, d.currency, d.rate, d.cnyAmount, d.orderNo, 'ctrip'
+        JSON.stringify(d.splits), '', d.payer, d.currency, d.rate, d.cnyAmount, d.orderNo, 'ctrip', new Date().toISOString()
       );
       created.push({ id: billId, ...d });
     });

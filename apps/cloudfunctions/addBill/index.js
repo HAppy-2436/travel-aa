@@ -25,7 +25,13 @@ exports.main = async (event, context) => {
     source,
     // V2 编辑模式
     edit,
-    billId
+    billId,
+    // V3：私账 / 抹零 / 占位单（不补这几个字段，小程序端记的私账会被当成集体账、
+    //     抹零差额会丢、占位单会以 0 元身份混进结算）
+    scope,
+    roundedLoss,
+    status,
+    needsCompletion
   } = event;
 
   try {
@@ -44,6 +50,10 @@ exports.main = async (event, context) => {
 
       const patch = {
         amount: finalAmount,
+        ...(scope ? { scope } : {}),
+        ...(roundedLoss != null ? { roundedLoss: Number(roundedLoss) || 0 } : {}),
+        ...(status ? { status } : {}),
+        ...(needsCompletion != null ? { needsCompletion: !!needsCompletion } : {}),
         description: description != null ? description : old.description,
         category: category || old.category,
         payer: payer || old.payer,
@@ -117,6 +127,11 @@ exports.main = async (event, context) => {
       cnyAmount: Math.round(amount * finalRate * 100) / 100,
       orderNo: orderNo || '',
       source: source || '',
+      // 归属：私账(人情账) 不进 AA，也不计入房间总消费
+      scope: scope || (splitType === 'sole' ? 'personal' : 'group'),
+      roundedLoss: Number(roundedLoss) || 0,
+      ...(status ? { status } : {}),
+      ...(needsCompletion ? { needsCompletion: true } : {}),
       createdAt: new Date(),
       createdBy: openid
     };

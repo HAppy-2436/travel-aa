@@ -32,18 +32,18 @@ const OUT_DIR = path.join(ROOT, 'tests', '.output');
    数值取当前实际项数再留一点余量：正常重构不会误报，被掏空一定会报。 */
 const SUITES = [
   { name: '算法内核单测', file: 'tests/ai.test.js', min: 55, hint: '中文数字/分类/分摊/洞察/LLM 修复' },
-  { name: 'V2 能力单测', file: 'tests/v2.test.js', min: 100, hint: '语音归一/多币种/审计/预算/订单' },
-  { name: 'V3 旅行记账语义', file: 'tests/v3.test.js', min: 220, hint: '抹零/代购/多退少补/暂估改价/占位/会说话' },
+  { name: 'V2 能力单测', file: 'tests/v2.test.js', min: 125, hint: '语音归一/多币种/审计/预算/订单/边界回归' },
+  { name: 'V3 旅行记账语义', file: 'tests/v3.test.js', min: 250, hint: '抹零/代购/多退少补/暂估改价/占位/结算口径守卫' },
   { name: '同步内核单测', file: 'tests/sync.test.js', min: 48, hint: '多窗口合并/墓碑/rev/uid 唯一性' },
   { name: '相对路径检查', file: 'tests/requires.check.js', min: 1, hint: 'require 与 script src 是否可解析' },
   { name: '交付物可打开性', file: 'tests/resource.check.js', min: 22, hint: 'file:// 下外部脚本/渲染/挂钩是否齐备' },
-  { name: 'Demo 完整性', file: 'tests/demo.check.js', min: 150, hint: 'onclick 交叉校验/内核引用/DOM 挂载点' },
+  { name: 'Demo 完整性', file: 'tests/demo.check.js', min: 180, hint: 'onclick 交叉校验/内核引用/功能清单/审计回归' },
   { name: '服务器集成测试', file: 'tests/server.test.js', min: 70, hint: '真实拉起后端 + 全部路由打点' },
   {
     name: '浏览器验收', file: 'tests/browser.check.js', min: 3,
     hint: '#selftest / #tourtest / #uitest',
     /* 三个挂钩各自还要过 "N/N ALL-PASS"，并保证项数不被偷偷削减 */
-    browser: [['selftest', 22], ['tourtest', 17], ['uitest', 58]],
+    browser: [['selftest', 22], ['tourtest', 17], ['uitest', 62]],
   },
 ];
 

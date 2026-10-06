@@ -30,7 +30,7 @@ db.exec(`
     id TEXT PRIMARY KEY,
     nickname TEXT DEFAULT '',
     avatar TEXT DEFAULT '',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   );
 
   -- 房间表
@@ -44,8 +44,8 @@ db.exec(`
     end_date TEXT DEFAULT '',
     bill_count INTEGER DEFAULT 0,
     total_expense REAL DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   );
 
   -- 房间成员表
@@ -54,11 +54,16 @@ db.exec(`
     user_id TEXT NOT NULL,
     nickname TEXT DEFAULT '',
     avatar TEXT DEFAULT '',
-    joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    joined_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     PRIMARY KEY (room_id, user_id),
     FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
   );
 
+  -- ⚠️ 时间戳一律用「带 Z 的 ISO-8601 UTC」而不是 CURRENT_TIMESTAMP：
+  --    CURRENT_TIMESTAMP 存的是 'YYYY-MM-DD HH:MM:SS'（UTC 但没有 Z），
+  --    而 JS 的 new Date('2024-10-04 23:00:00') 会按**本地时间**解析 →
+  --    东八区下每天 00:00–08:00 记的账会被算到前一天，「每日消费趋势」整体漂移 8 小时。
+  --    用 strftime 输出 ...Z 后，前后端解析口径一致。
   -- 账单表
   CREATE TABLE IF NOT EXISTS bills (
     id TEXT PRIMARY KEY,
@@ -72,7 +77,7 @@ db.exec(`
     splits TEXT DEFAULT '[]',
     image_url TEXT DEFAULT '',
     created_by TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
   );
 
@@ -92,7 +97,7 @@ const migrations = [
   "ALTER TABLE bills ADD COLUMN cny_amount REAL DEFAULT 0",
   "ALTER TABLE bills ADD COLUMN order_no TEXT DEFAULT ''",
   "ALTER TABLE bills ADD COLUMN source TEXT DEFAULT ''",
-  "ALTER TABLE bills ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP",
+  "ALTER TABLE bills ADD COLUMN updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
   "ALTER TABLE rooms ADD COLUMN budget REAL DEFAULT 0",
   "ALTER TABLE rooms ADD COLUMN settled_at TEXT DEFAULT ''"
 ];
