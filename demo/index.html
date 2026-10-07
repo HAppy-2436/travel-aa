@@ -345,7 +345,7 @@ button.bdg:hover{background:rgba(255,255,255,.08);color:#fff}
 .narr-btn.on{border-color:rgba(255,107,53,.5);background:rgba(255,107,53,.16);color:var(--pri)}
 /* 待机态 vs 播放态：同一条解说栏，两种按钮组。
    待机时「下一步/暂停/速度」是死的（点了没反应 = 最容易被当成"页面坏了"），
-   所以待机时**根本不显示它们**，改显示唯一的入口「▶ 播放完整演示 / 🎬 逐步导览」。 */
+   所以待机时**根本不显示它们**，改显示唯一的入口「▶ 播放演示 / 逐步导览 / 自己上手」。 */
 .narr-btn.play{border-color:transparent;background:var(--pri);color:var(--on-pri)}
 .narr-btn.play:hover{background:var(--pri);color:var(--on-pri);filter:brightness(1.08)}
 .narr-cta{display:none}
@@ -358,6 +358,16 @@ body.idle .pshow-cta{display:inline-flex;gap:8px}
 body.idle .pshow-play{display:none}
 /* 窄屏下品牌副标题先让位，避免整行折行把手机挤矮 */
 @media(max-width:1240px){.pshow-brand span{display:none}}
+/* ⚠️ 走查实测：导览期间顶部这条浮动栏里的「⏭ 下一步 / ⏸ 暂停 / ⏩ 速度」是**自动演示**的控制器
+   （autoNext / toggleAutoPause / cycleAutoSpeed），而导览期间 autoRunning 是 false ——
+   点它们**什么都不发生**（"点了没反应"里最典型的形态）。导览自己的一套控制在导览卡上，
+   所以这里整组藏掉，顶部只留品牌 / 进度 / 退出，避免出现两套同名的「下一步」。 */
+body.touring .pshow-play{display:none}
+body.touring .hide-touring{display:none}
+/* 待机态在铺满一屏里也要能一眼找到"结论与验收"（present 下 .judge 是隐藏的） */
+.pshow-jump{pointer-events:auto;background:none;border:0;border-bottom:1px dashed rgba(255,255,255,.28);
+  color:rgba(255,255,255,.62);font-family:'Inter',sans-serif;font-size:11.5px;padding:2px 0;cursor:pointer;white-space:nowrap}
+.pshow-jump:hover{color:#fff;border-bottom-color:rgba(255,255,255,.6)}
 /* ===== 导览（演讲者模式） ===== */
 /* ⚠️ 遮罩用 `box-shadow:0 0 0 9999px` 把整页压暗、只留一个"洞"。
    它一旦在"导览卡已经关掉"之后还留着，整页就是**一片黑**，用户看到的就是
@@ -509,7 +519,10 @@ body:not(.touring) .tour-mask,body:not(.touring) .tour-card{display:none!importa
 .app .es{font-size:11px}
 .app .toast{font-size:12px;padding:10px 20px}
 /* ===== 给评委看的一屏（手机舞台下方）===== */
-.judge{margin-top:26px;padding-top:22px;border-top:1px solid rgba(255,255,255,.07)}
+/* ⚠️ 工具条是 sticky 的，锚点跳转／scrollIntoView 会把这节的标题压在工具条下面
+   （走查截图里"旅行 AA 的三件麻烦事"整行被盖住）。scroll-margin-top 让浏览器
+   自己留出工具条的高度。 */
+.judge{margin-top:26px;padding-top:22px;border-top:1px solid rgba(255,255,255,.07);scroll-margin-top:62px}
 .judge-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:16px}
 .judge-card{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px 20px}
 .judge-lead{grid-row:span 2}
@@ -570,18 +583,19 @@ body.present .judge,body.present .fh{display:none}
     <button class="cb" onclick="runSelfTest()">🩺 自检</button>
     <button class="cb" onclick="startTour()">🎬 导览</button>
     <button class="cb" onclick="resetAll()">🔄 重置</button>
-    <button class="cb" onclick="enterPresent()" title="把 4 台手机等比缩放到一屏内（适合投屏/录屏）">⛶ 一屏演示</button>
-    <button class="cb pr" onclick="autoDemo()">▶ 自动演示</button>
+    <button class="cb" onclick="enterPresent()" title="把 4 台手机等比缩放到一屏内（适合投屏/录屏）">⛶ 铺满一屏</button>
+    <button class="cb pr" onclick="autoDemo()">▶ 播放演示</button>
   </div>
   <!-- 常驻解说条：网页版里评委要能读到"这一步在做什么"，
        所以它不只在演示模式出现 —— 演示模式下同一套元素会浮到顶部 -->
   <div class="narr" id="narrBar" aria-live="polite">
     <span class="narr-step" id="shellStep">待机</span>
     <span class="narr-prog"><i id="shellProg"></i></span>
-    <span class="narr-text" id="shellNarr">4 台手机 = 4 位同行成员，共用同一本账、操作实时联动 · 想先看全流程就点「▶ 播放完整演示」（约 1 分半），想自己上手就直接点手机里的按钮</span>
+    <span class="narr-text" id="shellNarr">4 台手机 = 4 位同行成员，共用同一本账、操作实时联动 · 想先看全流程就点「▶ 播放演示」（约 1 分半）；想自己点，点「自己上手」先铺一桌样例数据</span>
     <span class="narr-cta">
-      <button type="button" class="narr-btn play" onclick="autoDemo()">▶ 播放完整演示</button>
+      <button type="button" class="narr-btn play" onclick="autoDemo()">▶ 播放演示</button>
       <button type="button" class="narr-btn" onclick="startTour()">逐步导览（15 步）</button>
+      <button type="button" class="narr-btn" onclick="seedForJudge()" title="铺一桌样例数据，然后自己点手机试">自己上手</button>
     </span>
     <button type="button" class="narr-btn narr-play" id="shellNext" onclick="autoNext()" title="单步：每点一次前进一个分镜">⏭ 下一步</button>
     <button type="button" class="narr-btn narr-play" id="shellPause" onclick="toggleAutoPause()">⏸ 暂停</button>
@@ -637,7 +651,7 @@ body.present .judge,body.present .fh{display:none}
         <div class="judge-kicker">工程可信度（一条命令可复现）</div>
         <div class="judge-nums">
           <div><b id="jnSuite">9</b><span>套自动化验收</span></div>
-          <div><b id="jnItems">861</b><span>项断言</span></div>
+          <div><b id="jnItems">871</b><span>项断言</span></div>
           <div><b id="jnSelf">—</b><span>页内自检</span></div>
           <div><b id="jnUI">—</b><span>交互验收</span></div>
         </div>
@@ -675,15 +689,17 @@ body.present .judge,body.present .fh{display:none}
     <div class="pshow-step" id="presentStep">待机</div>
     <div class="pshow-prog"><i id="presentProg"></i></div>
     <span class="pshow-cta">
-      <button type="button" class="pshow-btn" onclick="autoDemo()">▶ 播放完整演示</button>
+      <button type="button" class="pshow-btn" onclick="autoDemo()">▶ 播放演示</button>
       <button type="button" class="pshow-btn" onclick="startTour()">逐步导览（15 步）</button>
+      <button type="button" class="pshow-btn" onclick="seedForJudge()">自己上手（铺样例数据）</button>
     </span>
     <button type="button" class="pshow-btn pshow-play" id="presentSpeed" onclick="cycleAutoSpeed()" title="切换自动演示速度">⏩ 1×</button>
     <button type="button" class="pshow-btn pshow-play" id="presentNext" onclick="autoNext()" title="切成单步：每点一次前进一个分镜（适合边讲边演）">⏭ 下一步</button>
     <button type="button" class="pshow-btn pshow-play" id="presentPause" onclick="toggleAutoPause()">⏸ 暂停</button>
+    <button type="button" class="pshow-jump hide-touring" onclick="jumpToJudge()" title="退出铺满一屏并滚到「给评委看的一屏」">↓ 结论与验收</button>
     <button type="button" class="pshow-btn" id="presentExit" onclick="exitAllModes()" title="退出演示模式（也可以按 Esc）">✕ 退出</button>
   </div>
-  <div class="pshow-narr" id="presentNarr">4 台手机 = 4 位同行成员，共用同一本账、操作实时联动 · 想先看全流程就点「▶ 播放完整演示」（约 1 分半），想自己上手就直接点手机里的按钮</div>
+  <div class="pshow-narr" id="presentNarr">4 台手机 = 4 位同行成员，共用同一本账、操作实时联动 · 想先看全流程就点「▶ 播放演示」（约 1 分半）；想自己点，点「自己上手」先铺一桌样例数据</div>
 </div>
 
 <!-- 共享算法内核（与小程序、服务端同一份代码，UMD 三端复用；纯本地计算，无网络依赖） -->
@@ -839,6 +855,10 @@ var engineInfo = { online: false, model: '', checked: false };
 function probeEngine() {
   var done = function () { engineInfo.checked = true; renderEngineBadge(); };
   if (typeof fetch !== 'function') { done(); return; }
+  /* ⚠️ 只在 http 下探测。托管在 https（GitHub Pages 等）时去请求 http://localhost:3000
+     会被浏览器按"混合内容"直接拦掉：结果一样是离线，却在控制台留下一条红色报错 ——
+     对参赛作品没好处。 */
+  if (location.protocol !== 'http:') { done(); return; }
   var ctl = typeof AbortController === 'function' ? new AbortController() : null;
   var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 1500);
   fetch('http://localhost:3000/api/ai/engine', ctl ? { signal: ctl.signal } : {})
@@ -2486,8 +2506,9 @@ function enterPresent() {
   syncModeUi();
 }
 function exitPresent() {
-  /* 退出演示前先把导览收干净 —— 否则遮罩会留在常规页面上（整页发黑） */
-  tourExit();
+  /* 退出演示前先把导览收干净 —— 否则遮罩会留在常规页面上（整页发黑）。
+     这里用 tourTeardown（不再回头调用 tourExit），避免"退出演示 → 退出导览 → 又退出演示"绕圈。 */
+  tourTeardown();
   document.body.classList.remove('present');
   fitPhones();                 // 常规态：重算手机高度（不再缩放）
   syncModeUi();
@@ -2495,9 +2516,41 @@ function exitPresent() {
 /* 「✕ 退出」/ Esc 的终点：把三种模式一次收干净，不留任何半开状态 */
 function exitAllModes() {
   stopAutoDemo();
-  tourExit();
+  tourTeardown();
   if (document.body.classList.contains('present')) exitPresent();
   syncModeUi();
+}
+/* 「↓ 结论与验收」：present 模式下 .judge 整个是隐藏的，评委区在最底部，
+   走查时"往下滚到评委区"这一步在铺满一屏里**根本滚不到** —— 给一条明路。 */
+function jumpToJudge() {
+  exitAllModes();
+  var el = document.getElementById('judgeSection');
+  if (!el) return;
+  var go = function (smooth) {
+    try { el.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' }); }
+    catch (e) { el.scrollIntoView(); }
+  };
+  /* 退出演示会改布局（.judge 刚从 display:none 变回来），等一帧再滚，别滚到旧位置 */
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(function () { go(true); });
+  else go(true);
+  /* 兜底：平滑滚动可能根本不发生（无头环境、系统开了「减少动态效果」、省电模式）。
+     350ms 后还没到位就直接跳过去 —— "点了就一定能到"比"滚得好看"重要。 */
+  setTimeout(function () {
+    var top = el.getBoundingClientRect().top;
+    if (Math.abs(top - 62) > 120) go(false);
+  }, 350);
+}
+/* 「自己上手」：把一桌样例数据铺好，评委可以直接点手机（不必先自己建房、记 5 笔账）。
+   走查发现：提示条写着"可以直接点手机里的按钮自己试"，但首屏是 4 台空手机 ——
+   想摸到"房间 / 账单 / 结算"这些真东西，得先手工建房再手工记账，门槛太高。 */
+function seedForJudge() {
+  exitAllModes();
+  ensureAllPhones();                                   // 建房间 + 4 台手机全部入伙
+  USERS.forEach(function (u) { u._page = 'home'; u._roomId = u._roomId || State.rooms[0].id; });
+  renderPhones();
+  syncAll();
+  updatePresentBar(0, '样例数据已就绪：点手机里的「国庆东京行」进房间，再试「＋ 记一笔」/「📷 识别入账」/「结算」');
+  showToast('u1', '✅ 已铺好一桌样例数据，直接点手机就行');
 }
 
 /* ============================================================
@@ -2593,7 +2646,7 @@ function stopAutoDemo(opts) {
 }
 
 async function autoDemo() {
-  tourExit();                // 导览与自动演示互斥：先收导览，避免两个解说源一起跳
+  tourTeardown();            // 导览与自动演示互斥：先收导览，避免两个解说源一起跳
   /* 再点一次 = 重头开演（而不是默默什么都不做） */
   if (autoRunning) {
     stopAutoDemo();
@@ -3018,7 +3071,7 @@ function showFinale() {
       (personal > 0 ? '小王自己另花了 ¥' + moneyK(personal) + '。' : '') + '</div>' +
     '<div class="finale-acts">' +
       '<button class="btn lt" data-act="finale-tour">🎬 再听一遍导览（' + TOUR_STEPS.length + ' 步）</button>' +
-      '<button class="btn lt" data-act="finale-replay">🔁 重播自动演示</button>' +
+      '<button class="btn lt" data-act="finale-replay">🔁 重播演示</button>' +
       '<button class="btn dk" data-act="finale-close">关闭</button>' +
     '</div></div>';
   document.body.appendChild(d);
@@ -3038,11 +3091,11 @@ function closeFinale() {
 var TAGLINE = '一句话、一张截图、一条携程订单，就能把旅行账单记明白 —— 旅行结束一键清账';
 /* 待机文案：按钮叫什么，文案就说什么（以前文案写「▶ 自动演示」、按钮写别的，评委找不到）。
    待机态下播放控制是隐藏的，只有这两个入口，所以这里只讲这两条路。 */
-var NARR_IDLE = '4 台手机 = 4 位同行成员，共用同一本账、操作实时联动 · 想先看全流程就点「▶ 播放完整演示」（约 1 分半），想自己上手就直接点手机里的按钮';
+var NARR_IDLE = '4 台手机 = 4 位同行成员，共用同一本账、操作实时联动 · 想先看全流程就点「▶ 播放演示」（约 1 分半）；想自己点，点「自己上手」先铺一桌样例数据';
 /* 给评委看的验收数字。**只有一个地方要维护**（`node tests/run-all.js` 的实际输出），
    每次加测试后改这里；`tests/demo.check.js` 会检查这三个数还在、没被写成占位符。
    页内自检/交互验收的数字不写死 —— 点「🩺 自检」后会用**真实跑出来的结果**覆盖。 */
-var SUITE_STATS = { suites: 9, items: 861 };
+var SUITE_STATS = { suites: 9, items: 871 };
 function fillJudgeStats() {
   var set = function (id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
   set('jnSuite', String(SUITE_STATS.suites));
@@ -3479,7 +3532,9 @@ function toggleTourAuto() {
   updateTourControls();
   renderTourStep();
 }
-function tourExit() {
+/* 只收拾导览自己的 DOM 与定时器，**不动整页模式**。
+   给 exitPresent / exitAllModes 复用（它们自己会处理 present）。 */
+function tourTeardown() {
   var was = document.body.classList.contains('touring');
   tourGen++;                 // 作废所有在途的 260ms 延时渲染（防"黑屏"）
   tourState.auto = false;
@@ -3493,6 +3548,16 @@ function tourExit() {
   if (was) { presentStep = 0; updatePresentBar(0, NARR_IDLE); }
   a11yClosed();
   syncModeUi();
+  return was;
+}
+/* 用户主动退出导览（卡片「退出」/ Esc）：**同时离开"一屏演示"**。
+   ⚠️ 实测走查发现的死路：导览会把页面带进 present（铺满一屏），而 present 下工具条是隐藏的。
+   以前退出导览后只摘掉 touring，评委就停在一个"没有工具条"的页面上 ——
+   自检 / 重置 / 导览 / 播放演示 全都点不到（真实点击实测全部"点不到"）。
+   退出导览 = 回到常规页面，想再放大可以点工具栏的「⛶ 铺满一屏」。 */
+function tourExit() {
+  var was = tourTeardown();
+  if (was && document.body.classList.contains('present')) exitPresent();
 }
 
 /* ============================================================
@@ -3520,7 +3585,19 @@ function runSelfTest() {
     var st = calcSettlement(room, bills);
     var balSum = Math.round(st.balances.reduce(function (s, b) { return s + b.amount; }, 0) * 100) / 100;
     add('结算账恒平（净余额合计为 0）', Math.abs(balSum) < 0.05, '合计 ' + balSum + ' · ' + st.transfers.length + ' 笔转账');
-    add('外币账单已按快照折算', bills.some(function (b) { return b.currency && b.currency !== 'CNY' && b.cnyAmount > 0; }));
+    /* ⚠️ 这一项以前是"房间里有没有一笔外币账单"——**看状态脸色**：
+       评委看完演示中途按 Esc（房间已建、但还没演到那笔日元），再点自检就会红一项
+       （实测 21/22，失败项正是这条）。自检要验的是"能力"，不是"某个样例数据在不在"：
+       房间里没有就当场造一笔探针账单来验（makeBill 只返回对象、不写 State）。 */
+    add('外币账单已按快照折算', (function () {
+      if (bills.some(function (b) { return b.currency && b.currency !== 'CNY' && b.cnyAmount > 0; })) return true;
+      if (!room.members.length) return false;
+      var probe = makeBill(room, {
+        payer: room.members[0].id, payerName: room.members[0].name, amount: 12000, currency: 'JPY',
+        description: '自检探针 · 外币折算', category: 'transport', source: 'manual', timeStr: '2024-10-04'
+      });
+      return !!(probe && probe.cnyAmount > 0 && probe.rate > 0);
+    })());
   }
   if (CTRIP && CTRIP.CTrip_SAMPLES && CTRIP.CTrip_SAMPLES[0]) {
     var orders = CTRIP.parseOrders(CTRIP.CTrip_SAMPLES[0].text);
@@ -3811,12 +3888,18 @@ function a11yOpen(layer) {
   }
   var box = layerBox(layer);
   if (!box) return;
+  /* ⚠️ 走查实测的坑：自检面板比视口高，focus() 默认会把元素滚进视野 ——
+     列表里唯一可聚焦的是最下面那个「关闭」按钮，于是面板一打开就**滚到了底部**：
+     评委看到一墙 PASS，却看不到标题、得分和"✅ 一切就绪，可以开讲"这个结论。
+     所以：先把滚动位置归零，再用 preventScroll 聚焦（键盘可达性不受影响）。 */
+  if (box.scrollTop) box.scrollTop = 0;
   /* 延后一帧：弹层有 opacity/transform 过渡，立刻 focus 在部分浏览器会被吞掉 */
   setTimeout(function () {
     if (!isShown(layer)) return;
+    if (box.scrollTop) box.scrollTop = 0;
     var list = focusablesIn(box);
     var target = list.length ? list[0] : box;
-    if (target && target.focus) { try { target.focus(); } catch (e) { /* ignore */ } }
+    if (target && target.focus) { try { target.focus({ preventScroll: true }); } catch (e) { try { target.focus(); } catch (e2) { /* ignore */ } } }
   }, 30);
 }
 
@@ -4351,7 +4434,7 @@ function runUITest() {
       /* 重置之后必须能重新开演（曾经再也点不动） */
       autoDemo();
       await wait(2600);
-      add('★ 重置后「▶ 自动演示」能从头开演（曾经卡死点不动）',
+      add('★ 重置后「▶ 播放演示」能从头开演（曾经卡死点不动）',
         autoRunning === true && State.rooms.length > 0,
         'running=' + autoRunning + ' rooms=' + State.rooms.length);
       stopAutoDemo();
@@ -4724,10 +4807,11 @@ function runUITest() {
         ' · mask=' + maskShown() + ' · timer=' + !!tourState.timer + ' · autoRunning=' + autoRunning);
 
       /* ⑤ 待机态只给"入口"，不给死按钮（点了没反应 = 最容易被当成页面坏了） */
-      add('★ 待机文案与入口：解说栏给「▶ 播放完整演示 / 🎬 逐步导览」而不是死掉的播放控制',
+      add('★ 待机文案与入口：解说栏给「▶ 播放演示 / 逐步导览 / 自己上手」而不是死掉的播放控制',
         document.body.classList.contains('idle') &&
-        /播放完整演示/.test((document.querySelector('.narr-cta') || {}).textContent || '') &&
-        /逐步导览/.test((document.querySelector('.narr-cta') || {}).textContent || ''),
+        /播放演示/.test((document.querySelector('.narr-cta') || {}).textContent || '') &&
+        /逐步导览/.test((document.querySelector('.narr-cta') || {}).textContent || '') &&
+        /自己上手/.test((document.querySelector('.narr-cta') || {}).textContent || ''),
         'idle=' + document.body.classList.contains('idle'));
 
       /* ⑥ 演示模式下「退出」按钮和解说栏在同一行（结构上不可能重叠） */
@@ -4735,6 +4819,84 @@ function runUITest() {
       add('★ 退出按钮与播放控制同属解说栏一行（不再与右上角抢位）',
         !!exitBtn && !!exitBtn.closest('.pshow-top') && !document.querySelector('.present-exit'),
         exitBtn ? ('在 .pshow-top 内 ' + !!exitBtn.closest('.pshow-top')) : '(按钮缺失)');
+
+      /* ============================================================
+         24. 零基础评委会不会"走进死路"（本轮真实点击走查的结论）
+         ------------------------------------------------------------
+         走查脚本按"完全不知道这个 demo 怎么用"的顺序真点了一遍，抓到三条死路，
+         这里把它们钉住（都是"点不到 / 点了没反应 / 找不到"这一类）。
+         ============================================================ */
+      /* ⑦ 退出导览 = 回到常规页面。以前只摘掉 touring，评委会停在铺满一屏的页面上 ——
+            工具条是隐藏的，自检/重置/导览/播放演示**全都点不到**。 */
+      startTour();
+      await wait(300);
+      tourExit();
+      await wait(300);
+      var tbarBox = document.querySelector('.tbar');
+      add('★ 走查：退出导览后工具条必须回来（否则评委停在没有入口的页面上）',
+        !document.body.classList.contains('present') &&
+        !!tbarBox && isShownDeep(tbarBox),
+        'present=' + document.body.classList.contains('present') +
+        ' · 工具条可见=' + (!!tbarBox && isShownDeep(tbarBox)));
+
+      /* ⑧ 导览期间顶部不得再出现一套自动演示的「下一步/暂停」（点了没反应 + 两套同名按钮） */
+      startTour();
+      await wait(300);
+      var pbPlay = document.querySelectorAll('#presentBar .pshow-play');
+      var pbPlayHidden = Array.prototype.every.call(pbPlay, function (el) { return !isShown(el); });
+      add('★ 走查：导览期间顶部的自动演示控制必须隐藏（不出现两套「下一步」）',
+        pbPlay.length > 0 && pbPlayHidden,
+        pbPlay.length + ' 个控制 · 全部隐藏=' + pbPlayHidden);
+
+      /* ⑨ 铺满一屏里也要有一条通往"结论与验收"的路（.judge 在 present 下是隐藏的）。
+            注意要在"铺满一屏 + 待机"这个状态下查：导览期间它刻意隐藏（导览卡占屏）。 */
+      tourExit();
+      await wait(200);
+      enterPresent();
+      await wait(200);
+      var jump = document.querySelector('.pshow-jump');
+      add('★ 走查：铺满一屏（待机）里有「↓ 结论与验收」入口',
+        !!jump && isShownDeep(jump), '按钮=' + !!jump + ' · 可见=' + (!!jump && isShownDeep(jump)));
+      exitAllModes();
+      await wait(200);
+
+      /* ⑩ 「自己上手」：一键铺出一桌可点的样例数据（不必先建房再手工记 5 笔） */
+      resetAll();
+      await wait(200);
+      var noRoomBefore = State.rooms.length === 0;
+      seedForJudge();
+      await wait(200);
+      var room0 = State.rooms[0];
+      var inRoom = room0 ? USERS.slice(0, State.phoneCount).every(function (u) {
+        return room0.members.some(function (m) { return m.id === u.id; });
+      }) : false;
+      add('★ 走查：「自己上手」能一键铺出可点的样例数据（房间 + 账单 + 全员在房间内）',
+        noRoomBefore && !!room0 && State.bills.length >= 4 && inRoom,
+        '房间=' + (!!room0) + ' · 账单 ' + State.bills.length + ' 笔 · 全员在房间=' + inRoom);
+
+      /* ⑪ 自检不能"看状态脸色"：以前「外币账单已按快照折算」是查"房间里有没有外币账单"，
+            评委看完演示中途按 Esc（房间已建、还没演到那笔日元）再点自检就红一项（实测 21/22，
+            评委区那面数字墙会显示 21/22）。自检要验的是能力，不是某个样例数据在不在。 */
+      await (async function () {
+        var run = function () {
+          runSelfTest();
+          var fail = [];
+          Array.prototype.forEach.call(document.querySelectorAll('#testPanel .test-row'), function (el) {
+            if (!el.querySelector('.test-ok')) fail.push((el.querySelector('span').textContent || '').trim());
+          });
+          closeSelfTest();
+          return fail;
+        };
+        resetAll();
+        var f1 = run();                                   // 干净态（无房间）
+        ensureDemoRoom();
+        /* 造出"房间存在、但还没有外币账单"——正是演示中途被打断后的样子 */
+        State.bills = State.bills.filter(function (b) { return !b.currency || b.currency === 'CNY'; });
+        var f2 = run();
+        add('★ 走查：自检不看状态脸色（房间还没有外币账单时也必须满分）',
+          f1.length === 0 && f2.length === 0,
+          '干净态 ' + (f1.length ? f1.join('、') : '满分') + ' · 无外币账单 ' + (f2.length ? f2.join('、') : '满分'));
+      })();
     })();
   } catch (e) {
     add('交互测试执行异常', false, e && e.message);
@@ -4750,7 +4912,7 @@ fillJudgeStats();
 renderPhones();
 a11yEnhance(document);
 probeEngine();
-syncModeUi();     // 首屏 = 待机态：解说栏显示「▶ 播放完整演示 / 🎬 逐步导览」入口
+syncModeUi();     // 首屏 = 待机态：解说栏显示「▶ 播放演示 / 逐步导览 / 自己上手」入口
 
 /* ============================================================
    V3 旅行专属记账语义 · 一键演示（#v3demo）
@@ -4853,6 +5015,22 @@ function startV3Demo() {
   if (State.rooms.length === 0 && State.phoneCount < 2) {
     var btn = document.getElementById('addPhoneBtn');
     if (btn) btn.classList.add('nudge');
+  }
+  /* ============================================================
+     首屏自动铺一桌样例数据
+     ------------------------------------------------------------
+     走查结论：评委打开页面看到的是 4 台"还没有旅行房间"的空手机 ——
+     旅行 AA 的价值（分摊 / 多币种 / 结算 / 私账）在空态里**一点都看不到**，
+     想摸到真东西得先手工建房、再手工记 5 笔账，门槛太高。
+     所以冷启动（没有旧数据可回填、也不是演示/自检入口）时直接铺好样例：
+       · 已经在 localStorage 里有自己数据的评委 → 走回填，不覆盖、不播种
+       · #auto / #v3demo / #selftest / #tourtest / #uitest / ?stage= → 不播种（保证可复现）
+       · 想看空态从零开始 → 点「🔄 重置」，或用「自己上手」再铺回来
+     ============================================================ */
+  if (State.rooms.length === 0 && !/^#(auto|v3demo|selftest|tourtest|uitest)/.test(location.hash) &&
+      !/[?&]stage=\d/.test(location.href)) {
+    seedForJudge();
+    updatePresentBar(0, '首屏已铺好一桌样例数据（国庆东京行 · 5 笔账，含外币）：直接点手机里的按钮就能玩 · 想看空态从零开始点「🔄 重置」');
   }
 })();
 /* 布局稳定后再量一次：字体加载完、滚动条出现都会改变可用高度 */

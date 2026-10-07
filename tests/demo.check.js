@@ -282,7 +282,7 @@ report('★ 验收数字静态占位与唯一维护点一致（否则首帧闪�
 // ============ 10++++. 整页模式的状态机（本轮：修"Esc 变黑屏 / 导览与自动演示打架"） ============
 report('★ 只有一处管理模式切换：exitAllModes() 一次收干净 present/touring/自动演示',
   /function exitAllModes\(\)/.test(html) &&
-  /function exitAllModes\(\)[\s\S]{0,220}stopAutoDemo\(\);[\s\S]{0,80}tourExit\(\);/.test(html) &&
+  /function exitAllModes\(\)[\s\S]{0,240}stopAutoDemo\(\);[\s\S]{0,80}tourTeardown\(\);/.test(html) &&
   /onclick="exitAllModes\(\)"/.test(html));
 report('★ 退出按钮与播放控制同属解说栏一行（结构上不可能再抢右上角）',
   !/class="[^"]*present-exit/.test(html) &&
@@ -292,14 +292,16 @@ report('★ 导览带代次令牌：延后的渲染回调退出后不得再碰 D
   /var tourGen = 0;/.test(html) &&
   /var myGen = tourGen;/.test(html) &&
   /if \(myGen !== tourGen\) return;/.test(html) &&
-  /function tourExit\(\)[\s\S]{0,120}tourGen\+\+/.test(html));
+  /function tourTeardown\(\)[\s\S]{0,120}tourGen\+\+/.test(html));
 report('★ CSS 兜底：没有 body.touring 就绝不允许遮罩/卡片可见（有遮罩没卡片 = 整页黑屏）',
   /body:not\(\.touring\) \.tour-mask,body:not\(\.touring\) \.tour-card\{display:none!important\}/.test(html));
 report('★ 导览与自动演示互斥（两个方向都要）',
   /function startTour\(opts\) \{[\s\S]{0,200}stopAutoDemo\(\{ keepPresent: true \}\);/.test(html) &&
-  /async function autoDemo\(\) \{\s*\n\s*tourExit\(\);/.test(html));
+  /async function autoDemo\(\) \{\s*\n\s*tourTeardown\(\);/.test(html));
 report('★ 退出演示会把导览一起收掉（否则遮罩留在常规页面上）',
-  /function exitPresent\(\) \{[\s\S]{0,120}tourExit\(\);/.test(html));
+  /function exitPresent\(\) \{[\s\S]{0,160}tourTeardown\(\);/.test(html));
+report('★ 退出导览会一并离开"铺满一屏"（否则评委停在没有工具条的页面上，什么都点不到）',
+  /function tourExit\(\) \{[\s\S]{0,200}if \(was && document\.body\.classList\.contains\(\'present\'\)\) exitPresent\(\);/.test(html));
 report('★ Esc 逐层退出：全屏弹层 → 手机弹窗 → 导览卡（导览卡不阻断页面，放最后）',
   /var A11Y_LAYERS = \[\'\.finale\', \'\.copyfb\', \'\.test-panel\', \'\.co\.show\', \'\.mo\.show\', \'\.tour-card\'\];/.test(html));
 report('★ 待机态给"入口"而不是死按钮（body.idle 切换 CTA / 播放控制两组按钮）',
@@ -317,6 +319,24 @@ report('★ 导览支持方向键翻页（讲者一只手就能推）',
   /key === 'ArrowRight' \|\| key === 'ArrowLeft'/.test(html) && /tourNext\(\); else tourPrev\(\);/.test(html));
 report('★ 自检要"停下来做"：开面板前先收掉正在跑的演示',
   /function runSelfTest\(\) \{[\s\S]{0,160}exitAllModes\(\);/.test(html));
+report('★ 弹层打开时不抢滚动：自检面板不会一打开就滚到底部（看不到标题/得分/结论）',
+  /if \(box\.scrollTop\) box\.scrollTop = 0;/.test(html) && /focus\(\{ preventScroll: true \}\)/.test(html));
+report('★ 锚点跳转留出 sticky 工具条的高度（否则评委区标题被压住）',
+  /\.judge\{[\s\S]{0,160}scroll-margin-top:62px\}/.test(html));
+report('★ 铺满一屏里有通往「结论与验收」的入口（present 下 .judge 是隐藏的）',
+  /class="pshow-jump[^"]*" onclick="jumpToJudge\(\)"/.test(html) &&
+  /function jumpToJudge\(\)/.test(html) && /body\.touring \.hide-touring\{display:none\}/.test(html));
+report('★ 导览期间隐藏自动演示的播放控制（否则两套同名「下一步」，其中一套点了没反应）',
+  /body\.touring \.pshow-play\{display:none\}/.test(html));
+report('★ 「自己上手」铺样例数据（走查：首屏 4 台空手机，想摸到真东西得先手工建房+记 5 笔）',
+  /function seedForJudge\(\)/.test(html) && /onclick="seedForJudge\(\)"/.test(html) &&
+  /function seedForJudge\(\)[\s\S]{0,200}ensureAllPhones\(\)/.test(html));
+report('★ 线上（https）不再探测 http://localhost（混合内容会被拦，控制台留红字）',
+  /if \(location\.protocol !== 'http:'\) \{ done\(\); return; \}/.test(html));
+report('★ 首屏自动铺一桌样例数据（评委打开就看得到真东西），但演示/自检入口不播种（保证可复现）',
+  /State\.rooms\.length === 0 && !\/\^#\(auto\|v3demo\|selftest\|tourtest\|uitest\)\//.test(html) &&
+  /\[\?&\]stage=\\d/.test(html) &&
+  /seedForJudge\(\);/.test(html) && /首屏已铺好一桌样例数据/.test(html));
 
 // ============ 11. 共享 AI 引擎浏览器形态冒烟 ============
 const aiSrc = fs.readFileSync(path.join(__dirname, '..', 'apps', 'miniprogram', 'utils', 'ai.js'), 'utf8');
