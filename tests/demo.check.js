@@ -237,6 +237,48 @@ report('★ 自动演示可调速（三档，作用在每个 sleep 上）',
 report('★ 单步「下一步」在闸门注册前被点也不丢（实测点一次没反应）',
   /gateWaived/.test(html) && /if \(gateWaived\) \{ gateWaived = false; return go\(\); \}/.test(html));
 
+// ============ 10+++. 第十一轮评审改进（可读性 / 层次 / 差异化） ============
+report('★ 金额只有一种写法：money() 自带千分位，moneyK 只是别名',
+  /parts\[0\] = parts\[0\]\.replace\(\/\\B\(\?=\(\\d\{3\}\)\+\(\?!\\d\)\)\/g, ','\)/.test(html) &&
+  /function moneyK\(n, dec\) \{ return money\(n, dec\); \}/.test(html));
+report('★ 展示金额不再绕过 money()（结算卡片 / 预算行 / OCR 样例）',
+  !/settlement\.totalExpense\.toFixed\(2\)/.test(html) &&
+  !/item\.amount\.toFixed\(2\)/.test(html) &&
+  !/totalBudget \+ ' 总预算'/.test(html) && !/\+' 总预算'/.test(html) &&
+  !/¥'\+room\.budgetPerPerson/.test(html));
+report('★ CSV 导出仍用裸数字（机器读友好，不能跟着加千分位）',
+  /\(Number\(b\.amount\)\|\|0\)\.toFixed\(2\)/.test(html) && /billCNY\(b\)\.toFixed\(2\)/.test(html));
+report('★ 标签统一为「中文 / EN」（不再出现 EN / 中文）',
+  /集体账 \/ TOTAL/.test(html) && !/TOTAL \/ 集体账/.test(html) &&
+  /笔数 \/ BILLS/.test(html) && /成员 \/ MEMBERS/.test(html) &&
+  /最少转账 \/ MIN TX/.test(html) && !/>MEMBERS</.test(html) && !/>BILLS</.test(html));
+report('★ 统计页标题不重复英文（小标题已是 SPENDING REPORT）',
+  /SPENDING REPORT<\/div><div class="ht">消费统计</.test(html) && !/统计 \/ REPORT/.test(html));
+report('★ 大数字等宽（比例字体下 1 比 8 窄，金额列会参差）',
+  /font-variant-numeric:tabular-nums/.test(html) && /\.bnum,\.bnum strong/.test(html));
+report('★ 待机态文案是「待机」而不是「准备中」',
+  /待机/.test(html) && !/=\s*'准备中'/.test(html));
+report('★ 房间页底部只有一个主按钮（橙色只给最高频的「记一笔」）',
+  /<button class="btn or"[^>]*>＋ 记一笔<\/button><button class="btn lt"[^>]*>📷 识别入账<\/button><button class="btn lt"[^>]*>结算<\/button>/.test(html));
+report('★ 「拍照」已正名为「识别入账」（里面还有携程订单/订单截图，叫拍照找不到）',
+  /📷 识别入账/.test(html) && !/>📷 拍照</.test(html));
+report('★ 底部按钮不折行（窄屏下 flex 按内容宽度分配，不三等分）',
+  /\.app \.abb \.btn\{padding:12px 8px;white-space:nowrap\}/.test(html) &&
+  /style="flex:1\.4"/.test(html));
+report('★ 识别入账页给出两个入口的说明条（携程订单不再藏起来）',
+  /class="cts-hint"/.test(html) && /📷 <b>票据识别<\/b>/.test(html) && /🧳 <b>携程订单<\/b>/.test(html));
+report('★ 评委区有"和常见记账软件比，三个不一样的点"（差异化论点，不是功能清单）',
+  /class="judge-diff"/.test(html) &&
+  (html.match(/class="judge-diff"[\s\S]*?<\/ol>/) || [''])[0].split('<li>').length - 1 === 3 &&
+  /行程即账本/.test(html) && /算得准、也收得回/.test(html) && /旅行专属的那些小事/.test(html));
+report('★ 评委区小胶囊里不出现 "/"（会与「中文 / EN」规则撞车）',
+  !/<span>票据 \/ 订单截图识别<\/span>/.test(html) && !/<span>AI 审计 \/ 洞察<\/span>/.test(html));
+report('★ 验收数字静态占位与唯一维护点一致（否则首帧闪一个错数）', (function () {
+  const jn = html.match(/id="jnItems">(\d+)</);
+  const st = html.match(/var SUITE_STATS = \{ suites: (\d+), items: (\d+) \}/);
+  return !!(jn && st && jn[1] === st[2]);
+})());
+
 // ============ 11. 共享 AI 引擎浏览器形态冒烟 ============
 const aiSrc = fs.readFileSync(path.join(__dirname, '..', 'apps', 'miniprogram', 'utils', 'ai.js'), 'utf8');
 globalThis.self = {};

@@ -8,6 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+/* 金额等宽数字：账单列表/收支表里数字上下要对齐（比例字体下 1 比 8 窄，右对齐会参差） */
+.bam,.ba,.ov,.svm,.tam,.rsv,.finale-v,.ain,.bnum,.bnum strong,.mbr,.bal{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 /* ===== 设计令牌（对比度已按 WCAG 2.1 AA 校正）=====
    原来：品牌橙 #FF6B35 配白字 = 2.84:1、次要灰 #a1a1aa 配白底 = 2.58:1，
          都低于正文 4.5:1 的门槛 —— 投影/手机屏上"看不清"的主因。
@@ -45,7 +47,7 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:#ff
    另外 .stage 的 min-height:calc(100vh - 200px) 会强行撑高舞台，一并去掉。 */
 body.present .wrap{padding:10px 24px 14px}
 body.present .hdr{display:none}
-/* 演示时工具条也让位：手机底部按钮（＋记一笔 / 拍照 / 结算）不能被裁掉。
+/* 演示时工具条也让位：手机底部按钮（＋记一笔 / 识别入账 / 结算）不能被裁掉。
    退出入口见右上角固定的 .present-exit（不占文档流）。 */
 body.present .tbar{display:none}
 body.present .stage{padding:0;min-height:0}
@@ -296,6 +298,8 @@ button.bdg:hover{background:rgba(255,255,255,.08);color:#fff}
 .ct2{flex:1;padding:12px 8px;border:1.5px solid var(--g200);border-radius:14px;text-align:center;cursor:pointer;transition:all .2s}
 .ct2:active,.ct2.act{border-color:#18181b;background:#18181b;color:#fff}
 .cti{font-size:22px;margin-bottom:4px}.ctl{font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700}
+.cts-hint{font-size:10.5px;line-height:1.65;color:var(--g400);background:var(--g100);border:1px solid var(--g200);border-radius:10px;padding:8px 11px;margin:-8px 0 14px}
+.cts-hint b{color:var(--pri-ink);font-weight:700}
 .ca{border:2px dashed var(--g200);border-radius:18px;padding:32px 20px;text-align:center;margin-bottom:16px;cursor:pointer;transition:all .2s}
 .ca:hover{border-color:var(--pri);background:var(--pri-bg)}
 .cai{font-size:40px;margin-bottom:8px}.cat{font-family:'Space Grotesk',sans-serif;font-size:12px;color:var(--g400)}
@@ -407,7 +411,7 @@ body.present .narr{display:none}
 .app .hl{font-size:10px;letter-spacing:1.4px}
 .app .btn{font-size:13px;padding:12px 16px;gap:6px}
 .app .abb{padding:12px 16px 20px}
-.app .abb .btn{padding:12px 8px}
+.app .abb .btn{padding:12px 8px;white-space:nowrap}
 .app .st{font-size:17px}
 .app .sc{font-size:10px}
 .app .sh{margin-bottom:12px;padding-bottom:8px}
@@ -492,6 +496,11 @@ body.present .narr{display:none}
 .judge p + p{margin-top:10px}
 .judge-tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
 .judge-tags span{font-size:11.5px;color:rgba(255,255,255,.72);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:100px;padding:5px 11px}
+.judge-diff{list-style:none;counter-reset:jd;display:flex;flex-direction:column;gap:9px;margin-top:2px}
+.judge-diff li{counter-increment:jd;position:relative;font-size:12.5px;line-height:1.78;color:rgba(255,255,255,.6);padding:9px 12px 9px 40px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:11px}
+.judge-diff li::before{content:counter(jd);position:absolute;left:11px;top:9px;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.09);color:var(--pri);font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.judge-diff li b{color:#fff}
+.judge-diff li span{color:rgba(255,255,255,.42)}
 .judge-list{list-style:none;display:flex;flex-direction:column;gap:9px}
 .judge-list li{font-size:12.5px;line-height:1.7;color:rgba(255,255,255,.6);padding-left:2px}
 .judge-list li b{color:#fff;margin-right:6px}
@@ -542,7 +551,7 @@ body.present .judge,body.present .fh{display:none}
   <!-- 常驻解说条：网页版里评委要能读到"这一步在做什么"，
        所以它不只在演示模式出现 —— 演示模式下同一套元素会浮到顶部 -->
   <div class="narr" id="narrBar" aria-live="polite">
-    <span class="narr-step" id="shellStep">准备中</span>
+    <span class="narr-step" id="shellStep">待机</span>
     <span class="narr-prog"><i id="shellProg"></i></span>
     <span class="narr-text" id="shellNarr">点「▶ 自动演示」看完整剧情，或点「🎬 导览」逐步听讲解；也可以直接点手机里的按钮自己试</span>
     <button type="button" class="narr-btn" id="shellNext" onclick="autoNext()" title="单步：每点一次前进一个分镜">⏭ 下一步</button>
@@ -563,14 +572,24 @@ body.present .judge,body.present .fh{display:none}
         <h2>旅行 AA 的三件麻烦事，一件一件解决</h2>
         <p><b>垫付分散</b>——谁付了哪笔、谁还没给，靠群聊翻记录；<b>事后对不上账</b>——总额和分摊合计差几毛，
         谁都说不清；<b>外币算不清</b>——日元、泰铢混着记，汇率一波动就扯皮。</p>
-        <p>TravelAA 把这三件事收进一本账：<b>一句话/一张截图/一条携程订单</b>就能入账，
+        <p>TravelAA 把这三件事收进一本账：<b>一句话 / 一张截图 / 一条携程订单</b>就能入账，
         <b>账恒平</b>（分摊合计恒等于金额、净余额合计恒为 0），
         结算给<b>最少转账笔数</b>，还能标「我转了」把结清闭环。</p>
+        <div class="judge-kicker" style="margin-top:16px;">和常见记账软件比，三个不一样的点</div>
+        <ol class="judge-diff">
+          <li><b>行程即账本</b>：携程订单文本直接解析成机票 / 酒店 / 门票账单，多笔勾选一次入账；
+            订单截图也能读。<span>别家要你照着订单手打一遍。</span></li>
+          <li><b>算得准、也收得回</b>：分摊合计恒等于账单金额、净余额合计恒为 0；
+            贪心给出最少转账笔数；每笔可标「我转了」，进度跟着同步，两个窗口都看得见。</li>
+          <li><b>旅行专属的那些小事</b>：外币按<b>记账当时</b>的汇率快照；日元 12780 一键抹成 12800
+            且差额并入分摊（账不会因凑整而不平）；私账（人情账）不进 AA 但你仍知道自己花了多少；
+            有人离队、酒店改价可以事后补一笔调整，原账留痕。</li>
+        </ol>
         <div class="judge-tags">
-          <span>一句话记账</span><span>票据 / 订单截图识别</span><span>携程订单入账</span>
+          <span>一句话记账</span><span>票据与订单截图识别</span><span>携程订单入账</span>
           <span>多币种汇率快照</span><span>智能抹零</span><span>私账（人情账）</span>
           <span>多退少补</span><span>暂估改价</span><span>口头占位</span>
-          <span>AI 审计 / 洞察</span><span>最简转账</span><span>导出 CSV</span>
+          <span>AI 审计与洞察</span><span>最简转账</span><span>导出 CSV</span>
         </div>
       </div>
 
@@ -589,7 +608,7 @@ body.present .judge,body.present .fh{display:none}
         <div class="judge-kicker">工程可信度（一条命令可复现）</div>
         <div class="judge-nums">
           <div><b id="jnSuite">9</b><span>套自动化验收</span></div>
-          <div><b id="jnItems">835</b><span>项断言</span></div>
+          <div><b id="jnItems">850</b><span>项断言</span></div>
           <div><b id="jnSelf">—</b><span>页内自检</span></div>
           <div><b id="jnUI">—</b><span>交互验收</span></div>
         </div>
@@ -622,7 +641,7 @@ body.present .judge,body.present .fh{display:none}
 <div class="pshow" id="presentBar" aria-live="polite">
   <div class="pshow-top">
     <div class="pshow-brand">✈️ TravelAA · 旅行 AA 记账<span>携程高校 AI HACKATHON · Team 爆能器</span></div>
-    <div class="pshow-step" id="presentStep">准备中</div>
+    <div class="pshow-step" id="presentStep">待机</div>
     <div class="pshow-prog"><i id="presentProg"></i></div>
     <button type="button" class="pshow-btn" id="presentSpeed" onclick="cycleAutoSpeed()" title="切换自动演示速度">⏩ 1×</button>
     <button type="button" class="pshow-btn" id="presentNext" onclick="autoNext()" title="切成单步：每点一次前进一个分镜（适合边讲边演）">⏭ 下一步</button>
@@ -670,18 +689,20 @@ var AI_SAMPLES = [
   '迪士尼门票380，请客，不用还了'
 ];
 
-/* 金额格式化：与页面既有风格一致 */
+/* 金额格式化：**全局带千分位**。
+   踩过的坑：一开始只给"大数字"加了千分位（另有一个 moneyK），结果结算页出现
+   「¥15,966」（主视觉）与「¥15966 / ¥20000 总预算」（隔 60px）两种写法 ——
+   同一份数据两种格式，是设计上最容易被一眼看穿的硬伤。现在 money() 本身带千分位，
+   全站只有一种写法。 */
 function money(n, dec) {
-  return (Number(n) || 0).toFixed(dec === undefined ? 2 : dec);
-}
-/* 带千分位的金额 —— 只用在**评委一眼要读**的大数字上（结算总额、收官总结）。
-   ¥15,729 比 ¥15729 快得多，投影距离下尤其明显。
-   手动实现而不用 toLocaleString：后者在不同引擎/环境下分隔符与分组规则可能不一致。 */
-function moneyK(n, dec) {
-  var parts = (Number(n) || 0).toFixed(dec === undefined ? 0 : dec).split('.');
+  var v = (Number(n) || 0).toFixed(dec === undefined ? 2 : dec);
+  var parts = v.split('.');
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   return parts.join('.');
 }
+/* 兼容别名：money() 现在本身就带千分位，moneyK 等价于 money
+   （历史原因保留这个别名：老代码里的调用点不逐一改，行为已经统一） */
+function moneyK(n, dec) { return money(n, dec); }
 
 /* 当前币种 → 人民币汇率（由内核提供，记账时快照）
    必须用 AI.getRate()（不取整），不能用 AI.toCNY(1,code)：
@@ -897,7 +918,7 @@ function updatePresentBar(step, text, opts) {
   var total = opts.total || AUTO_STORYBOARDS;
   var unit = opts.unit || '分镜';
   var label = step > 0 ? (unit + ' ' + step + ' / ' + total)
-    : (unit === '导览' ? '导览' : '准备中');
+    : (unit === '导览' ? '导览' : '待机');
   var pct = (step > 0 ? Math.round(step / total * 100) : 0) + '%';
   /* 同一套内容写两个地方：演示模式下的浮动栏 + 常规页面里的常驻解说条。
      评委在网页版读的是后者；讲者投屏看的是前者。 */
@@ -934,7 +955,14 @@ function renderApp(user){
   else if(cp==='settle')html+=renderSettle(user.id,crid);
   else if(cp==='stats')html+=renderStats(user.id,crid);
   html+='</div>';
-  if(cp==='room')html+='<div class="abb"><button class="btn lt" onclick="phoneGoAdd(\''+user.id+'\',\''+crid+'\')">＋ 记一笔</button><button class="btn or" onclick="phoneGoCapture(\''+user.id+'\',\''+crid+'\')">📷 拍照</button><button class="btn dk" onclick="phoneGoSettle(\''+user.id+'\',\''+crid+'\')">结算</button></div>';
+  /* 底部行动条：**只留一个主行动**。
+     之前是「＋ 记一笔」(白) /「📷 拍照」(橙) /「结算」(黑) —— 橙与黑都是"重"按钮，
+     等于没有主次；而且最重的那个（拍照）不是最高频的动作。现在：
+       ＋ 记一笔 = 主（品牌橙，最高频）
+       📷 识别入账 = 次（白）—— 顺带改名：那一页里有票据识别/携程订单/订单截图三件事，
+         叫"拍照"会让人找不到携程订单入口
+       结算 = 次（白） */
+  if(cp==='room')html+='<div class="abb"><button class="btn or" style="flex:1" onclick="phoneGoAdd(\''+user.id+'\',\''+crid+'\')">＋ 记一笔</button><button class="btn lt" style="flex:1.4" onclick="phoneGoCapture(\''+user.id+'\',\''+crid+'\')">📷 识别入账</button><button class="btn lt" style="flex:.85" onclick="phoneGoSettle(\''+user.id+'\',\''+crid+'\')">结算</button></div>';
   else if(cp==='add')html+='<div class="abb"><button class="btn dk" style="flex:1;" onclick="submitBill(\''+user.id+'\',\''+crid+'\')">确认记账</button></div>';
   html+='<div class="mo" id="modal-'+user.id+'"><div class="mm2" role="dialog" aria-modal="true" aria-labelledby="modalTitle-'+user.id+'" tabindex="-1" onclick="event.stopPropagation()"><div class="mh" aria-hidden="true"></div><div class="mhd"><div class="mt" id="modalTitle-'+user.id+'">创建旅行房间</div><button type="button" class="mc" onclick="closeModal(\''+user.id+'\')" aria-label="关闭">✕</button></div><div class="mb" id="modalBody-'+user.id+'"></div></div></div>';
   app.innerHTML=html;
@@ -955,7 +983,7 @@ function renderHome(user,myRooms){
   else{myRooms.forEach(function(room){
     var bills=State.bills.filter(function(b){return b.roomId===room.id});
     var total=bills.reduce(function(s,b){return s+billCNY(b)},0);
-    html+='<div class="rc" onclick="openRoom(\''+user.id+'\',\''+room.id+'\')"><div class="rt"><div class="rn">'+esc(room.name)+'</div><div class="rco"><small>房间号</small>'+esc(room.code)+'</div></div><div class="rs"><div><div class="rsv">'+room.members.length+'</div><div class="rsl">成员</div></div><div><div class="rsv">'+bills.length+'</div><div class="rsl">账单</div></div><div><div class="rsv" style="color:var(--pri-ink)">¥'+total.toFixed(0)+'</div><div class="rsl">总消费</div></div></div></div>';
+    html+='<div class="rc" onclick="openRoom(\''+user.id+'\',\''+room.id+'\')"><div class="rt"><div class="rn">'+esc(room.name)+'</div><div class="rco"><small>房间号</small>'+esc(room.code)+'</div></div><div class="rs"><div><div class="rsv">'+room.members.length+'</div><div class="rsl">成员 / MEMBERS</div></div><div><div class="rsv">'+bills.length+'</div><div class="rsl">账单 / BILLS</div></div><div><div class="rsv" style="color:var(--pri-ink)">¥'+money(total,0)+'</div><div class="rsl">总消费 / TOTAL</div></div></div></div>';
   });}
   return html;
 }
@@ -972,12 +1000,12 @@ function renderRoomDetail(userId,roomId){
     var bs=AI?AI.budgetStatus(bills,room.members,totalBudget,{room:room}):null;
     var pct=bs?bs.percent:Math.min(totalSpent/totalBudget*100,100);var level=bs?(bs.alert==='danger'?'over':bs.alert==='warn'?'warn':'safe'):(pct>=90?'over':pct>=70?'warn':'safe');
     var pp=room.members.length>0?totalSpent/room.members.length:0;
-    html+='<div class="bbw" data-feat="budget"><div class="bh"><div class="bl">BUDGET / 预算</div><div class="bnum"><strong>¥'+money(pp,0)+'</strong> / ¥'+room.budgetPerPerson+' 人均</div></div><div class="bbg"><div class="bf '+level+'" style="width:'+Math.min(100,pct)+'%"></div></div></div>';
+    html+='<div class="bbw" data-feat="budget"><div class="bh"><div class="bl">预算 / BUDGET</div><div class="bnum"><strong>¥'+money(pp)+'</strong> / ¥'+money(room.budgetPerPerson)+' 人均</div></div><div class="bbg"><div class="bf '+level+'" style="width:'+Math.min(100,pct)+'%"></div></div></div>';
     if(level==='over')html+='<div class="bal over">🚨 已超预算 ¥'+money(totalSpent-totalBudget,0)+'，注意控制消费</div>';
     else if(level==='warn')html+='<div class="bal warn">⚠️ 已用 '+(pct||0).toFixed(0)+'%'+(bs&&bs.willExceed?'，按当前速度将超支':'，注意控制消费')+'</div>';
     else html+='<div class="bal safe">✅ 预算内'+(bs&&bs.safeDaily&&bs.days?((' · 剩余 '+bs.days+' 天，日均可用 ¥'+money(bs.safeDaily,0))):(' · 剩余 ¥'+money(totalBudget-totalSpent,0)))+'</div>';
   }
-  html+='<div class="og"><div class="oi"><div class="ol">TOTAL / 集体账</div><div class="ov">¥'+moneyK(totalSpent)+'</div></div><div class="oi"><div class="ol">BILLS</div><div class="ov sm">'+bills.length+'</div></div><div class="oi"><div class="ol">MEMBERS</div><div class="ov sm">'+room.members.length+'</div></div><div class="oi"><div class="ol">CODE</div><div class="ov sm">'+room.code+'</div></div></div>';
+  html+='<div class="og"><div class="oi"><div class="ol">集体账 / TOTAL</div><div class="ov">¥'+moneyK(totalSpent)+'</div></div><div class="oi"><div class="ol">笔数 / BILLS</div><div class="ov sm">'+bills.length+'</div></div><div class="oi"><div class="ol">成员 / MEMBERS</div><div class="ov sm">'+room.members.length+'</div></div><div class="oi"><div class="ol">房间号 / CODE</div><div class="ov sm">'+room.code+'</div></div></div>';
   /* 备注区：把"外币折算 / 我的私账"这些说明**并进一条**，
      不再各占一个灰盒子（曾堆 3 条，视觉噪音大）。 */
   var notes=[];
@@ -1032,13 +1060,13 @@ function renderRoomDetail(userId,roomId){
   if(AI&&bills.length){
     var audit=AI.auditBills(bills,room.members);
     var aLevel=audit.score>=90?'safe':audit.score>=70?'warn':'over';
-    html+='<div class="sh" data-feat="audit" style="margin-top:16px;"><div class="st">AI 账单审计</div><div class="sc">HEALTH '+audit.score+'</div></div>';
+    html+='<div class="sh" data-feat="audit" style="margin-top:16px;"><div class="st">AI 账单审计 / AUDIT</div><div class="sc">健康度 / HEALTH '+audit.score+'</div></div>';
     html+='<div class="bal '+aLevel+'" style="display:block;line-height:1.6;">'+esc(audit.summary)+'</div>';
     audit.issues.slice(0,3).forEach(function(x){
       html+='<div class="mbi" style="margin-bottom:8px;"><div style="font-size:12px;font-weight:600;">⚠️ '+esc(x.message)+'</div><div style="font-size:10px;color:var(--g400);margin-top:4px;">建议：'+esc(x.suggestion)+'</div></div>';
     });
   }
-  html+='<div class="sh" data-feat="bill-list" style="margin-top:16px;"><div class="st">账单记录</div><div class="sc">'+bills.length+' ITEMS</div></div>';
+  html+='<div class="sh" data-feat="bill-list" style="margin-top:16px;"><div class="st">账单记录 / BILLS</div><div class="sc">'+bills.length+' 笔 / ITEMS</div></div>';
   if(bills.length===0){html+='<div class="em"><div class="ei">📝</div><div class="et">还没有账单</div></div>';}
   else{bills.slice().reverse().forEach(function(b){
     var amountHtml='¥'+money(b.amount,0);
@@ -1120,13 +1148,13 @@ function renderStats(userId,roomId){
   var me=USERS.filter(function(x){return x.id===userId})[0];
   var myP=AI&&AI.personalSpend?AI.personalSpend(allBills,userId):{total:0,count:0,list:[]};
   var html='<div class="hs" style="padding:8px 0 16px;"><div class="hl">SPENDING REPORT</div><div class="ht">消费统计</div><div style="font-size:11px;color:var(--g400);margin-top:4px;">'+esc(scopeName)+'</div></div>';
-  html+='<div class="og"><div class="oi"><div class="ol">TOTAL / 集体账</div><div class="ov">¥'+moneyK(total)+'</div></div><div class="oi"><div class="ol">BILLS / 笔数</div><div class="ov sm">'+bills.length+'</div></div></div>';
+  html+='<div class="og"><div class="oi"><div class="ol">集体账 / TOTAL</div><div class="ov">¥'+moneyK(total)+'</div></div><div class="oi"><div class="ol">笔数 / BILLS</div><div class="ov sm">'+bills.length+'</div></div></div>';
   if(room)html+='<button class="btn lt" data-feat="export-csv" style="width:100%;margin-bottom:8px;" onclick="exportCsv(\''+userId+'\',\''+roomId+'\')">📥 导出这本账（CSV，含私账与调整单）</button>';
 
   /* ---- 我的私账（人情账）：不进 AA 的零碎钱，只有本人可见 ---- */
   if(myP.count>0){
     var allIn=total+myP.total;
-    html+='<div class="sh" data-feat="stats-personal" style="margin-top:16px;"><div class="st">我的私账</div><div class="sc">PERSONAL · 仅你可见</div></div>';
+    html+='<div class="sh" data-feat="stats-personal" style="margin-top:16px;"><div class="st">我的私账</div><div class="sc">我的私账 / PERSONAL · 仅你可见</div></div>';
     html+='<div class="mbi" style="background:#18181b;color:#fff;border:none;">';
     html+='<div style="font-size:10px;letter-spacing:1.6px;color:rgba(255,255,255,.45);">'+(me?esc(me.name):'我')+' 自己花的</div>';
     html+='<div style="font-family:Space Grotesk,sans-serif;font-size:26px;font-weight:700;letter-spacing:-1px;margin-top:4px;">¥'+money(myP.total)+'</div>';
@@ -1142,7 +1170,7 @@ function renderStats(userId,roomId){
   /* 分类占比 */
   var byCat={};bills.forEach(function(b){var c=b.category||'other';byCat[c]=(byCat[c]||0)+billCNY(b);});
   var catList=Object.keys(byCat).map(function(k){return{cat:k,amount:byCat[k]};}).sort(function(a,b){return b.amount-a.amount;});
-  html+='<div class="sh" data-feat="stats-category"><div class="st">分类占比</div><div class="sc">BY CATEGORY</div></div>';
+  html+='<div class="sh" data-feat="stats-category"><div class="st">分类占比 / CATEGORY</div><div class="sc">分类占比 / BY CATEGORY</div></div>';
   catList.forEach(function(c){
     var pct=total>0?c.amount/total*100:0;
     html+='<div style="margin-bottom:16px;"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;"><div style="font-family:Space Grotesk,sans-serif;font-size:13px;font-weight:600;">'+catLabel(c.cat)+'</div><div style="font-family:Space Grotesk,sans-serif;font-size:13px;font-weight:700;">¥'+money(c.amount,0)+' <span style="font-size:10px;color:var(--g400);font-weight:500;">'+pct.toFixed(1)+'%</span></div></div><div class="bbg" style="height:6px;"><div class="bf" style="width:'+pct+'%;background:#18181b;"></div></div></div>';
@@ -1153,7 +1181,7 @@ function renderStats(userId,roomId){
     var d=AI.dailyStats(bills);
     if(d.days&&d.days.length){
       var trendLabel=d.trend==='up'?'📈 越花越多':d.trend==='down'?'📉 越花越省':'➡️ 比较平稳';
-      html+='<div class="sh" data-feat="stats-daily" style="margin-top:16px;"><div class="st">每日消费</div><div class="sc">'+trendLabel+'</div></div>';
+      html+='<div class="sh" data-feat="stats-daily" style="margin-top:16px;"><div class="st">每日消费 / DAILY</div><div class="sc">'+trendLabel+'</div></div>';
       html+='<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--g500);margin-bottom:10px;"><span>日均 ¥'+money(d.dailyAvg,0)+'</span>'+(d.maxDay?('<span>最贵 '+d.maxDay.date.slice(5)+' · ¥'+money(d.maxDay.total,0)+'</span>'):'')+'</div>';
       var maxTotal=d.maxDay?d.maxDay.total:0;
       d.days.forEach(function(day){
@@ -1164,7 +1192,7 @@ function renderStats(userId,roomId){
     /* AI 消费洞察 */
     if(room){
       var insight=AI.generateInsight({room:room,bills:bills,members:room.members});
-      html+='<div class="sh" data-feat="stats-insight" style="margin-top:16px;"><div class="st">AI 消费洞察</div><div class="sc">INSIGHT</div></div>';
+      html+='<div class="sh" data-feat="stats-insight" style="margin-top:16px;"><div class="st">AI 消费洞察 / INSIGHT</div><div class="sc">洞察 / INSIGHT</div></div>';
       html+='<div class="mbi" style="margin-bottom:10px;"><div style="font-size:12px;line-height:1.7;">'+esc(insight.summary)+'</div></div>';
       (insight.tips||[]).slice(0,3).forEach(function(t){
         html+='<div style="font-size:11px;color:var(--g500);padding:7px 0;border-bottom:1px solid var(--g100);">💡 '+esc(t)+'</div>';
@@ -1174,7 +1202,7 @@ function renderStats(userId,roomId){
 
   /* 入账方式统计 */
   var bySrc={};bills.forEach(function(b){var s=b.source||'manual';bySrc[s]=(bySrc[s]||0)+1;});
-  html+='<div class="sh" data-feat="stats-source" style="margin-top:16px;"><div class="st">入账方式</div><div class="sc">'+bills.length+' ITEMS</div></div>';
+  html+='<div class="sh" data-feat="stats-source" style="margin-top:16px;"><div class="st">入账方式 / SOURCES</div><div class="sc">'+bills.length+' ITEMS</div></div>';
   Object.keys(bySrc).forEach(function(s){
     html+='<div class="mbr"><span>'+sourceLabel(s)+'</span><span>'+bySrc[s]+' 笔</span></div>';
   });
@@ -1284,11 +1312,11 @@ function renderAddBill(userId,roomId){
   html+='</div>';
 
   /* ---- ③ 说明（选填，留空就用分类名） ---- */
-  html+='<div class="fg"><div class="fl">买了什么 <span style="color:var(--g300);font-weight:400;">选填</span></div><input class="fi" placeholder="如：晚餐、打车、门票" value="'+esc(form.desc)+'" oninput="updateForm(\''+userId+'\',\'desc\',this.value)"></div>';
+  html+='<div class="fg"><div class="fl">买了什么 / NOTE <span style="color:var(--g300);font-weight:400;">选填</span></div><input class="fi" placeholder="如：晚餐、打车、门票" value="'+esc(form.desc)+'" oninput="updateForm(\''+userId+'\',\'desc\',this.value)"></div>';
 
   /* ---- ④ 归属：AA 还是我的私账（一句话说清，不给术语） ---- */
   var isPersonal=form.splitType==='sole';
-  html+='<div class="fg" data-feat="ownership"><div class="fl">算谁的</div><div class="pm">';
+  html+='<div class="fg" data-feat="ownership"><div class="fl">算谁的 / OWNER</div><div class="pm">';
   html+='<div class="pi '+(!isPersonal?'act':'')+'" onclick="setOwnership(\''+userId+'\',\'aa\')">👥 大家 AA</div>';
   html+='<div class="pi '+(isPersonal?'act':'')+'" onclick="setOwnership(\''+userId+'\',\'personal\')">🙋 我的私账</div>';
   html+='</div>';
@@ -1299,7 +1327,7 @@ function renderAddBill(userId,roomId){
     '</div></div>';
 
   /* ---- ⑤ 付款人（默认我，才需要时改） ---- */
-  html+='<div class="fg" data-feat="payer"><div class="fl">谁付的 <span style="color:var(--g300);font-weight:400;">默认我</span></div><div class="pm">';
+  html+='<div class="fg" data-feat="payer"><div class="fl">谁付的 / PAYER <span style="color:var(--g300);font-weight:400;">默认我</span></div><div class="pm">';
   room.members.forEach(function(m){
     html+='<div class="pi '+(form.payer===m.id?'act':'')+'" onclick="updateForm(\''+userId+'\',\'payer\',\''+m.id+'\');renderApp(USERS.find(function(u){return u.id==\''+userId+'\'}))">'+esc(m.name)+(m.id===userId?' · 我':'')+'</div>';
   });
@@ -1311,7 +1339,7 @@ function renderAddBill(userId,roomId){
     (adv?'▲ 收起更多选项':'▼ 更多选项（分类 · 分摊方式 · 币种 · 抹零）')+'</button>';
 
   if(adv){
-    html+='<div class="fg" data-feat="category" style="margin-top:16px;"><div class="fl">消费分类</div><div class="pm">';
+    html+='<div class="fg" data-feat="category" style="margin-top:16px;"><div class="fl">消费分类 / CATEGORY</div><div class="pm">';
     CATS.forEach(function(c){
       html+='<div class="pi '+(form.category===c[0]?'act':'')+'" onclick="updateForm(\''+userId+'\',\'category\',\''+c[0]+'\');renderApp(USERS.find(function(u){return u.id==\''+userId+'\'}))">'+c[1]+'</div>';
     });
@@ -1319,7 +1347,7 @@ function renderAddBill(userId,roomId){
 
     /* 分摊方式：AA 归属下才有意义 */
     if(!isPersonal){
-      html+='<div class="fg" data-feat="split-type"><div class="fl">怎么分</div><div class="pm">';
+      html+='<div class="fg" data-feat="split-type"><div class="fl">怎么分 / SPLIT</div><div class="pm">';
       [['equal','⚖️ 均分'],['treat','🎁 我请客']].forEach(function(c){
         html+='<div class="pi '+(form.splitType===c[0]?'act':'')+'" onclick="updateForm(\''+userId+'\',\'splitType\',\''+c[0]+'\');renderApp(USERS.find(function(u){return u.id==\''+userId+'\'}))">'+c[1]+'</div>';
       });
@@ -1327,7 +1355,7 @@ function renderAddBill(userId,roomId){
     }
 
     /* 币种：只在实际用到时才需要 */
-    html+='<div class="fg" data-feat="currency"><div class="fl">币种</div><div class="pm">';
+    html+='<div class="fg" data-feat="currency"><div class="fl">币种 / CURRENCY</div><div class="pm">';
     CURRENCIES.forEach(function(c){
       html+='<div class="pi '+(form.currency===c.code?'act':'')+'" onclick="selectCurrency(\''+userId+'\',\''+c.code+'\')">'+c.label+'</div>';
     });
@@ -1453,10 +1481,11 @@ function renderCapture(userId,roomId){
   html+='<div class="ct2 '+(tab==='ocr'?'act':'')+'" onclick="captureTab(\''+userId+'\',\'ocr\')"><div class="cti">📷</div><div class="ctl">票据识别</div></div>';
   html+='<div class="ct2 '+(tab==='order'?'act':'')+'" onclick="captureTab(\''+userId+'\',\'order\')"><div class="cti">🧳</div><div class="ctl">携程订单</div></div>';
   html+='</div>';
+  html+='<div class="cts-hint"><div>📷 <b>票据识别</b>　微信 / 支付宝 / 小票 / 发票 截图</div><div>🧳 <b>携程订单</b>　订单短信、邮件文本或订单截图</div></div>';
   if(tab==='order')return html+renderOrderTab(userId,roomId,st);
   if(st.step==='select'){
     html+='<div class="fl" style="margin-bottom:10px;">选择账单类型</div><div class="cts">';
-    [['wechat_single','💬','微信截图'],['alipay_single','🔵','支付宝'],['wechat_list','📋','账单列表'],['paper_receipt','🧾','纸质小票'],['invoice','📄','发票']].forEach(function(t){
+    [['wechat_single','💬','微信'],['alipay_single','🔵','支付宝'],['wechat_list','📋','账单'],['paper_receipt','🧾','小票'],['invoice','📄','发票']].forEach(function(t){
       html+='<div class="ct2 '+(st.billType===t[0]?'act':'')+'" onclick="ocrSelectType(\''+userId+'\',\''+t[0]+'\')"><div class="cti">'+t[1]+'</div><div class="ctl">'+t[2]+'</div></div>';
     });
     html+='</div>';
@@ -1464,8 +1493,8 @@ function renderCapture(userId,roomId){
       html+='<div class="ca" data-feat="ocr" onclick="ocrStartScan(\''+userId+'\')"><div class="cai">📸</div><div class="cat">点击拍照或选择图片<br><span style="font-size:10px;color:var(--g300)">支持 JPG / PNG / HEIC</span></div></div>';
       var md=MOCK_OCR[st.billType];
       html+='<div class="fl">示例账单预览</div><div class="mbi">';
-      if(md.items.length===1){var item=md.items[0];html+='<div class="mbt">'+esc(md.typeLabel)+'</div><div class="mbs">'+esc(item.time)+'</div><div class="mbr"><span>商户</span><span>'+esc(item.merchant)+'</span></div><div class="mbr"><span>商品</span><span>'+esc(item.desc)+'</span></div><div class="mbr tot"><span>实付金额</span><span>¥'+item.amount.toFixed(2)+'</span></div>';}
-      else{html+='<div class="mbt">'+esc(md.typeLabel)+'</div><div class="mbs">'+md.items.length+' 笔交易</div>';md.items.forEach(function(item){html+='<div class="mbr"><span>'+esc(item.desc)+'</span><span>¥'+item.amount.toFixed(2)+'</span></div>';});html+='<div class="mbr tot"><span>合计</span><span>¥'+md.items.reduce(function(s,i){return s+i.amount},0).toFixed(2)+'</span></div>';}
+      if(md.items.length===1){var item=md.items[0];html+='<div class="mbt">'+esc(md.typeLabel)+'</div><div class="mbs">'+esc(item.time)+'</div><div class="mbr"><span>商户</span><span>'+esc(item.merchant)+'</span></div><div class="mbr"><span>商品</span><span>'+esc(item.desc)+'</span></div><div class="mbr tot"><span>实付金额</span><span>¥'+money(item.amount)+'</span></div>';}
+      else{html+='<div class="mbt">'+esc(md.typeLabel)+'</div><div class="mbs">'+md.items.length+' 笔交易</div>';md.items.forEach(function(item){html+='<div class="mbr"><span>'+esc(item.desc)+'</span><span>¥'+money(item.amount)+'</span></div>';});html+='<div class="mbr tot"><span>合计</span><span>¥'+money(md.items.reduce(function(s,i){return s+i.amount},0))+'</span></div>';}
       html+='</div>';
     }
   }else if(st.step==='scanning'){
@@ -1476,11 +1505,11 @@ function renderCapture(userId,roomId){
     if(md2.items.length>1)html+='<div class="fl" style="margin-bottom:10px;">识别到 '+md2.items.length+' 笔消费，点击选择要导入的</div>';
     html+='<div class="ors">';
     md2.items.forEach(function(item,idx){
-      html+='<div class="orc '+(st.selected.has(idx)?'sel':'')+'" onclick="ocrToggleItem(\''+userId+'\','+idx+')"><div class="ort"><div class="ord">'+esc(item.desc)+'</div><div class="ora">¥'+item.amount.toFixed(2)+'</div></div><div class="orm"><span class="orb '+esc(md2.badge)+'">'+esc(md2.typeLabel)+'</span> <span class="oc">✓ '+item.confidence+'%</span> &nbsp;'+esc(item.merchant)+' · '+esc(item.time)+'</div></div>';
+      html+='<div class="orc '+(st.selected.has(idx)?'sel':'')+'" onclick="ocrToggleItem(\''+userId+'\','+idx+')"><div class="ort"><div class="ord">'+esc(item.desc)+'</div><div class="ora">¥'+money(item.amount)+'</div></div><div class="orm"><span class="orb '+esc(md2.badge)+'">'+esc(md2.typeLabel)+'</span> <span class="oc">✓ '+item.confidence+'%</span> &nbsp;'+esc(item.merchant)+' · '+esc(item.time)+'</div></div>';
     });
     html+='</div>';
     var selCount=st.selected.size;
-    if(selCount>0){var selTotal=md2.items.filter(function(_,i){return st.selected.has(i)}).reduce(function(s,i){return s+i.amount},0);html+='<button class="btn dk" style="width:100%;margin-top:8px;" onclick="ocrImport(\''+userId+'\',\''+roomId+'\')">导入 '+selCount+' 笔 · 共 ¥'+selTotal.toFixed(2)+'</button>';}
+    if(selCount>0){var selTotal=md2.items.filter(function(_,i){return st.selected.has(i)}).reduce(function(s,i){return s+i.amount},0);html+='<button class="btn dk" style="width:100%;margin-top:8px;" onclick="ocrImport(\''+userId+'\',\''+roomId+'\')">导入 '+selCount+' 笔 · 共 ¥'+money(selTotal)+'</button>';}
     html+='<div style="text-align:center;margin-top:12px;"><span style="font-family:Space Grotesk;font-size:10px;color:var(--g300);cursor:pointer;" onclick="ocrReset(\''+userId+'\')">重新识别</span></div>';
   }
   return html;
@@ -1737,19 +1766,19 @@ function renderSettle(userId,roomId){
   var totalBudget=(room.budgetPerPerson||0)*room.members.length;
   if(totalBudget>0){
     var pct=Math.min(totalSpent/totalBudget*100,100);var level=pct>=90?'over':pct>=70?'warn':'safe';
-    html+='<div class="bbw"><div class="bh"><div class="bl">BUDGET</div><div class="bnum"><strong>¥'+money(totalSpent,0)+'</strong> / ¥'+totalBudget+' 总预算</div></div><div class="bbg"><div class="bf '+level+'" style="width:'+pct+'%"></div></div></div>';
-    if(level==='over')html+='<div class="bal over">🚨 总预算超出 ¥'+money(totalSpent-totalBudget,0)+'</div>';
+    html+='<div class="bbw"><div class="bh"><div class="bl">预算 / BUDGET</div><div class="bnum"><strong>¥'+money(totalSpent)+'</strong> / ¥'+money(totalBudget)+' 总预算</div></div><div class="bbg"><div class="bf '+level+'" style="width:'+pct+'%"></div></div></div>';
+    if(level==='over')html+='<div class="bal over">🚨 总预算超出 ¥'+money(totalSpent-totalBudget)+'</div>';
     else if(level==='warn')html+='<div class="bal warn">⚠️ 已用 '+pct.toFixed(0)+'% 预算</div>';
     else html+='<div class="bal safe">✅ 预算内，剩余 ¥'+money(totalBudget-totalSpent,0)+'</div>';
   }
-  html+='<div class="og" style="grid-template-columns:1fr 1fr 1fr;"><div class="oi"><div class="ol">MEMBERS</div><div class="ov sm">'+room.members.length+'</div></div><div class="oi"><div class="ol">BILLS</div><div class="ov sm">'+bills.length+'</div></div><div class="oi"><div class="ol">MIN TX</div><div class="ov sm" style="color:var(--grn)">'+settlement.transfers.length+'</div></div></div>';
-  html+='<div class="sh" data-feat="balances"><div class="st">各人收支</div></div>';
+  html+='<div class="og" style="grid-template-columns:1fr 1fr 1fr;"><div class="oi"><div class="ol">成员 / MEMBERS</div><div class="ov sm">'+room.members.length+'</div></div><div class="oi"><div class="ol">笔数 / BILLS</div><div class="ov sm">'+bills.length+'</div></div><div class="oi"><div class="ol">最少转账 / MIN TX</div><div class="ov sm" style="color:var(--grn)">'+settlement.transfers.length+'</div></div></div>';
+  html+='<div class="sh" data-feat="balances"><div class="st">各人收支 / BALANCES</div></div>';
   settlement.balances.forEach(function(b){
     var sign=b.amount>=0?'+':'-';
     var label=b.amount>=0?'应收到此金额':'需支付此金额';
     html+='<div class="brm"><div class="bin2"><div class="bnn">'+esc(b.name)+'</div><div class="bnt">'+label+'</div></div><div class="bam '+(b.amount>=0?'pos':'neg')+'">'+sign+'¥'+money(Math.abs(b.amount))+'</div></div>';
   });
-  html+='<div class="sh" style="margin-top:16px;" data-feat="settle-transfers"><div class="st">最简转账</div><div class="sc">'+settlement.transfers.length+' STEPS</div></div>';
+  html+='<div class="sh" style="margin-top:16px;" data-feat="settle-transfers"><div class="st">最简转账</div><div class="sc">'+settlement.transfers.length+' 步 / STEPS</div></div>';
   var sInfo=settledInfo(room,settlement.transfers);
   if(settlement.transfers.length){
     /* 结清进度：一眼看出"还剩谁没给" —— 现实里最常问的就是这一句 */
@@ -1785,7 +1814,7 @@ function renderSettle(userId,roomId){
 
   /* ---- 结清卡片（可复制的分享文案） ---- */
   if(AI&&AI.shareCardData){
-    html+='<div class="sh" data-feat="share-card" style="margin-top:20px;"><div class="st">结清卡片</div><div class="sc">SHARE CARD</div></div>';
+    html+='<div class="sh" data-feat="share-card" style="margin-top:20px;"><div class="st">结清卡片 / SHARE CARD</div><div class="sc">结清卡片 / SHARE CARD</div></div>';
     var card=AI.shareCardData({room:room,bills:bills,members:room.members});
     html+='<div class="mbi" style="background:#18181b;color:#fff;border:none;">';
     html+='<div style="font-family:Space Grotesk,sans-serif;font-size:17px;font-weight:700;">✈️ '+esc(card.headline)+'</div>';
@@ -1812,7 +1841,7 @@ function renderSettle(userId,roomId){
 
   /* ---- AI 旅行小作文（内核模板保底，离线可生成） ---- */
   var u=USERS.find(function(x){return x.id===userId});
-  html+='<div class="sh" data-feat="narrative" style="margin-top:20px;"><div class="st">AI 旅行小作文</div><div class="sc">NARRATIVE</div></div>';
+  html+='<div class="sh" data-feat="narrative" style="margin-top:20px;"><div class="st">AI 旅行小作文 / NARRATIVE</div><div class="sc">旅行小作文 / NARRATIVE</div></div>';
   if(u&&u._narr){
     html+='<div class="mbi" style="margin-bottom:10px;"><div style="font-size:12px;line-height:1.75;">'+esc(u._narr)+'</div></div>';
     html+='<div style="display:flex;gap:8px;"><button class="btn lt" style="flex:1;" onclick="genNarrative(\''+userId+'\',\''+roomId+'\')">🔄 重新生成</button><button class="btn dk" style="flex:1;" onclick="copyNarrative(\''+userId+'\')">📋 复制小作文</button></div>';
@@ -2236,8 +2265,8 @@ function copySettle(userId,roomId){
   var room=State.rooms.find(function(r){return r.id===roomId});if(!room)return;
   var bills=State.bills.filter(function(b){return b.roomId===roomId});var settlement=calcSettlement(room,bills);
   var marks=room.settled||{};
-  var text='【TravelAA 结算方案】\n'+room.name+' · 总消费 ¥'+settlement.totalExpense.toFixed(2)+'\n\n';
-  settlement.transfers.forEach(function(t,i){text+=(i+1)+'. '+t.fromName+' → '+t.toName+' ¥'+t.amount.toFixed(2)+(marks[transferKey(t)]?'  ✅ 已转':'')+'\n'});
+  var text='【TravelAA 结算方案】\n'+room.name+' · 总消费 ¥'+money(settlement.totalExpense)+'\n\n';
+  settlement.transfers.forEach(function(t,i){text+=(i+1)+'. '+t.fromName+' → '+t.toName+' ¥'+money(t.amount)+(marks[transferKey(t)]?'  ✅ 已转':'')+'\n'});
   copyWithToast(userId,text,'📋 已复制结算方案');
 }
 function closeModal(userId){var m=document.getElementById('modal-'+userId);if(m)m.classList.remove('show');a11yClosed()}
@@ -2941,7 +2970,7 @@ var NARR_IDLE = '点「▶ 自动演示」看完整剧情，或点「🎬 导览
 /* 给评委看的验收数字。**只有一个地方要维护**（`node tests/run-all.js` 的实际输出），
    每次加测试后改这里；`tests/demo.check.js` 会检查这三个数还在、没被写成占位符。
    页内自检/交互验收的数字不写死 —— 点「🩺 自检」后会用**真实跑出来的结果**覆盖。 */
-var SUITE_STATS = { suites: 9, items: 836 };
+var SUITE_STATS = { suites: 9, items: 850 };
 function fillJudgeStats() {
   var set = function (id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
   set('jnSuite', String(SUITE_STATS.suites));
@@ -3819,7 +3848,7 @@ function runUITest() {
 
     /* 5. 携程订单：切页签 → 选样例 → 解析 → 导入 */
     goPhone('u1', 'room');
-    clickByText('#app-u1 .abb', '拍照');
+    clickByText('#app-u1 .abb', '识别入账');
     var atCapture = uiTitle('u1') === '记账方式';
     clickByText('#app-u1 .cts', '携程订单');
     clickByText('#app-u1 .pm', '机票');
@@ -3877,8 +3906,8 @@ function runUITest() {
 
     /* 10. 票据识别全流程（含 2 秒扫描动画） */
     goPhone('u1', 'room');
-    clickByText('#app-u1 .abb', '拍照');
-    clickByText('#app-u1 .cts', '微信截图');
+    clickByText('#app-u1 .abb', '识别入账');
+    clickByText('#app-u1 .cts', '微信');
     var beforeOcr = State.bills.length;
     clickByText('#app-u1', '点击拍照或选择图片');
     await wait(2400);
