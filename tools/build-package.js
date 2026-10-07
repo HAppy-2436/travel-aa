@@ -15,17 +15,25 @@
  *   ③ 源码包 `TravelAA-源码包.zip`
  *      `git archive HEAD` —— 只含**入库过**的文件（自动排除 .git / node_modules /
  *      server/data / .env / *.db），给需要看代码与文档的场合。
+ *   ④ 项目完整包 `TravelAA-项目完整包.zip`
+ *      入库文件 **+ `.git` 版本库**，解压出来就是一个能 `git log` / 继续提交的完整工程；
+ *      顶层带 `TravelAA/` 目录，解压不会散成一堆文件。
+ *      （node_modules 不进包：体积 22 MB 且 `npm install` 就能装回来。）
  *
  * 用法：node tools/build-package.js [输出目录]
  *   默认输出到仓库上一级的 `发布包/`（刻意放在仓库外：构建产物不进版本库、不会被 Pages 发布）
+ *   `--desktop` 额外把「项目完整包」复制一份到桌面（用户要"压缩到桌面"时用）
  */
 'use strict';
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
-const OUT = path.resolve(process.argv[2] || path.join(ROOT, '..', '发布包'));
+const args = process.argv.slice(2);
+const TO_DESKTOP = args.indexOf('--desktop') >= 0;
+const OUT = path.resolve(args.filter((a) => a.indexOf('--') !== 0)[0] || path.join(ROOT, '..', '发布包'));
 
 /* 需要内联/打包的外部脚本（顺序必须与 demo/index.html 里一致：先内核、后样例） */
 const DEPS = [
@@ -84,6 +92,29 @@ function buildSourceZip() {
   fs.rmSync(zip, { force: true });
   /* git archive 只导出**入库过**的文件：.env / node_modules / server/data / *.db / .git 天然排除 */
   execFileSync('git', ['archive', '--format=zip', '-o', zip, 'HEAD'], { cwd: ROOT, stdio: 'inherit' });
+  return zip;
+}
+
+/* ---------- ④ 项目完整包（含 .git） ---------- */
+function buildProjectZip() {
+  const zip = path.join(OUT, 'TravelAA-项目完整包.zip');
+  const staging = fs.mkdtempSync(path.join(os.tmpdir(), 'taa-proj-'));
+  fs.rmSync(zip, { force: true });
+  /* 用 git archive 取"入库过的文件"（自动排除 node_modules / server/.env / tests/.output 等），
+     加 --prefix 让解压出来是 TravelAA/ 一个目录而不是散开的 142 个文件。 */
+  execFileSync('git', ['archive', '--format=zip', '--prefix=TravelAA/', '-o',
+    path.join(staging, 'src.zip'), 'HEAD'], { cwd: ROOT, stdio: 'inherit' });
+  execFileSync('powershell.exe', ['-NoProfile', '-Command',
+    'Expand-Archive -LiteralPath "' + path.join(staging, 'src.zip') + '" -DestinationPath "' + staging + '" -Force'],
+    { stdio: 'inherit' });
+  /* 版本库一起带上：解压后就是一个能 git log / git diff / 继续提交的完整工程 */
+  execFileSync('powershell.exe', ['-NoProfile', '-Command',
+    'Copy-Item -LiteralPath "' + path.join(ROOT, '.git') + '" -Destination "' + path.join(staging, 'TravelAA', '.git') + '" -Recurse -Force'],
+    { stdio: 'inherit' });
+  execFileSync('powershell.exe', ['-NoProfile', '-Command',
+    'Compress-Archive -Path "' + path.join(staging, 'TravelAA') + '" -DestinationPath "' + zip + '" -CompressionLevel Optimal -Force'],
+    { stdio: 'inherit' });
+  fs.rmSync(staging, { recursive: true, force: true });
   return zip;
 }
 
@@ -151,5 +182,16 @@ apps/miniprogram/utils/sync.js      多窗口同步内核
 
   const zip = buildSourceZip();
   console.log('③ 源码包    ' + path.basename(zip) + '   ' + kb(fs.statSync(zip).size) + '  （git archive HEAD）');
+
+  const proj = buildProjectZip();
+  console.log('④ 项目完整包 ' + path.basename(proj) + '   ' + kb(fs.statSync(proj).size) + '  （入库文件 + .git，可继续提交）');
+
+  if (TO_DESKTOP) {
+    const desktop = path.join(os.homedir(), 'Desktop');
+    if (!fs.existsSync(desktop)) throw new Error('找不到桌面目录：' + desktop);
+    const dst = path.join(desktop, path.basename(proj));
+    fs.copyFileSync(proj, dst);
+    console.log('\n📄 已复制到桌面：' + dst + '   ' + kb(fs.statSync(dst).size));
+  }
   console.log('\n打包完成。');
 })();

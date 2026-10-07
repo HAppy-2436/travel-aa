@@ -102,9 +102,10 @@ travel-aa/
 ### 📦 要"发出去"时（打包）
 
 ```bash
-# 生成三种交付形态到 ../发布包/（刻意放在仓库外：产物不进版本库、不会被 Pages 发布）
+# 生成四种交付形态到 ../发布包/（刻意放在仓库外：产物不进版本库、不会被 Pages 发布）
 node tools/build-package.js
-node tools/verify-package.js     # 必须验：两种形态都真跑一遍，全绿才发
+node tools/build-package.js --desktop   # 额外把「项目完整包」复制一份到桌面
+node tools/verify-package.js            # 必须验：三种形态都真跑一遍，全绿才发
 ```
 
 | 产物 | 给谁 | 说明 |
@@ -112,9 +113,15 @@ node tools/verify-package.js     # 必须验：两种形态都真跑一遍，全
 | `TravelAA-演示-单文件.html`（≈560 KB） | **评委 / 提交系统** | 4 个外部脚本已内联，**双击即开、无需联网、无需解压**。最省事的形态 |
 | `TravelAA-演示包.zip`（≈300 KB） | 要保留目录结构时 | 根 `index.html` 会自动跳转到 `demo/`；**整个文件夹要一起拷**（demo 依赖 `../apps/miniprogram/utils/`） |
 | `TravelAA-源码包.zip`（≈6.7 MB） | 送审 / 看代码与文档 | `git archive HEAD`，只含入库过的文件（自动排除 `.git` / `node_modules` / `server/data` / `.env` / `*.db`） |
+| `TravelAA-项目完整包.zip`（≈16 MB） | **给队友 / 换台电脑接着做** | 入库文件 **+ `.git` 版本库**：解压出来就是一个能 `git log`、`git diff`、继续提交的完整工程（顶层是 `TravelAA/`，不会散成一堆文件） |
 
-`verify-package.js` 会检查：三份共享内核都加载、4 台手机渲染出来、样例数据在、
-页内自检 **22/22 全过**（真跑解析 / 结算 / 外币 / 订单四条链路）、页面无运行时 JS 报错。
+`verify-package.js` 会解压每一个包并真跑一遍：三份共享内核都加载、4 台手机渲染出来、
+样例数据在、页内自检 **22/22 全过**（真跑解析 / 结算 / 外币 / 订单四条链路）、页面无运行时 JS 报错；
+项目完整包还要额外确认 `.git` 完好（`git log` 跑得出来）且没有夹带 `node_modules`。
+
+> 队友拿到包后：`npm install` 装上依赖（`node_modules` 刻意没打进去，22 MB 且装机即可），
+> 然后 `npm test` 跑 9 套验收 —— 全绿就说明环境没问题。
+
 
 
 **共享算法内核**：`apps/miniprogram/utils/` 下的 `ai.js`（AI 解析/审计/预算/洞察/结算口径）、

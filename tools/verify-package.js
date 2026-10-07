@@ -99,6 +99,34 @@ async function boot(file, label) {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 
-  console.log('\n' + (failed ? '❌ ' + failed + ' 项未通过 —— 不要发出去' : '✅ 两种形态都验过：解压 / 双击即可用'));
+  /* ---------- 项目完整包：解压出来必须还是一个能继续提交的完整工程 ---------- */
+  const PROJ_ZIP = path.join(OUT, 'TravelAA-项目完整包.zip');
+  check('项目完整包存在', fs.existsSync(PROJ_ZIP), fs.existsSync(PROJ_ZIP) ? (fs.statSync(PROJ_ZIP).size / 1024 / 1024).toFixed(1) + ' MB' : '缺失');
+  if (fs.existsSync(PROJ_ZIP)) {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'taa-proj-verify-'));
+    execFileSync('powershell.exe', ['-NoProfile', '-Command',
+      'Expand-Archive -LiteralPath "' + PROJ_ZIP + '" -DestinationPath "' + tmp + '" -Force'], { stdio: 'inherit' });
+    const root = path.join(tmp, 'TravelAA');
+    check('解压后顶层是一个 TravelAA/ 目录（不是散成一堆文件）', fs.existsSync(root));
+    const must = ['README.md', 'CHANGELOG.md', 'package.json', 'index.html',
+      'demo/index.html', 'apps/miniprogram/utils/ai.js', 'apps/miniprogram/utils/ctrip.js',
+      'apps/miniprogram/utils/sync.js', 'server/app.js', 'tests/run-all.js', 'tools/build-package.js', 'docs/'];
+    const missing = must.filter((f) => !fs.existsSync(path.join(root, f)));
+    check('项目关键文件齐全（源码 / 服务端 / 测试 / 文档 / 打包工具）', missing.length === 0, missing.join(' ') || '全部存在');
+    check('版本库 .git 在（解压后能 git log / 继续提交）', fs.existsSync(path.join(root, '.git', 'HEAD')));
+    let gitOK = false, head = '';
+    try {
+      head = execFileSync('git', ['log', '--oneline', '-1'], { cwd: root, encoding: 'utf8' }).trim();
+      gitOK = /^[0-9a-f]{7,}/.test(head);
+    } catch (e) { gitOK = false; }
+    check('版本库可读（git log 能跑出来）', gitOK, head);
+    const junk = ['node_modules', 'server/node_modules', 'server/.env', 'tests/.output', 'server/data'];
+    const present = junk.filter((f) => fs.existsSync(path.join(root, f)));
+    check('没有夹带 node_modules / 空 .env / 测试产物（npm install 就能装回来）', present.length === 0, present.join(' ') || '（干净）');
+    if (fs.existsSync(path.join(root, 'demo', 'index.html'))) await boot(path.join(root, 'demo', 'index.html'), '项目完整包（解压后）');
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+
+  console.log('\n' + (failed ? '❌ ' + failed + ' 项未通过 —— 不要发出去' : '✅ 三种形态都验过：解压 / 双击即可用'));
   process.exit(failed ? 1 : 0);
 })();
