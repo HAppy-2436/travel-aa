@@ -423,6 +423,8 @@ body:not(.touring) .tour-mask,body:not(.touring) .tour-card{display:none!importa
 .finale-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
 .finale-chip{font-size:12px;color:#18181b;background:var(--g100);border:1px solid var(--g200);border-radius:100px;padding:6px 12px}
 .finale-chip b{color:var(--pri-ink);margin-right:6px}
+.finale-cmp{font-size:12.5px;line-height:1.75;color:var(--g500);border-left:3px solid var(--pri);padding:2px 0 2px 12px;margin-bottom:12px}
+.finale-cmp b{color:var(--pri-ink)}
 .finale-note{font-size:12px;line-height:1.7;color:var(--g500);background:var(--pri-bg);border-radius:12px;padding:12px 14px;margin-bottom:18px}
 .finale-acts{display:flex;gap:10px;flex-wrap:wrap}
 .finale-acts .btn{flex:1 1 0;min-width:150px}
@@ -518,20 +520,38 @@ body:not(.touring) .tour-mask,body:not(.touring) .tour-card{display:none!importa
 .app .et{font-size:13px}
 .app .es{font-size:11px}
 .app .toast{font-size:12px;padding:10px 20px}
-/* ===== 给评委看的一屏（手机舞台下方）===== */
-/* ⚠️ 工具条是 sticky 的，锚点跳转／scrollIntoView 会把这节的标题压在工具条下面
-   （走查截图里"旅行 AA 的三件麻烦事"整行被盖住）。scroll-margin-top 让浏览器
-   自己留出工具条的高度。 */
+/* ===== 给评委看的一屏（手机舞台下方）=====
+   叙事顺序（**刻意做成"先看强在哪，技术放最后收起"**）：
+     问题 → 和市面上同类做法逐项对比 → 三个不可复制的差异点 → 它替你做什么 → 诚实边界
+     → （折叠）给技术评委的验收证据
+   ⚠️ 工具条是 sticky 的，锚点跳转／scrollIntoView 会把这节的标题压在工具条下面，
+      所以这里给了 scroll-margin-top。 */
 .judge{margin-top:26px;padding-top:22px;border-top:1px solid rgba(255,255,255,.07);scroll-margin-top:62px}
-.judge-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:16px}
+.judge-grid{display:flex;flex-direction:column;gap:16px}
 .judge-card{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px 20px}
-.judge-lead{grid-row:span 2}
 .judge-kicker{font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;color:var(--pri);margin-bottom:9px}
 .judge h2{font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;letter-spacing:-.5px;color:#fff;margin-bottom:12px;line-height:1.35}
 .judge p{font-size:13px;line-height:1.8;color:rgba(255,255,255,.62)}
 .judge p b{color:#fff}
 .judge p em{font-style:normal;color:var(--pri)}
 .judge p + p{margin-top:10px}
+/* ---- 逐项对比表：这一节的主场 ---- */
+.cmp{width:100%;border-collapse:collapse;table-layout:fixed}
+.cmp th:nth-child(1),.cmp td:nth-child(1){width:15%}
+.cmp th:nth-child(2),.cmp td:nth-child(2){width:22%}
+.cmp th:nth-child(3),.cmp td:nth-child(3){width:31%}
+.cmp th:nth-child(4),.cmp td:nth-child(4){width:32%}
+.cmp th,.cmp td{text-align:left;vertical-align:top;padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.07);line-height:1.72}
+.cmp th{font-family:'Space Grotesk',sans-serif;font-size:10.5px;font-weight:700;letter-spacing:1.4px;color:rgba(255,255,255,.42);border-bottom-color:rgba(255,255,255,.16);padding-bottom:9px}
+.cmp td{font-size:12.5px;color:rgba(255,255,255,.6)}
+.cmp td:first-child{color:#fff;font-weight:700;white-space:nowrap}
+.cmp td:last-child{color:rgba(255,255,255,.86)}
+.cmp td:last-child b{color:var(--pri)}
+.cmp tr:last-child td{border-bottom:0}
+.cmp-note{margin-top:12px;font-size:11.5px;line-height:1.75;color:rgba(255,255,255,.42)}
+/* ---- 两个并排小卡（差异点 / 它替你做什么） ---- */
+.judge-two{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
+@media(max-width:1080px){.judge-two{grid-template-columns:1fr}}
 .judge-tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
 .judge-tags span{font-size:11.5px;color:rgba(255,255,255,.72);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:100px;padding:5px 11px}
 .judge-diff{list-style:none;counter-reset:jd;display:flex;flex-direction:column;gap:9px;margin-top:2px}
@@ -553,9 +573,17 @@ body:not(.touring) .tour-mask,body:not(.touring) .tour-card{display:none!importa
 .judge-acts .btn{flex:1;font-size:12px;padding:11px 12px;border-radius:100px}
 .btn.dark{background:rgba(255,255,255,.09);color:#fff;border:1px solid rgba(255,255,255,.12)}
 .btn.dark:hover{background:rgba(255,255,255,.16)}
-.judge-honest{grid-column:1 / -1}
 .judge-honest .judge-list{display:grid;grid-template-columns:1fr 1fr;gap:10px 22px}
-@media(max-width:1080px){.judge-grid{grid-template-columns:1fr}.judge-lead{grid-row:auto}.judge-honest .judge-list{grid-template-columns:1fr}}
+@media(max-width:1080px){.judge-honest .judge-list{grid-template-columns:1fr}}
+/* ---- 技术证据：默认收起。用户明确要求"技术放起来不讲" —— 不删（诚实边界要有据可查），
+        但也不摆在评委第一眼里，愿意深挖的人自己展开。 ---- */
+.judge-tech{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:0 20px}
+.judge-tech>summary{cursor:pointer;list-style:none;padding:15px 0;font-family:'Space Grotesk',sans-serif;font-size:11.5px;font-weight:700;letter-spacing:1px;color:rgba(255,255,255,.45)}
+.judge-tech>summary::-webkit-details-marker{display:none}
+.judge-tech>summary::before{content:'▸ ';color:var(--pri)}
+.judge-tech[open]>summary::before{content:'▾ '}
+.judge-tech>summary:hover{color:#fff}
+.judge-tech-body{padding-bottom:18px}
 /* 演示模式下把评委区藏掉：一屏只留手机 */
 body.present .judge,body.present .fh{display:none}
 </style>
@@ -602,79 +630,127 @@ body.present .judge,body.present .fh{display:none}
     <button type="button" class="narr-btn narr-play" id="shellSpeed" onclick="cycleAutoSpeed()" title="切换自动演示速度">⏩ 1×</button>
   </div>
   <div class="stage" id="phonesStage"></div>
-  <div class="fh" id="hintBar">💡 每台手机 = 一个真实用户，可以直接点手机里的按钮操作，4 台会实时联动　·　↓ 往下滚：和别家不一样的三个点 / 验收证据 / 诚实边界</div>
+  <div class="fh" id="hintBar">💡 每台手机 = 一个真实用户，可以直接点手机里的按钮操作，4 台会实时联动　·　↓ 往下滚：和别家比强在哪 / 它能替你做什么 / 诚实边界</div>
 
   <!-- ============================================================
-       给评委看的一屏：手机舞台下面把"这是什么 / 能做什么 / 边界在哪 / 凭什么信"
-       一次说清。网页版评委多半会往下滚，所以这里放的是**结论与证据**，不放过程。
+       给评委看的一屏（手机舞台下方）
+       叙事顺序刻意做成"**先看强在哪，技术放最后收起**"：
+         问题 → 和市面上同类做法逐项对比 → 三个不可复制的差异点 → 它替你做什么
+         → 诚实边界 →（折叠）给技术评委的验收证据
        ============================================================ -->
   <section class="judge" id="judgeSection">
     <div class="judge-grid">
-      <div class="judge-card judge-lead">
+      <div class="judge-card">
         <div class="judge-kicker">为什么需要它</div>
         <h2>旅行 AA 的三件麻烦事，一件一件解决</h2>
         <p><b>垫付分散</b>——谁付了哪笔、谁还没给，靠群聊翻记录；<b>事后对不上账</b>——总额和分摊合计差几毛，
         谁都说不清；<b>外币算不清</b>——日元、泰铢混着记，汇率一波动就扯皮。</p>
         <p>TravelAA 把这三件事收进一本账：<b>一句话 / 一张截图 / 一条携程订单</b>就能入账，
-        <b>账恒平</b>（分摊合计恒等于金额、净余额合计恒为 0），
+        <b>账恒平</b>（分摊合计恒等于账单金额、净余额合计恒为 0），
         结算给<b>最少转账笔数</b>，还能标「我转了」把结清闭环。</p>
-        <div class="judge-kicker" style="margin-top:16px;">和常见记账软件比，三个不一样的点</div>
-        <ol class="judge-diff">
-          <li><b>行程即账本</b>：携程订单文本直接解析成机票 / 酒店 / 门票账单，多笔勾选一次入账；
-            订单截图也能读。<span>别家要你照着订单手打一遍。</span></li>
-          <li><b>算得准、也收得回</b>：分摊合计恒等于账单金额、净余额合计恒为 0；
-            贪心给出最少转账笔数；每笔可标「我转了」，进度跟着同步，两个窗口都看得见。</li>
-          <li><b>旅行专属的那些小事</b>：外币按<b>记账当时</b>的汇率快照；日元 12780 一键抹成 12800
-            且差额并入分摊（账不会因凑整而不平）；私账（人情账）不进 AA 但你仍知道自己花了多少；
-            有人离队、酒店改价可以事后补一笔调整，原账留痕。</li>
-        </ol>
-        <div class="judge-tags">
-          <span>一句话记账</span><span>票据与订单截图识别</span><span>携程订单入账</span>
-          <span>多币种汇率快照</span><span>智能抹零</span><span>私账（人情账）</span>
-          <span>多退少补</span><span>暂估改价</span><span>口头占位</span>
-          <span>AI 审计与洞察</span><span>最简转账</span><span>导出 CSV</span>
-        </div>
       </div>
 
+      <!-- ★ 这一屏的主场：和市面上同类做法**逐项**对比 -->
       <div class="judge-card">
-        <div class="judge-kicker">五层 AI 能力（都能现场点出来）</div>
-        <ul class="judge-list">
-          <li><b>会听</b>「打车去机场86块，我垫的，和小红小李平分」→ 金额、分类、付款人、分摊一次填好</li>
-          <li><b>会看</b>微信/支付宝截图、小票、发票、订单截图 → 多笔识别后勾选批量入账</li>
-          <li><b>会读单</b>携程订单文本 → 机票/酒店/门票直接变成 AA 账单</li>
-          <li><b>会算账</b>多币种按<em>记账当时</em>的汇率快照折算；贪心给出最少转账笔数</li>
-          <li><b>会复盘</b>账单审计、消费洞察、每日趋势、旅行小作文、导出表格</li>
-        </ul>
+        <div class="judge-kicker">和市面上的同类做法比，差别在哪</div>
+        <table class="cmp">
+          <thead>
+            <tr><th>市面上的做法</th><th>它擅长</th><th>它做不到 / 要额外折腾</th><th>TravelAA 的不同</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>微信 / 支付宝<br>「AA 收款」</td>
+              <td>一键均摊发收款，支付当场闭环</td>
+              <td>本质是<b>收款工具</b>：没有账本、没有分类、没有历史、没有跨笔结算，收完就结束</td>
+              <td>是一本<b>长在行程上的账</b>：收完还能复盘——分类占比、每日趋势、旅行小作文、导出表格</td>
+            </tr>
+            <tr>
+              <td>Splitwise 等<br>通用分账</td>
+              <td>通用债务簿很成熟；多币种折算、简化债务都有</td>
+              <td>记账要<b>一笔笔手填表单</b>；不认识「我垫的、和小红平分」这种中文口语；没有行程语义（预算 / 汇率快照 / 订单）</td>
+              <td><b>说一句 / 语音 / 截图 / 携程订单</b>四种入账方式，收敛到同一条解析管线</td>
+            </tr>
+            <tr>
+              <td>Tricount 等<br>旅行分账</td>
+              <td>旅行分账 + 预算条做得不错</td>
+              <td>仍以手动录入为主，最多小票 OCR；不与订单生态联动，出行开销得自己敲进去</td>
+              <td>携程订单<b>直接变成账单</b>（文本 / 截图两条通道）——行程即账本</td>
+            </tr>
+            <tr>
+              <td>记账 App 里的<br>AA 模块</td>
+              <td>记账功能全，顺手能分摊</td>
+              <td>多为单机 / 表单式体验；旅行场景不深挖，外币与凑整靠手工算</td>
+              <td>外币按<b>记账当时</b>的汇率快照；日元抹零、差额并入分摊；<b>私账（人情账）</b>不进 AA，但你仍知道自己花了多少</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="cmp-note">对比依据与参考链接见仓库 <code>docs/竞品分析与差异化.md</code> 的逐维度对照表。
+        「做不到 / 要额外折腾」指的是这类通用产品里的<b>常见形态</b>——不排除个别产品有单项能力，我们没有夸大成"别人都没有"。</p>
       </div>
 
-      <div class="judge-card">
-        <div class="judge-kicker">工程可信度（一条命令可复现）</div>
-        <div class="judge-nums">
-          <div><b id="jnSuite">9</b><span>套自动化验收</span></div>
-          <div><b id="jnItems">871</b><span>项断言</span></div>
-          <div><b id="jnSelf">—</b><span>页内自检</span></div>
-          <div><b id="jnUI">—</b><span>交互验收</span></div>
+      <div class="judge-two">
+        <div class="judge-card">
+          <div class="judge-kicker">所以，三个不可复制的差异点</div>
+          <ol class="judge-diff">
+            <li><b>行程即账本</b>：携程订单文本直接解析成机票 / 酒店 / 门票账单，多笔勾选一次入账；
+              订单截图也能读。<span>别家要你照着订单手打一遍。</span></li>
+            <li><b>算得准、也收得回</b>：分摊合计恒等于账单金额、净余额合计恒为 0；
+              给最少转账笔数；每笔可标「我转了」，进度跟着同步，两个窗口都看得见。</li>
+            <li><b>旅行专属的那些小事</b>：外币按<b>记账当时</b>的汇率快照；日元 12780 一键抹成 12800
+              且差额并入分摊（账不会因凑整而不平）；私账（人情账）不进 AA 但你仍知道自己花了多少；
+              有人离队、酒店改价可以事后补一笔调整，原账留痕。</li>
+          </ol>
+          <div class="judge-tags">
+            <span>一句话记账</span><span>票据与订单截图识别</span><span>携程订单入账</span>
+            <span>多币种汇率快照</span><span>智能抹零</span><span>私账（人情账）</span>
+            <span>多退少补</span><span>暂估改价</span><span>口头占位</span>
+            <span>AI 审计与洞察</span><span>最简转账</span><span>导出 CSV</span>
+          </div>
         </div>
-        <p class="judge-small">算法只写在 <code>apps/miniprogram/utils/</code> 一处，
-        <b>小程序、网页、服务端三端复用同一份</b>；核心不变量（分摊合计 = 金额、净余额合计 = 0）
-        有专门的测试闸门，任何一条被破坏都会让验收变红。
-        右边两个数字是<b>点「在页面里跑一次自检」后真实跑出来的</b>，不是写死的文案。</p>
-        <div class="judge-acts">
-          <button class="btn dark" onclick="runSelfTest()">在页面里跑一次自检</button>
-          <button class="btn dark" onclick="startTour()">听 15 步导览</button>
+
+        <div class="judge-card">
+          <div class="judge-kicker">它替你做的事（都能现场点出来）</div>
+          <ul class="judge-list">
+            <li><b>懒得填表</b>说一句「打车去机场86块，我垫的，和小红小李平分」→ 金额、分类、付款人、分摊一次填好</li>
+            <li><b>截图也算</b>微信 / 支付宝截图、小票、发票、订单截图 → 多笔识别后勾选批量入账</li>
+            <li><b>订单不手打</b>携程订单文本 → 机票 / 酒店 / 门票直接变成 AA 账单</li>
+            <li><b>不用算汇率</b>多币种按<em>记账当时</em>的汇率快照折算；给最少转账笔数</li>
+            <li><b>结束有交代</b>账单审计、消费洞察、每日趋势、旅行小作文、导出表格</li>
+          </ul>
         </div>
       </div>
 
       <div class="judge-card judge-honest">
-        <div class="judge-kicker">诚实边界（对外表述请按这个来）</div>
+        <div class="judge-kicker">诚实边界（我们不吹的地方）</div>
         <ul class="judge-list">
-          <li>✅ <b>可以说</b>：订单文本 / 截图 → 账单的识别入账管线已打通；多币种折算、账恒平、最简转账有单测与页内自检。</li>
+          <li>✅ <b>可以说</b>：订单文本 / 截图 → 账单的识别入账管线已打通；多币种折算、账恒平、最简转账都当场验得出来。</li>
           <li>⚠️ <b>未连 AI 通道时</b>截图识别展示的是<b>内置样例结果</b>，页面已明确标注，不冒充模型实时输出。</li>
           <li>⚠️ <b>携程自动拉单</b>需要携程开放平台授权，当前是<b>对接点已预留</b>，演示的是同一条数据管线。</li>
-          <li>⚠️ <b>多窗口同步</b>限于同一浏览器多标签页（BroadcastChannel + localStorage）；跨设备需后端通道，<code>server/</code> 已具备接口。</li>
-          <li>⚠️ 视觉/语言模型均为能力集成，非自研。</li>
+          <li>⚠️ <b>多窗口同步</b>限于同一浏览器多标签页；跨设备需要后端通道，接口已就位。</li>
+          <li>⚠️ 视觉 / 语言模型均为<b>能力集成</b>，非自研 —— 我们的工作在"解析与场景编排"这一层。</li>
         </ul>
       </div>
+
+      <!-- 技术证据：用户要求"技术放起来不讲"。不删（诚实边界要有据可查），默认收起。 -->
+      <details class="judge-tech">
+        <summary>给技术评委：可复现的验收（点开看）</summary>
+        <div class="judge-tech-body">
+          <div class="judge-nums">
+            <div><b id="jnSuite">9</b><span>套自动化验收</span></div>
+            <div><b id="jnItems">875</b><span>项断言</span></div>
+            <div><b id="jnSelf">—</b><span>页内自检</span></div>
+            <div><b id="jnUI">—</b><span>交互验收</span></div>
+          </div>
+          <p class="judge-small">一条命令跑完全部验收（<code>npm test</code>）：算法只写在 <code>apps/miniprogram/utils/</code> 一处，
+          <b>小程序、网页、服务端三端复用同一份</b>；核心不变量（分摊合计 = 金额、净余额合计 = 0）
+          有专门的测试闸门，任何一条被破坏都会让验收变红。
+          右边两个数字是<b>点「在页面里跑一次自检」后真实跑出来的</b>，不是写死的文案。</p>
+          <div class="judge-acts">
+            <button class="btn dark" onclick="runSelfTest()">在页面里跑一次自检</button>
+            <button class="btn dark" onclick="startTour()">听 15 步导览</button>
+          </div>
+        </div>
+      </details>
     </div>
   </section>
 </div>
@@ -2740,7 +2816,7 @@ async function autoDemo() {
     }
 
     /* ④ u1 一句话记账 */
-    say('④ 会听：u1 说「打车去机场86块，我垫的，和小红小李平分」→ 自动填表');
+    say('④ 说一句就记好：u1 说「打车去机场86块，我垫的，和小红小李平分」→ 金额/分类/付款人/分摊一次填完（别家要一笔笔填表）');
     setCaption('u1', '④ 会听①：一句话记账');
     goPhone('u1', 'add');
     USERS[0]._aiText = '打车去机场86块，我垫的，和小红小李平分';
@@ -2750,7 +2826,7 @@ async function autoDemo() {
     await sleep(1400);
 
     /* ⑤ u4 语音记账（真实麦克风在无人值守演示里取不到，这里演示同一条识别管线） */
-    say('⑤ 会听：u4（小王）用语音说「迪士尼门票380，我付的，大家平摊」→ 直接填好');
+    say('⑤ 懒得打字就用说的：u4（小王）语音说「迪士尼门票380，我付的，大家平摊」→ 中文口语也听得懂');
     setCaption('u4', '⑤ 会听②：语音输入记账');
     goPhone('u4', 'add');
     var u4 = USERS.filter(function (u) { return u.id === 'u4'; })[0];
@@ -2764,7 +2840,7 @@ async function autoDemo() {
     await sleep(1400);
 
     /* ⑥ u2 票据识别（多笔勾选批量入账） */
-    say('⑥ 会看：小红上传微信账单截图 → 识别多笔 → 批量入账');
+    say('⑥ 截图也能记：小红上传微信账单截图 → 识别出多笔 → 勾选批量入账，不用一条条敲');
     setCaption('u2', '⑥ 会看：票据识别批量入账');
     goPhone('u2', 'capture');
     ocrState['u2'].tab = 'ocr';
@@ -2779,7 +2855,7 @@ async function autoDemo() {
     await sleep(1400);
 
     /* ⑦ u1 携程订单 */
-    say('⑦ 会读单：u1 粘贴携程订单 → 机票/酒店直接变成 AA 账单（行程即账本）');
+    say('⑦ 携程订单直接变账单：机票/酒店多笔一次入账 —— 别家要你照着订单手打一遍（行程即账本）');
     setCaption('u1', '⑦ 会读单：携程订单入账');
     goPhone('u1', 'capture');
     var st1 = ocrState['u1'];
@@ -2793,7 +2869,7 @@ async function autoDemo() {
     await sleep(1400);
 
     /* ⑧ u4 订单截图识别（此前自动演示完全没演到） */
-    say('⑧ 会看：u4 直接贴一张携程酒店订单截图 → 识别订单号/内容/金额/出行人 → 入账');
+    say('⑧ 订单截图也能读：u4 贴一张携程酒店订单 → 订单号/内容/金额/出行人一次识别 → 入账');
     setCaption('u4', '⑧ 会看：订单截图识别');
     goPhone('u4', 'capture');
     var st4 = ocrState['u4'];
@@ -2806,7 +2882,7 @@ async function autoDemo() {
     await sleep(1400);
 
     /* ⑨ u3 多币种：按记账时汇率快照折算 */
-    say('⑨ 会算账：u3（小李）在日本记 12000 日元 → 按记账当时汇率快照折算人民币');
+    say('⑨ 外币不用脑算：u3 记 12000 日元 → 按「记账当时」的汇率快照折算人民币（不是按今天的汇率）');
     setCaption('u3', '⑨ 多币种 + 汇率快照');
     goPhone('u3', 'add');
     var u3 = USERS.filter(function (u) { return u.id === 'u3'; })[0];
@@ -2818,7 +2894,7 @@ async function autoDemo() {
 
     /* ⑩ u1 智能抹零 */
     var jpy = AI && AI.smartRound ? AI.smartRound(12780, 'JPY') : { original: 12780, rounded: 12800, loss: 20, changed: true };
-    say('⑩ 小而美：u1 在札幌吃饭 12780 日元 → 一键凑成 ' + jpy.rounded + '，差额 ' + jpy.loss + ' 记进「抹零损耗」，账单合计仍严格等于金额');
+    say('⑩ 旅行才有的零头：u1 在札幌吃饭 12780 日元 → 一键凑成 ' + jpy.rounded + '，差额 ' + jpy.loss + ' 记进「抹零损耗」，账单合计仍严格等于金额');
     setCaption('u1', '⑩ 智能抹零');
     goPhone('u1', 'add');
     var f1 = USERS[0]._form || (USERS[0]._form = { amount: '', desc: '', category: 'food', payer: 'u1', splitType: 'equal', currency: 'CNY' });
@@ -2834,7 +2910,7 @@ async function autoDemo() {
     await sleep(1400);
 
     /* ⑪ u4 私账（人情账）：不进 AA，但自己知道花了多少 */
-    say('⑪ 人情账：u4 给自己买伴手礼 1280 → 选「我的私账」：不进 AA、不影响别人，但累计到"我花了多少"');
+    say('⑪ 人情账：u4 给自己买伴手礼 1280 → 选「我的私账」：不进 AA、不影响别人，但你知道自己花了多少');
     setCaption('u4', '⑪ 我的私账（人情账）');
     goPhone('u4', 'add');
     u4._form = { amount: '1280', desc: '给自己买的伴手礼', category: 'shopping', payer: 'u4', splitType: 'sole', currency: 'CNY' };
@@ -2950,7 +3026,7 @@ async function autoDemo() {
     await sleep(2000);
 
     /* ⑲ u1 一键结算：各人收支 + 最简转账 + 账恒平 */
-    say('⑲ 会算账：一键清账 —— 净余额合计严格为 0（账恒平），贪心给出最少转账笔数');
+    say('⑲ 一键清账：净余额合计严格为 0（账恒平）+ 最少转账笔数 —— 收款工具收完就结束，没有账本也没有复盘');
     setCaption('u1', '⑲ 最简转账 + 账恒平');
     goPhone('u1', 'settle');
     await sleep(2000);
@@ -2973,7 +3049,7 @@ async function autoDemo() {
     /* ㉑ 结清卡片 + 礼貌催账话术 */
     setCaption('u1', '㉑ 结清卡片 + 催账话术');
     goPhone('u1', 'settle');
-    say('㉑ 会说话：一键生成可复制的「结清卡片」，还有不尴尬的催账话术 —— 不光算得清，还要说得出口');
+    say('㉑ 算得清，还要说得出口：一键生成可复制的「结清卡片」+ 不尴尬的催账话术');
     await sleep(2000);
 
     /* ㉒ AI 小作文 + 旅行报告 */
@@ -2983,7 +3059,7 @@ async function autoDemo() {
     await sleep(2000);
 
     /* ㉓ u2 消费复盘 */
-    say('㉓ 会复盘：u2 打开统计 —— 分类占比 · 每日趋势 · AI 消费洞察 · 入账方式');
+    say('㉓ 收完还有交代：u2 打开统计 —— 分类占比 · 每日趋势 · 消费洞察 · 入账方式（收款工具给不了这个）');
     setCaption('u2', '㉓ 消费复盘');
     goPhone('u2', 'stats');
     await sleep(2000);
@@ -3051,11 +3127,11 @@ function showFinale() {
   d.id = 'finale'; d.className = 'finale';
   d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-label', '演示总结');
   var caps = [
-    ['会听', '一句话 / 语音记账'],
-    ['会看', '票据 / 订单截图识别'],
-    ['会读单', '携程订单直接入账'],
-    ['会算账', '多币种 · 账恒平 · 最简转账'],
-    ['会复盘', '审计 · 洞察 · 小作文 · 导出']
+    ['不用填表', '一句话 / 语音记账'],
+    ['截图也行', '票据 / 订单截图识别'],
+    ['订单不手打', '携程订单直接入账'],
+    ['算得准', '多币种 · 账恒平 · 最简转账'],
+    ['有交代', '审计 · 洞察 · 小作文 · 导出']
   ];
   d.innerHTML = '<div class="finale-card">' +
     '<div class="finale-hd"><div class="finale-t">✈️ TravelAA · 旅行 AA 记账</div>' +
@@ -3067,6 +3143,9 @@ function showFinale() {
       '<div class="finale-n"><div class="finale-l">账恒平</div><div class="finale-v ' + (st.balanced ? 'ok' : 'bad') + '">' + (st.balanced ? '✅ 净余额合计 0' : '⚠️ 待核对') + '</div></div>' +
     '</div>' +
     '<div class="finale-chips">' + caps.map(function (c) { return '<span class="finale-chip"><b>' + c[0] + '</b>' + c[1] + '</span>'; }).join('') + '</div>' +
+    /* 收官一句差异化：评委看完 24 个分镜，最容易记住的是"它和别家到底差在哪"。 */
+    '<div class="finale-cmp">和市面上的做法比：<b>收款工具</b>只解决"把钱收上来"，<b>通用分账</b>只解决"算得平"；' +
+      'TravelAA 多解决两件 —— <b>记不烦</b>（说一句 / 截图 / 携程订单直接入账）和<b>有交代</b>（账恒平 + 最简转账 + 复盘报告）。</div>' +
     '<div class="finale-note">另计：' + personalCount + ' 笔私账（人情账）不进 AA、只有本人可见；' + adjCount + ' 笔调整单承载「多退少补 / 暂估改价」，原账全部留痕。' +
       (personal > 0 ? '小王自己另花了 ¥' + moneyK(personal) + '。' : '') + '</div>' +
     '<div class="finale-acts">' +
@@ -3095,7 +3174,7 @@ var NARR_IDLE = '4 台手机 = 4 位同行成员，共用同一本账、操作�
 /* 给评委看的验收数字。**只有一个地方要维护**（`node tests/run-all.js` 的实际输出），
    每次加测试后改这里；`tests/demo.check.js` 会检查这三个数还在、没被写成占位符。
    页内自检/交互验收的数字不写死 —— 点「🩺 自检」后会用**真实跑出来的结果**覆盖。 */
-var SUITE_STATS = { suites: 9, items: 871 };
+var SUITE_STATS = { suites: 9, items: 875 };
 function fillJudgeStats() {
   var set = function (id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
   set('jnSuite', String(SUITE_STATS.suites));
@@ -3293,7 +3372,7 @@ var TOUR_STEPS = [
     before: function () { var u = tourSetup('u2', 'capture'); var st = ocrState['u2']; st.tab = 'ocr'; ocrSelectType('u2', 'wechat_list'); renderApp(u); } },
 
   { sel: '#app-u1 [data-feat="vision-order"]', covers: ['ctrip-order', 'order-list', 'vision-order'], title: '会读单：携程订单文本 + 订单截图',
-    script: '一段订单文本就能解析成机票/酒店/门票账单，多笔结果可勾选入账；直接贴一张订单截图也行 —— 识别出订单号、内容、金额、出行人，确认后一键入账。「行程即账本」，这是旅行场景最省事的一步。',
+    script: '一段订单文本就能解析成机票/酒店/门票账单，多笔结果可勾选入账；直接贴一张订单截图也行 —— 识别出订单号、内容、金额、出行人，确认后一键入账。同一件事在通用分账工具里要你**照着订单手打一遍**，这就是「行程即账本」。',
     before: function () { var u = tourSetup('u1', 'capture'); var st = ocrState['u1']; st.tab = 'order'; st.orderSel = new Set(); st.visionResult = null; if (CTRIP && CTRIP.CTrip_SAMPLES[0]) { st.orderText = CTRIP.CTrip_SAMPLES[0].text; orderParse('u1'); } } },
 
   { sel: '#app-u3 [data-feat="currency"]', covers: ['currency', 'more-options', 'category', 'split-type'], title: '小李：更多选项 · 多币种按当时汇率快照',
@@ -3301,7 +3380,7 @@ var TOUR_STEPS = [
     before: function () { var u = tourSetup('u3', 'add'); u._adv = true; u._form = { amount: '12000', desc: '京都一日游交通', category: 'transport', payer: 'u3', splitType: 'equal', currency: 'JPY' }; renderApp(u); } },
 
   { sel: '#app-u1 [data-feat="rounding"]', covers: ['rounding'], title: '智能抹零：出境游不用算零头',
-    script: '12780 日元一键凑成 12800，差额 20 单独记成「抹零损耗」并入分摊 —— 账单合计**仍然严格等于金额**，账不会因为凑整而不平。这是"小而美"里最实用的一个。',
+    script: '12780 日元一键凑成 12800，差额 20 单独记成「抹零损耗」并入分摊 —— 账单合计**仍然严格等于金额**，账不会因为凑整而不平。通用记账软件不管"日元零头"，这是旅行场景才有的小而美。',
     before: function () { var u = tourSetup('u1', 'add'); u._adv = true; u._form = { amount: '12780', desc: '札幌居酒屋晚餐', category: 'food', payer: 'u1', splitType: 'equal', currency: 'JPY', rounded: false, lossAmount: 0 }; renderApp(u); } },
 
   { sel: '#app-u4 [data-feat="reshare"]', covers: ['reshare', 'reestimate', 'placeholder'], title: '小王改分摊 · 暂估改价 · 口头占位',
@@ -3322,7 +3401,7 @@ var TOUR_STEPS = [
     before: function () { ensureV3Samples(); tourSetup('u3', 'room'); } },
 
   { sel: '#app-u4 [data-feat="settle-total"]', covers: ['settle-total', 'balances', 'settle-transfers', 'settle-readiness', 'settle-progress'], title: '小王一键清账：账恒平 + 最简转账 + 结清闭环',
-    script: '总消费按人民币口径汇总（外币按快照汇率折算），下面是各人应收应付 —— 所有净余额之和严格等于 0，这就是「账恒平」。贪心配对给出最少转账笔数：不是"每个人都转给垫付人"，而是让该收的直接收、该给的直接给。页面还会先自查有没有占位单没补齐。算出方案只是第一步 —— 每笔右边可以标「我转了」，进度变成"已结清 N / M 笔 · 还剩 ¥xxx"，全打完显示 🎉，状态跟着同步快照走、两个窗口都看得见，也能撤销。',
+    script: '总消费按人民币口径汇总（外币按快照汇率折算），下面是各人应收应付 —— 所有净余额之和严格等于 0，这就是「账恒平」。给的是**最少转账笔数**：不是"每个人都转给垫付人"，而是让该收的直接收、该给的直接给。微信/支付宝的 AA 收款收完就结束，这里收完还留着一本能复盘、能导出、能对账的账本。页面还会先自查有没有占位单没补齐。算出方案只是第一步 —— 每笔右边可以标「我转了」，进度变成"已结清 N / M 笔 · 还剩 ¥xxx"，全打完显示 🎉，状态跟着同步快照走、两个窗口都看得见，也能撤销。',
     before: function () {
       /* ⚠️ 导览**不能改动账目**：这里刻意不调用 toggleSettled。
          之前为了演示"已结清"的进度状态去标了一笔，结果讲解走一遍就把人家的账
@@ -4581,7 +4660,10 @@ function runUITest() {
           txt.indexOf(moneyK(st.totalExpense)) >= 0 && txt.indexOf(st.transfers.length + ' 笔') >= 0,
           '总消费 ¥' + moneyK(st.totalExpense) + ' · ' + st.transfers.length + ' 笔');
         add('★ 收官总结：标明账恒平结论', /账恒平/.test(txt) && /净余额合计 0/.test(txt));
-        add('★ 收官总结：列了五层能力', ['会听', '会看', '会读单', '会算账', '会复盘'].every(function (k) { return txt.indexOf(k) >= 0; }));
+        add('★ 收官总结：把它替用户做的事列清楚（不是列 AI 分层）',
+          ['不用填表', '截图也行', '订单不手打', '算得准', '有交代'].every(function (k) { return txt.indexOf(k) >= 0; }));
+        add('★ 收官总结：有一句"和市面上做法比"的差异化结论',
+          /和市面上的做法比/.test(txt) && /收款工具/.test(txt) && /通用分账/.test(txt) && /记不烦/.test(txt) && /有交代/.test(txt));
         add('★ 收官总结：提供"再听导览/重播"入口',
           !!fin.querySelector('[data-act="finale-tour"]') && !!fin.querySelector('[data-act="finale-replay"]'));
         /* Esc 也要能关掉（无障碍层要认得这个新弹层） */

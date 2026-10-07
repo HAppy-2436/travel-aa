@@ -223,8 +223,24 @@ report('★ 网页版：品牌行只放产品定位，不再被解说词覆盖',
 report('★ 网页版：人数只有 setPhoneCount 一个写入口（默认 4 台，?n= 也走它）',
   /setPhoneCount\(m \? Math\.max\(1, Math\.min\(4, parseInt\(m\[1\], 10\) \|\| 1\)\) : 4\)/.test(html) &&
   !/State\.phoneCount = n;/.test(html));
-report('★ 网页版：手机舞台下方有"给评委看的一屏"（定位 / 五层能力 / 验收证据 / 诚实边界）',
-  /id="judgeSection"/.test(html) && /会听/.test(html) && /诚实边界/.test(html) && /jnItems/.test(html));
+report('★ 网页版：手机舞台下方有"给评委看的一屏"（定位 / 对比 / 差异点 / 它能做什么 / 诚实边界）',
+  /id="judgeSection"/.test(html) && /懒得填表/.test(html) && /诚实边界/.test(html) && /jnItems/.test(html));
+report('★ 评委区把"和别家比强在哪"摆在第一眼：逐项对比表在技术证据之前',
+  /class="cmp"/.test(html) &&
+  html.indexOf('市面上的做法') < html.indexOf('给技术评委：可复现的验收') &&
+  /微信 \/ 支付宝/.test(html) && /Splitwise/.test(html) && /Tricount/.test(html) &&
+  /AA 模块/.test(html));
+report('★ 技术证据默认收起（用户要求"技术放起来不讲"，但不删——诚实边界要有据可查）',
+  /<details class="judge-tech">/.test(html) &&
+  /<summary>给技术评委：可复现的验收（点开看）<\/summary>/.test(html) &&
+  !/<details class="judge-tech"[^>]*\sopen/.test(html));
+report('★ 演示解说主打"比别家强在哪"，不摆技术分层（"五层 AI / 工程可信度"已改写或收起）',
+  /别家要你照着订单手打一遍/.test(html) && /收款工具收完就结束/.test(html) &&
+  /通用记账软件不管/.test(html) && /微信\/支付宝的 AA 收款收完就结束/.test(html) &&
+  !/五层 AI 能力/.test(html) && !/工程可信度/.test(html));
+report('★ 收官总结有一句差异化结论（和市面上的做法比）',
+  /和市面上的做法比/.test(html) && /finale-cmp/.test(html) &&
+  /收款工具<\/b>只解决/.test(html) && /记不烦/.test(html) && /有交代/.test(html));
 report('★ 评委面板的验收数字不是写死的：页内自检/交互验收跑完会写入真实结果',
   /var SUITE_STATS = \{ suites: \d+, items: \d+ \}/.test(html) &&
   /id="jnSelf">—</.test(html) && /id="jnUI">—</.test(html) &&
