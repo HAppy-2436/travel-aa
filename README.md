@@ -93,10 +93,29 @@ travel-aa/
 │   └── cloudfunctions/       # 微信云函数（9 个）
 ├── server/                   # 可选后端 API（Express + SQLite）
 ├── tests/                    # 9 套自动化验收（run-all.js 统一编排）
+├── tools/                    # 交付打包与验证（build-package / verify-package）
 ├── docs/                     # 文档（含 archive/ 已废弃内容）
 ├── .github/workflows/ci.yml  # CI：Node 20/22 上跑 npm test
 └── project.config.json       # 微信开发者工具配置（已指向 apps/）
 ```
+
+### 📦 要"发出去"时（打包）
+
+```bash
+# 生成三种交付形态到 ../发布包/（刻意放在仓库外：产物不进版本库、不会被 Pages 发布）
+node tools/build-package.js
+node tools/verify-package.js     # 必须验：两种形态都真跑一遍，全绿才发
+```
+
+| 产物 | 给谁 | 说明 |
+|---|---|---|
+| `TravelAA-演示-单文件.html`（≈560 KB） | **评委 / 提交系统** | 4 个外部脚本已内联，**双击即开、无需联网、无需解压**。最省事的形态 |
+| `TravelAA-演示包.zip`（≈300 KB） | 要保留目录结构时 | 根 `index.html` 会自动跳转到 `demo/`；**整个文件夹要一起拷**（demo 依赖 `../apps/miniprogram/utils/`） |
+| `TravelAA-源码包.zip`（≈6.7 MB） | 送审 / 看代码与文档 | `git archive HEAD`，只含入库过的文件（自动排除 `.git` / `node_modules` / `server/data` / `.env` / `*.db`） |
+
+`verify-package.js` 会检查：三份共享内核都加载、4 台手机渲染出来、样例数据在、
+页内自检 **22/22 全过**（真跑解析 / 结算 / 外币 / 订单四条链路）、页面无运行时 JS 报错。
+
 
 **共享算法内核**：`apps/miniprogram/utils/` 下的 `ai.js`（AI 解析/审计/预算/洞察/结算口径）、
 `ctrip.js`（携程订单解析）、`sync.js`（多窗口合并/墓碑/rev）为 UMD 模块，
