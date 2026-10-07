@@ -48,7 +48,9 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:#ff
 body.present .wrap{padding:10px 24px 14px}
 body.present .hdr{display:none}
 /* 演示时工具条也让位：手机底部按钮（＋记一笔 / 识别入账 / 结算）不能被裁掉。
-   退出入口见右上角固定的 .present-exit（不占文档流）。 */
+   ⚠️ 退出入口**不再**单独 fixed 在右上角 —— 它和解说栏右端的「下一步 / 暂停 / 速度」
+      抢同一个角，实测直接叠在一起（用户截图反馈）。
+      现在退出按钮是解说栏那一行 flex 里的最后一个成员，由同一个容器排版，结构上不可能重叠。 */
 body.present .tbar{display:none}
 body.present .stage{padding:0;min-height:0}
 /* 演示时收窄手机间距 + **禁止折行**。
@@ -111,9 +113,7 @@ body.present .pl{display:none}
 body.present .pu{flex:0 0 auto}
 body.present .cap{width:100%}
 body.present .pf{width:320px;max-width:none}
-/* 演示模式下的退出入口：固定在右上角，不占文档流 */
-.present-exit{display:none}
-body.present .present-exit{display:block;position:fixed;top:14px;right:18px;z-index:60}
+/* 退出入口已并入解说栏那一行（见 .pshow-top），这里不再有独立的 fixed 按钮 */
 /* 演示时"正在操作"的那台手机：加一圈品牌色高亮环，视线能跟着动作走 */
 .pu.acting .pf{box-shadow:0 0 0 2px var(--pri),0 0 0 8px rgba(255,107,53,.18),0 30px 80px rgba(0,0,0,.6)}
 .pu.acting .pn::after{content:'👆 正在操作';display:inline-block;margin-left:8px;font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:700;color:var(--on-pri);background:var(--pri);border-radius:100px;padding:2px 8px;vertical-align:middle}
@@ -343,10 +343,35 @@ button.bdg:hover{background:rgba(255,255,255,.08);color:#fff}
   border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:rgba(255,255,255,.72);cursor:pointer;white-space:nowrap;transition:all .18s}
 .narr-btn:hover{background:rgba(255,255,255,.12);color:#fff}
 .narr-btn.on{border-color:rgba(255,107,53,.5);background:rgba(255,107,53,.16);color:var(--pri)}
+/* 待机态 vs 播放态：同一条解说栏，两种按钮组。
+   待机时「下一步/暂停/速度」是死的（点了没反应 = 最容易被当成"页面坏了"），
+   所以待机时**根本不显示它们**，改显示唯一的入口「▶ 播放完整演示 / 🎬 逐步导览」。 */
+.narr-btn.play{border-color:transparent;background:var(--pri);color:var(--on-pri)}
+.narr-btn.play:hover{background:var(--pri);color:var(--on-pri);filter:brightness(1.08)}
+.narr-cta{display:none}
+body.idle .narr-cta{display:inline-flex;gap:8px;align-items:center}
+body.idle .narr-play{display:none}
 body.present .narr{display:none}
+/* 演示模式下的浮动解说栏同理：待机显示入口，播放中显示播放控制 */
+.pshow-cta{display:none}
+body.idle .pshow-cta{display:inline-flex;gap:8px}
+body.idle .pshow-play{display:none}
+/* 窄屏下品牌副标题先让位，避免整行折行把手机挤矮 */
+@media(max-width:1240px){.pshow-brand span{display:none}}
 /* ===== 导览（演讲者模式） ===== */
+/* ⚠️ 遮罩用 `box-shadow:0 0 0 9999px` 把整页压暗、只留一个"洞"。
+   它一旦在"导览卡已经关掉"之后还留着，整页就是**一片黑**，用户看到的就是
+   「点了 Esc 直接没了、网页卡住了」（实测复现：导览渲染有 260ms 延时，
+   Esc 落在这个窗口里，延后的回调又把遮罩 display:block 回来，卡片却没回来）。
+   修法有两层：① JS 里给导览加代次令牌，过期回调一律不碰 DOM；
+   ② 这里再加一道 CSS 兜底 —— 没有 body.touring 就绝不允许遮罩/卡片可见，
+      结构上不可能再出现"有遮罩没卡片"的黑屏。 */
+body:not(.touring) .tour-mask,body:not(.touring) .tour-card{display:none!important}
 .tour-mask{position:fixed;z-index:200;pointer-events:none;border-radius:14px;box-shadow:0 0 0 9999px rgba(8,8,12,.74);transition:all .35s cubic-bezier(.4,0,.2,1)}
 .tour-card{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);width:min(560px,92vw);background:#fff;color:#18181b;border-radius:20px;padding:20px 24px;z-index:210;box-shadow:0 24px 64px rgba(0,0,0,.5);animation:pg .3s cubic-bezier(.4,0,.2,1)}
+/* 被高亮的元素在屏幕下半部分时，卡片从底部翻到顶部 —— 否则卡片正好盖住
+   它自己高亮的那块（导览讲"记一笔/结算"按钮时必现，评委会以为没高亮）。 */
+.tour-card.up{top:74px;bottom:auto}
 .tour-step{font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700;letter-spacing:3px;color:var(--g400)}
 .tour-title{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;margin:6px 0 8px}
 .tour-script{font-size:13px;line-height:1.7;color:var(--g500);min-height:44px}
@@ -553,13 +578,17 @@ body.present .judge,body.present .fh{display:none}
   <div class="narr" id="narrBar" aria-live="polite">
     <span class="narr-step" id="shellStep">待机</span>
     <span class="narr-prog"><i id="shellProg"></i></span>
-    <span class="narr-text" id="shellNarr">点「▶ 自动演示」看完整剧情，或点「🎬 导览」逐步听讲解；也可以直接点手机里的按钮自己试</span>
-    <button type="button" class="narr-btn" id="shellNext" onclick="autoNext()" title="单步：每点一次前进一个分镜">⏭ 下一步</button>
-    <button type="button" class="narr-btn" id="shellPause" onclick="toggleAutoPause()">⏸ 暂停</button>
-    <button type="button" class="narr-btn" id="shellSpeed" onclick="cycleAutoSpeed()" title="切换自动演示速度">⏩ 1×</button>
+    <span class="narr-text" id="shellNarr">4 台手机 = 4 位同行成员，共用同一本账、操作实时联动 · 想先看全流程就点「▶ 播放完整演示」（约 1 分半），想自己上手就直接点手机里的按钮</span>
+    <span class="narr-cta">
+      <button type="button" class="narr-btn play" onclick="autoDemo()">▶ 播放完整演示</button>
+      <button type="button" class="narr-btn" onclick="startTour()">逐步导览（15 步）</button>
+    </span>
+    <button type="button" class="narr-btn narr-play" id="shellNext" onclick="autoNext()" title="单步：每点一次前进一个分镜">⏭ 下一步</button>
+    <button type="button" class="narr-btn narr-play" id="shellPause" onclick="toggleAutoPause()">⏸ 暂停</button>
+    <button type="button" class="narr-btn narr-play" id="shellSpeed" onclick="cycleAutoSpeed()" title="切换自动演示速度">⏩ 1×</button>
   </div>
   <div class="stage" id="phonesStage"></div>
-  <div class="fh" id="hintBar">💡 每台手机 = 一个真实用户：可以自己点手机里的按钮操作，4 台会实时联动</div>
+  <div class="fh" id="hintBar">💡 每台手机 = 一个真实用户，可以直接点手机里的按钮操作，4 台会实时联动　·　↓ 往下滚：和别家不一样的三个点 / 验收证据 / 诚实边界</div>
 
   <!-- ============================================================
        给评委看的一屏：手机舞台下面把"这是什么 / 能做什么 / 边界在哪 / 凭什么信"
@@ -608,7 +637,7 @@ body.present .judge,body.present .fh{display:none}
         <div class="judge-kicker">工程可信度（一条命令可复现）</div>
         <div class="judge-nums">
           <div><b id="jnSuite">9</b><span>套自动化验收</span></div>
-          <div><b id="jnItems">850</b><span>项断言</span></div>
+          <div><b id="jnItems">861</b><span>项断言</span></div>
           <div><b id="jnSelf">—</b><span>页内自检</span></div>
           <div><b id="jnUI">—</b><span>交互验收</span></div>
         </div>
@@ -635,19 +664,26 @@ body.present .judge,body.present .fh{display:none}
     </div>
   </section>
 </div>
-<button class="cb present-exit" onclick="exitPresent()" title="退出演示模式">✕ 退出演示</button>
 
-<!-- 演示解说栏：只在 body.present 显示。品牌 + 分镜进度 + 解说正文 + 暂停，全部浮在手机上方 -->
+<!-- 退出演示的入口在解说栏那一行（#presentExit）—— 以前这里有个 fixed 在右上角的按钮，
+     和"下一步/暂停/速度"抢同一个角，实测叠在一起，已并入同一行 flex。 -->
+
+<!-- 演示解说栏：只在 body.present 显示。品牌 + 分镜进度 + 解说正文 + 播放控制，全部浮在手机上方 -->
 <div class="pshow" id="presentBar" aria-live="polite">
   <div class="pshow-top">
     <div class="pshow-brand">✈️ TravelAA · 旅行 AA 记账<span>携程高校 AI HACKATHON · Team 爆能器</span></div>
     <div class="pshow-step" id="presentStep">待机</div>
     <div class="pshow-prog"><i id="presentProg"></i></div>
-    <button type="button" class="pshow-btn" id="presentSpeed" onclick="cycleAutoSpeed()" title="切换自动演示速度">⏩ 1×</button>
-    <button type="button" class="pshow-btn" id="presentNext" onclick="autoNext()" title="切成单步：每点一次前进一个分镜（适合边讲边演）">⏭ 下一步</button>
-    <button type="button" class="pshow-btn" id="presentPause" onclick="toggleAutoPause()">⏸ 暂停</button>
+    <span class="pshow-cta">
+      <button type="button" class="pshow-btn" onclick="autoDemo()">▶ 播放完整演示</button>
+      <button type="button" class="pshow-btn" onclick="startTour()">逐步导览（15 步）</button>
+    </span>
+    <button type="button" class="pshow-btn pshow-play" id="presentSpeed" onclick="cycleAutoSpeed()" title="切换自动演示速度">⏩ 1×</button>
+    <button type="button" class="pshow-btn pshow-play" id="presentNext" onclick="autoNext()" title="切成单步：每点一次前进一个分镜（适合边讲边演）">⏭ 下一步</button>
+    <button type="button" class="pshow-btn pshow-play" id="presentPause" onclick="toggleAutoPause()">⏸ 暂停</button>
+    <button type="button" class="pshow-btn" id="presentExit" onclick="exitAllModes()" title="退出演示模式（也可以按 Esc）">✕ 退出</button>
   </div>
-  <div class="pshow-narr" id="presentNarr">点「▶ 自动演示」看完整剧情，或点「🎬 导览」逐步听讲解</div>
+  <div class="pshow-narr" id="presentNarr">4 台手机 = 4 位同行成员，共用同一本账、操作实时联动 · 想先看全流程就点「▶ 播放完整演示」（约 1 分半），想自己上手就直接点手机里的按钮</div>
 </div>
 
 <!-- 共享算法内核（与小程序、服务端同一份代码，UMD 三端复用；纯本地计算，无网络依赖） -->
@@ -2424,15 +2460,44 @@ function fitPhones() {
 }
 window.addEventListener('resize', function () { fitPhones(); });
 
+/* ============================================================
+   整页模式只有一个真相来源：body 上的 present / touring + autoRunning 标记
+   ------------------------------------------------------------
+   以前 present / touring / autoRunning 是三个各自为政的开关，随手加删 class，
+   于是出现三类"半开"状态（都是用户实际撞到的）：
+     ① 导览开着时自动演示继续往下演 → 解说条一会儿说导览、一会儿跳回分镜；
+     ② 导览刚渲染完的 260ms 内按 Esc → 延后的回调把遮罩又 display:block 回来、
+        导览卡却已经 hidden → 整页被 9999px 阴影压黑，用户原话「直接没了，网页卡住了」；
+     ③ 导览开着时点「退出演示」→ touring 残留，遮罩+卡片浮在常规页面上。
+   现在：进出任何模式都经过下面这几个函数，且导览带**代次令牌 tourGen**，
+   过期回调一律不碰 DOM；CSS 侧再加一道 `body:not(.touring)` 兜底。
+   ============================================================ */
+function syncModeUi() {
+  /* idle = 当前没有任何演示在跑 → 解说栏显示"入口"，而不是一组点了没反应的死按钮 */
+  var touring = document.body.classList.contains('touring');
+  var idle = !autoRunning && !touring;
+  document.body.classList.toggle('idle', idle);
+}
 function enterPresent() {
   document.body.classList.add('present');
   /* 进演示模式后布局变了，等一帧再量（否则量到的是旧宽度） */
   fitPhones();
   setTimeout(fitPhones, 60);
+  syncModeUi();
 }
 function exitPresent() {
+  /* 退出演示前先把导览收干净 —— 否则遮罩会留在常规页面上（整页发黑） */
+  tourExit();
   document.body.classList.remove('present');
   fitPhones();                 // 常规态：重算手机高度（不再缩放）
+  syncModeUi();
+}
+/* 「✕ 退出」/ Esc 的终点：把三种模式一次收干净，不留任何半开状态 */
+function exitAllModes() {
+  stopAutoDemo();
+  tourExit();
+  if (document.body.classList.contains('present')) exitPresent();
+  syncModeUi();
 }
 
 /* ============================================================
@@ -2511,8 +2576,9 @@ function toggleAutoPause() {
   if (autoMode === 'pause') showToast('u1', '⏸ 已暂停，随时可以接着讲');
 }
 
-/** 取消正在跑的自动演示，并把界面恢复到"开演前"的样子 */
-function stopAutoDemo() {
+/** 取消正在跑的自动演示，并把界面恢复到"开演前"的样子
+ *  opts.keepPresent：只停演示、不退出演示模式（导览要用，它自己会 enterPresent） */
+function stopAutoDemo(opts) {
   autoGen++;                 // 让在跑的实例在下一个 await 处自杀
   autoRunning = false;
   autoMode = 'run';
@@ -2521,11 +2587,13 @@ function stopAutoDemo() {
   autoGate = null;
   updatePresentControls();
   setActing(null);
-  if (document.body.classList.contains('present')) exitPresent();
+  if (!(opts && opts.keepPresent) && document.body.classList.contains('present')) exitPresent();
   if (typeof clearCaptions === 'function') clearCaptions();
+  syncModeUi();
 }
 
 async function autoDemo() {
+  tourExit();                // 导览与自动演示互斥：先收导览，避免两个解说源一起跳
   /* 再点一次 = 重头开演（而不是默默什么都不做） */
   if (autoRunning) {
     stopAutoDemo();
@@ -2535,6 +2603,7 @@ async function autoDemo() {
   autoMode = 'run';
   pendingGate = false;
   updatePresentControls();
+  syncModeUi();
   var myGen = autoGen;
   /* 每个 await 都是一个检查点：① 被取消（重置/重开）立刻退出；② 暂停时原地等；
      ③ 单步模式下，新分镜的第一处 await 会设闸，等人点「下一步」。
@@ -2897,6 +2966,7 @@ async function autoDemo() {
        于是「▶ 自动演示」又变成可以重复点击、互相打架。 */
     if (myGen === autoGen) {
       autoRunning = false;
+      syncModeUi();
       if (!(typeof window !== 'undefined' && window.__autoDemoHeld)) {
         setTimeout(function () { if (myGen === autoGen) { presentStep = 0; updatePresentBar(0, NARR_IDLE); } }, 6000);
       }
@@ -2966,11 +3036,13 @@ function closeFinale() {
 
 /* 品牌行的产品定位（#hdrSub 常驻这一句，不再被解说词覆盖）与解说条的待机文案 */
 var TAGLINE = '一句话、一张截图、一条携程订单，就能把旅行账单记明白 —— 旅行结束一键清账';
-var NARR_IDLE = '点「▶ 自动演示」看完整剧情，或点「🎬 导览」逐步听讲解；也可以直接点手机里的按钮自己试';
+/* 待机文案：按钮叫什么，文案就说什么（以前文案写「▶ 自动演示」、按钮写别的，评委找不到）。
+   待机态下播放控制是隐藏的，只有这两个入口，所以这里只讲这两条路。 */
+var NARR_IDLE = '4 台手机 = 4 位同行成员，共用同一本账、操作实时联动 · 想先看全流程就点「▶ 播放完整演示」（约 1 分半），想自己上手就直接点手机里的按钮';
 /* 给评委看的验收数字。**只有一个地方要维护**（`node tests/run-all.js` 的实际输出），
    每次加测试后改这里；`tests/demo.check.js` 会检查这三个数还在、没被写成占位符。
    页内自检/交互验收的数字不写死 —— 点「🩺 自检」后会用**真实跑出来的结果**覆盖。 */
-var SUITE_STATS = { suites: 9, items: 850 };
+var SUITE_STATS = { suites: 9, items: 861 };
 function fillJudgeStats() {
   var set = function (id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
   set('jnSuite', String(SUITE_STATS.suites));
@@ -3219,6 +3291,9 @@ var TOUR_STEPS = [
 var TOUR_SPEEDS = [9000, 6500, 4500];
 var TOUR_SPEED_LABELS = ['0.7×', '1×', '1.5×'];
 var tourState = { idx: 0, auto: false, timer: null, speed: 1 };
+/* 导览代次令牌：renderTourStep() 有 260ms 延时渲染，退出后旧回调会回来改 DOM。
+   每次进出导览都 ++，回调先比代次，不一样就直接返回（"Esc 变黑屏"的根因）。 */
+var tourGen = 0;
 
 /* 控制按钮的文案**同步**更新。
    原来按钮文案写在 renderTourStep 的 setTimeout(260) 里 —— 点一下要等 0.26 秒才变样，
@@ -3304,23 +3379,33 @@ function ensureTourDom() {
   document.body.appendChild(card);
 }
 function startTour(opts) {
+  /* 导览与自动演示互斥：以前不互斥，点了导览以后自动演示仍在后台切页面、跳分镜，
+     解说条一会儿是导览文案、一会儿又跳回"分镜 N/24"，评委完全跟不上。 */
+  stopAutoDemo({ keepPresent: true });
   ensureTourDom();
   enterPresent();          // 导览同样进演示模式：一屏装下，不用滚鼠标
   document.body.classList.add('touring');   // 但工具条要留着（前几步要讲演示台）
+  tourGen++;               // 新的一代：上一次导览遗留的 260ms 延时回调全部作废
   tourState.idx = 0; tourState.auto = false;
   if (opts && opts.idx != null) tourState.idx = Math.max(0, Math.min(TOUR_STEPS.length - 1, opts.idx));
   document.getElementById('tourCard').style.display = 'block';
   document.getElementById('tourMask').style.display = 'block';
   renderTourStep();
   a11yEnhance(document.getElementById('tourCard'));
+  syncModeUi();
   showToast('u1', '🎬 导览开始 · 共 ' + TOUR_STEPS.length + ' 步（覆盖全部 ' + FEATURES.length + ' 项功能）');
 }
 function renderTourStep() {
   var step = TOUR_STEPS[tourState.idx];
   if (!step) return tourExit();
   if (typeof step.before === 'function') { try { step.before(); } catch (e) { } }
+  var myGen = tourGen;           // 这一帧属于哪一代导览
   updateTourControls();          // 按钮文案同步更新（不等下面那个 260ms 的定时器）
   setTimeout(function () {
+    /* ⚠️ 过期回调必须直接返回：Esc/退出落在 260ms 窗口里时，
+       旧回调会把遮罩 display:block 回来、而导览卡已经隐藏 →
+       整页被 9999px 阴影压黑，用户看到的是「直接没了、网页卡住了」。 */
+    if (myGen !== tourGen) return;
     var mask = document.getElementById('tourMask');
     var el = step.sel ? document.querySelector(step.sel) : null;
     if (!mask) return;
@@ -3337,6 +3422,24 @@ function renderTourStep() {
       mask.style.top = Math.max(4, r.top - 8) + 'px';
       mask.style.width = Math.min(window.innerWidth - 8, r.width + 16) + 'px';
       mask.style.height = (r.height + 16) + 'px';
+      /* 卡片默认贴在底部居中，如果它正好压住自己高亮的那块，观众就看不见"在讲哪里"。
+         用卡片的**真实占位**与目标矩形做相交判断（以前用 `r.top > 视口高 × 0.42`
+         这种粗阈值，中间两台手机的底部按钮照样被盖住）。
+         ⚠️ 只有"翻到顶部确实能躲开"时才翻 —— 像 #phonesStage 这种占满整屏的目标，
+         翻上去照样压着，来回跳反而晃眼。 */
+      var card = document.getElementById('tourCard');
+      if (card) {
+        var cw = Math.min(560, window.innerWidth * 0.92);
+        var ch = card.offsetHeight || 214;      // 首次渲染时卡片内容还没填，用保底高度
+        var cl = (window.innerWidth - cw) / 2;
+        var hit = function (top) {
+          var bottom = top + ch;
+          return !(r.right < cl || r.left > cl + cw || r.bottom < top || r.top > bottom);
+        };
+        var coversBottom = hit(window.innerHeight - 26 - ch);
+        var coversTop = hit(74);                 // .tour-card.up 的 top:74px
+        card.classList.toggle('up', coversBottom && !coversTop);
+      }
     } else {
       mask.style.display = 'none';
     }
@@ -3346,7 +3449,7 @@ function renderTourStep() {
     var dots = document.getElementById('tourDots');
     var nextBtn = document.getElementById('tourNextBtn');
     var autoBtn = document.getElementById('tourAutoBtn');
-    if (lbl) lbl.textContent = 'STEP ' + (tourState.idx + 1) + ' / ' + TOUR_STEPS.length;
+    if (lbl) lbl.textContent = 'STEP ' + (tourState.idx + 1) + ' / ' + TOUR_STEPS.length + '　（← → 方向键翻页 · Esc 退出）';
     /* 顶部解说栏同步显示「导览 N / 15」，否则演示模式下这里会停在「准备中」 */
     updatePresentBar(tourState.idx + 1, '', { total: TOUR_STEPS.length, unit: '导览' });
     if (ttl) ttl.textContent = step.title;
@@ -3377,20 +3480,28 @@ function toggleTourAuto() {
   renderTourStep();
 }
 function tourExit() {
+  var was = document.body.classList.contains('touring');
+  tourGen++;                 // 作废所有在途的 260ms 延时渲染（防"黑屏"）
   tourState.auto = false;
   if (tourState.timer) { clearInterval(tourState.timer); tourState.timer = null; }
   document.body.classList.remove('touring');
-  presentStep = 0;
-  updatePresentBar(0, NARR_IDLE);
   var mask = document.getElementById('tourMask'); if (mask) mask.style.display = 'none';
-  var card = document.getElementById('tourCard'); if (card) card.style.display = 'none';
+  var card = document.getElementById('tourCard');
+  if (card) { card.style.display = 'none'; card.classList.remove('up'); }
+  /* 只有"真的在导览"时才把解说条复位。否则演示刚结束那句
+     「演示结束 · 24 个分镜讲完…」会被顺手抹掉。 */
+  if (was) { presentStep = 0; updatePresentBar(0, NARR_IDLE); }
   a11yClosed();
+  syncModeUi();
 }
 
 /* ============================================================
    演示自检：开讲前 1 秒确认"演示不会翻车"
    ============================================================ */
 function runSelfTest() {
+  /* 自检要"停下来做"：正在跑的自动演示会在面板背后继续切页面、改解说词，
+     评委关掉面板时会发现画面已经跑到别的地方去了。先收干净所有模式。 */
+  exitAllModes();
   var checks = [];
   var add = function (name, ok, extra) { checks.push({ name: name, ok: !!ok, extra: extra || '' }); };
 
@@ -3615,7 +3726,13 @@ function closeSelfTest() {
    ============================================================ */
 var A11Y_FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 /* 弹层选择器按 z-index 从高到低排列（见 CSS：test-panel 220 / tour-card 210 / co 60 / mo 50） */
-var A11Y_LAYERS = ['.finale', '.copyfb', '.test-panel', '.tour-card', '.co.show', '.mo.show'];
+/* 弹层关闭顺序 = "谁真的挡着页面" 的顺序（不是 z-index 顺序）：
+   ① 全屏阻断层（收官总结 / 复制兜底 / 自检面板）必须先关；
+   ② 手机内部的弹窗/确认框（.co 在 .mo 之上）；
+   ③ 导览卡放**最后** —— 它是"讲者提示条"，不阻断页面（见 isModalLayer），
+      导览过程中如果评委点开了某个手机弹窗，Esc 应该先关那个弹窗、导览继续，
+      而不是一下把整个导览掐掉。 */
+var A11Y_LAYERS = ['.finale', '.copyfb', '.test-panel', '.co.show', '.mo.show', '.tour-card'];
 var _a11yReturnFocus = null;
 
 function isShown(el) {
@@ -3729,10 +3846,16 @@ function closeTopLayer() {
 
 document.addEventListener('keydown', function (e) {
   var key = e.key;
-  /* ① Esc：逐层退出（先关最上层弹层，都没有才退出演示模式） */
+  /* ⓪ 导览进行中：方向键翻页（讲者一只手拿翻页笔/键盘就够了） */
+  if (document.body.classList.contains('touring') && (key === 'ArrowRight' || key === 'ArrowLeft' || key === 'PageDown' || key === 'PageUp')) {
+    if (key === 'ArrowRight' || key === 'PageDown') tourNext(); else tourPrev();
+    e.preventDefault();
+    return;
+  }
+  /* ① Esc：逐层退出（先关最上层弹层，都没有才退出演示模式并存掉自动演示） */
   if (key === 'Escape' || key === 'Esc') {
     if (closeTopLayer()) { e.preventDefault(); return; }
-    if (document.body.classList.contains('present')) { exitPresent(); e.preventDefault(); }
+    if (document.body.classList.contains('present')) { exitAllModes(); e.preventDefault(); }
     return;
   }
   /* ② Enter / 空格 激活"不是按钮的按钮"（卡片、账单行、成员胶囊…） */
@@ -4121,14 +4244,22 @@ function runUITest() {
       var tabEv = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
       document.dispatchEvent(tabEv);
       await wait(40);
-      /* 导览卡也应当能用 Esc 收起（讲者中途想直接开讲） */
+      /* 导览卡也应当能用 Esc 收起（讲者中途想直接开讲）。
+         ⚠️ 以前这里只断言了 tourCard 被隐藏 —— 恰好漏掉了真正的 bug：
+            Esc 落在 260ms 延时窗口里时，遮罩会被旧回调重新显示回来，
+            卡片却是隐藏的 → 整页黑屏（用户原话「直接没了，网页卡住了」）。
+            现在必须**卡片和遮罩一起**关掉，并且不能残留 body.touring。 */
       startTour();
       await wait(120);
       var tourWasOpen = document.getElementById('tourCard').style.display !== 'none';
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-      await wait(60);
-      add('★ 无障碍：导览可用 Esc 收起', tourWasOpen && document.getElementById('tourCard').style.display === 'none',
-        '开启 ' + tourWasOpen + ' · Esc 收起 ' + (document.getElementById('tourCard').style.display === 'none'));
+      await wait(400);           // 刻意跨过 260ms 延时窗口，让旧回调有机会作恶
+      var tCard = document.getElementById('tourCard').style.display === 'none';
+      var tMask = document.getElementById('tourMask').style.display === 'none';
+      add('★ 无障碍：导览可用 Esc 收起（卡片 + 遮罩一起关，不留黑屏）',
+        tourWasOpen && tCard && tMask && !document.body.classList.contains('touring'),
+        '开启 ' + tourWasOpen + ' · 卡片关 ' + tCard + ' · 遮罩关 ' + tMask +
+        ' · touring 残留 ' + document.body.classList.contains('touring'));
       if (document.body.classList.contains('present')) exitPresent();
     })();
 
@@ -4211,7 +4342,7 @@ function runUITest() {
         State.rooms.length === 0 && State.bills.length === 0,
         'rooms=' + State.rooms.length + ' bills=' + State.bills.length);
       add('★ 重置：解说条复位 + 字幕清空',
-        /点「▶ 自动演示」/.test(narr) && !USERS.some(function (u) { return CAPTION[u.id]; }),
+        narr === NARR_IDLE && !USERS.some(function (u) { return CAPTION[u.id]; }),
         '「' + narr.slice(0, 28) + '…」· 残留字幕 ' + USERS.filter(function (u) { return CAPTION[u.id]; }).length);
       add('★ 重置：每台手机回首页，且「更多选项/改分摊面板」都关掉',
         USERS.every(function (u) { return u._page === 'home' && u._roomId === null && !u._bd && !u._adv; }),
@@ -4293,7 +4424,7 @@ function runUITest() {
       var progW = (document.getElementById('presentProg') || {}).style.width || '';
       add('★ 解说栏显示分镜进度（第 N / 24）', /分镜\s*\d+\s*\/\s*24/.test(stepTxt), '「' + stepTxt + '」');
       add('★ 解说栏显示解说正文（评委读得到这一步在演什么）',
-        narrTxt.length > 8 && !/点「▶ 自动演示」/.test(narrTxt), '「' + narrTxt.slice(0, 34) + '…」');
+        narrTxt.length > 8 && narrTxt !== NARR_IDLE, '「' + narrTxt.slice(0, 34) + '…」');
       add('★ 进度条随分镜推进', /%$/.test(progW) && parseFloat(progW) > 0, progW);
       add('★ 高亮"谁在操作"（4 台并排时视线能跟着走）',
         !!document.querySelector('#phonesStage .pu.acting'), document.querySelectorAll('.pu.acting').length + ' 台高亮');
@@ -4351,7 +4482,7 @@ function runUITest() {
       stopAutoDemo();
       await wait(150);
       add('★ 取消演示后解说栏复位（不留上一条解说）',
-        /点「▶ 自动演示」/.test((document.getElementById('presentNarr') || {}).textContent || '') &&
+        ((document.getElementById('presentNarr') || {}).textContent || '') === NARR_IDLE &&
         !document.body.classList.contains('present'),
         (document.getElementById('presentNarr') || {}).textContent.slice(0, 22));
 
@@ -4536,6 +4667,75 @@ function runUITest() {
       add('★ 调整单全部合规', AI.validateAdjustments(State.bills).ok === true,
         JSON.stringify(AI.validateAdjustments(State.bills).bad));
     }
+
+    /* ============================================================
+       23. 整页模式的互斥与"不留半开状态"（本轮自查）
+       ------------------------------------------------------------
+       这一节把三个真实撞到的坑固化成断言：
+         ① 导览与自动演示互斥（以前两个一起跑，解说源打架）
+         ② 导览延后渲染的回调在 Esc 之后不得再改 DOM（以前 → 整页黑屏）
+         ③ 「退出」必须一次收干净 present / touring / 遮罩 / 卡片 / 定时器
+       断言写在这里而不是只写在仓库测试里，是因为它能在**真实页面**上跑。
+       ============================================================ */
+    await (async function () {
+      var maskShown = function () { var m = document.getElementById('tourMask'); return !!m && m.style.display !== 'none'; };
+      var cardShown = function () { var c = document.getElementById('tourCard'); return !!c && c.style.display !== 'none'; };
+
+      /* ① 导览与自动演示互斥 */
+      autoDemo();
+      await wait(1200);
+      var autoWasRunning = autoRunning;
+      startTour();
+      await wait(400);
+      add('★ 模式互斥：点导览会自动停掉正在跑的自动演示',
+        autoWasRunning && autoRunning === false && document.body.classList.contains('touring'),
+        '演示曾运行 ' + autoWasRunning + ' · 现在 autoRunning=' + autoRunning + ' · touring=' + document.body.classList.contains('touring'));
+
+      /* ② 反方向：导览开着时开自动演示，导览要被收干净 */
+      autoDemo();
+      await wait(500);
+      add('★ 模式互斥：自动演示开始时会收掉导览（不留遮罩）',
+        !document.body.classList.contains('touring') && !maskShown() && !cardShown(),
+        'touring=' + document.body.classList.contains('touring') + ' · mask=' + maskShown() + ' · card=' + cardShown());
+
+      /* ③ Esc 落在导览的 260ms 延时窗口里：不得留下"有遮罩没卡片"的黑屏 */
+      stopAutoDemo();
+      /* 先把前面用例可能留着的手机弹窗收掉 —— Esc 是"逐层退出"，
+         弹窗还在时它应该先关弹窗（导览卡放最后，见 A11Y_LAYERS），
+         不先清干净就测不出导览这一层的行为。 */
+      (function () { var g = 0; while (g++ < 6) { var l = topLayer(); if (!l || l.classList.contains('tour-card')) break; closeTopLayer(); } })();
+      startTour();
+      await wait(80);                                  // 刻意在延时窗口内
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await wait(420);                                 // 跨过窗口，让旧回调有机会作恶
+      add('★ 黑屏回归：Esc 打断导览渲染后，遮罩与卡片必须同时关闭',
+        !maskShown() && !cardShown() && !document.body.classList.contains('touring'),
+        'mask=' + maskShown() + ' · card=' + cardShown() + ' · touring=' + document.body.classList.contains('touring'));
+
+      /* ④ 导览开着时直接「退出演示」：touring / 遮罩 / 卡片 / 定时器全部归零 */
+      startTour();
+      await wait(300);
+      exitAllModes();
+      await wait(300);
+      add('★ 退出：present / touring / 遮罩 / 卡片 / 定时器一次收干净',
+        !document.body.classList.contains('present') && !document.body.classList.contains('touring') &&
+        !maskShown() && !cardShown() && !tourState.timer && autoRunning === false,
+        'present=' + document.body.classList.contains('present') + ' · touring=' + document.body.classList.contains('touring') +
+        ' · mask=' + maskShown() + ' · timer=' + !!tourState.timer + ' · autoRunning=' + autoRunning);
+
+      /* ⑤ 待机态只给"入口"，不给死按钮（点了没反应 = 最容易被当成页面坏了） */
+      add('★ 待机文案与入口：解说栏给「▶ 播放完整演示 / 🎬 逐步导览」而不是死掉的播放控制',
+        document.body.classList.contains('idle') &&
+        /播放完整演示/.test((document.querySelector('.narr-cta') || {}).textContent || '') &&
+        /逐步导览/.test((document.querySelector('.narr-cta') || {}).textContent || ''),
+        'idle=' + document.body.classList.contains('idle'));
+
+      /* ⑥ 演示模式下「退出」按钮和解说栏在同一行（结构上不可能重叠） */
+      var exitBtn = document.getElementById('presentExit');
+      add('★ 退出按钮与播放控制同属解说栏一行（不再与右上角抢位）',
+        !!exitBtn && !!exitBtn.closest('.pshow-top') && !document.querySelector('.present-exit'),
+        exitBtn ? ('在 .pshow-top 内 ' + !!exitBtn.closest('.pshow-top')) : '(按钮缺失)');
+    })();
   } catch (e) {
     add('交互测试执行异常', false, e && e.message);
   }
@@ -4550,6 +4750,7 @@ fillJudgeStats();
 renderPhones();
 a11yEnhance(document);
 probeEngine();
+syncModeUi();     // 首屏 = 待机态：解说栏显示「▶ 播放完整演示 / 🎬 逐步导览」入口
 
 /* ============================================================
    V3 旅行专属记账语义 · 一键演示（#v3demo）

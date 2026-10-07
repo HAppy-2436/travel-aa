@@ -279,6 +279,45 @@ report('★ 验收数字静态占位与唯一维护点一致（否则首帧闪�
   return !!(jn && st && jn[1] === st[2]);
 })());
 
+// ============ 10++++. 整页模式的状态机（本轮：修"Esc 变黑屏 / 导览与自动演示打架"） ============
+report('★ 只有一处管理模式切换：exitAllModes() 一次收干净 present/touring/自动演示',
+  /function exitAllModes\(\)/.test(html) &&
+  /function exitAllModes\(\)[\s\S]{0,220}stopAutoDemo\(\);[\s\S]{0,80}tourExit\(\);/.test(html) &&
+  /onclick="exitAllModes\(\)"/.test(html));
+report('★ 退出按钮与播放控制同属解说栏一行（结构上不可能再抢右上角）',
+  !/class="[^"]*present-exit/.test(html) &&
+  /<button type="button" class="pshow-btn" id="presentExit" onclick="exitAllModes\(\)"/.test(html) &&
+  /id="presentExit"[\s\S]{0,120}<\/div>\s*<div class="pshow-narr"/.test(html));
+report('★ 导览带代次令牌：延后的渲染回调退出后不得再碰 DOM（黑屏根因）',
+  /var tourGen = 0;/.test(html) &&
+  /var myGen = tourGen;/.test(html) &&
+  /if \(myGen !== tourGen\) return;/.test(html) &&
+  /function tourExit\(\)[\s\S]{0,120}tourGen\+\+/.test(html));
+report('★ CSS 兜底：没有 body.touring 就绝不允许遮罩/卡片可见（有遮罩没卡片 = 整页黑屏）',
+  /body:not\(\.touring\) \.tour-mask,body:not\(\.touring\) \.tour-card\{display:none!important\}/.test(html));
+report('★ 导览与自动演示互斥（两个方向都要）',
+  /function startTour\(opts\) \{[\s\S]{0,200}stopAutoDemo\(\{ keepPresent: true \}\);/.test(html) &&
+  /async function autoDemo\(\) \{\s*\n\s*tourExit\(\);/.test(html));
+report('★ 退出演示会把导览一起收掉（否则遮罩留在常规页面上）',
+  /function exitPresent\(\) \{[\s\S]{0,120}tourExit\(\);/.test(html));
+report('★ Esc 逐层退出：全屏弹层 → 手机弹窗 → 导览卡（导览卡不阻断页面，放最后）',
+  /var A11Y_LAYERS = \[\'\.finale\', \'\.copyfb\', \'\.test-panel\', \'\.co\.show\', \'\.mo\.show\', \'\.tour-card\'\];/.test(html));
+report('★ 待机态给"入口"而不是死按钮（body.idle 切换 CTA / 播放控制两组按钮）',
+  /function syncModeUi\(\)/.test(html) &&
+  /document\.body\.classList\.toggle\('idle', idle\)/.test(html) &&
+  /body\.idle \.narr-cta\{display:inline-flex/.test(html) &&
+  /body\.idle \.narr-play\{display:none\}/.test(html) &&
+  /body\.idle \.pshow-cta\{display:inline-flex/.test(html) &&
+  /body\.idle \.pshow-play\{display:none\}/.test(html));
+report('★ 导览卡会躲开它自己高亮的目标（相交判断，不是粗阈值）',
+  /var coversBottom = hit\(window\.innerHeight - 26 - ch\);/.test(html) &&
+  /var coversTop = hit\(74\);/.test(html) &&
+  /card\.classList\.toggle\('up', coversBottom && !coversTop\)/.test(html));
+report('★ 导览支持方向键翻页（讲者一只手就能推）',
+  /key === 'ArrowRight' \|\| key === 'ArrowLeft'/.test(html) && /tourNext\(\); else tourPrev\(\);/.test(html));
+report('★ 自检要"停下来做"：开面板前先收掉正在跑的演示',
+  /function runSelfTest\(\) \{[\s\S]{0,160}exitAllModes\(\);/.test(html));
+
 // ============ 11. 共享 AI 引擎浏览器形态冒烟 ============
 const aiSrc = fs.readFileSync(path.join(__dirname, '..', 'apps', 'miniprogram', 'utils', 'ai.js'), 'utf8');
 globalThis.self = {};
