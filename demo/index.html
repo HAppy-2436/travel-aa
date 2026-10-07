@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='25' font-size='24'%3E%E2%9C%88%EF%B8%8F%3C/text%3E%3C/svg%3E">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TravelAA · 多人实时联动演示</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -528,7 +529,7 @@ body.present .judge,body.present .fh{display:none}
     <span class="tsep"></span>
     <span class="stepper" role="group" aria-label="演示手机台数" data-feat="phone-count">
       <button type="button" onclick="removePhone()" title="减少一台手机" aria-label="减少一台手机">−</button>
-      <b><span id="phoneCountLabel">1</span> 人</b>
+      <b><span id="phoneCountLabel">4</span> 人</b>
       <button type="button" onclick="addPhone()" id="addPhoneBtn" title="增加一台手机" aria-label="增加一台手机">＋</button>
     </span>
     <span class="tsep"></span>
@@ -638,7 +639,9 @@ body.present .judge,body.present .fh{display:none}
 <!-- 订单截图样例（base64 内嵌，离线可用） -->
 <script src="assets/vision-samples.js"></script>
 <script>
-var State={rooms:[],bills:[],tombstones:{},nextRoomId:1,nextBillId:1,phoneCount:1};
+/* 默认 4 台：交付形态是"网页"，评委打开第一眼就该看到多人场景（4 台 = 4 位真实成员），
+   而不是先自己点 ＋ 才知道这是多人产品。?n=1~4 仍可覆盖。 */
+var State={rooms:[],bills:[],tombstones:{},nextRoomId:1,nextBillId:1,phoneCount:4};
 var USERS=[{id:'u1',name:'小明',color:'#FF6B35',role:'发起人'},{id:'u2',name:'小红',color:'#E91E63',role:'成员'},{id:'u3',name:'小李',color:'#2196F3',role:'成员'},{id:'u4',name:'小王',color:'#4CAF50',role:'成员'}];
 var ocrState={};var pendingDelete={};
 
@@ -4615,8 +4618,7 @@ function startV3Demo() {
   var m = /[?&#]n=(\d+)/.exec(location.href);
   /* ⚠️ 走 setPhoneCount 而不是自己改 State —— 人数只有一个写入口，
      否则会漏掉里面的 fitPhones()（网页版首屏的手机高度就靠它算出来）。 */
-  if (m) setPhoneCount(Math.max(1, Math.min(4, parseInt(m[1], 10) || 1)));
-  else fitPhones();
+  setPhoneCount(m ? Math.max(1, Math.min(4, parseInt(m[1], 10) || 1)) : 4);
   /* 只在"没有房间、还没有任何账单"的初始态提示，演示/自检时不打扰 */
   if (State.rooms.length === 0 && State.phoneCount < 2) {
     var btn = document.getElementById('addPhoneBtn');

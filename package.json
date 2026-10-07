@@ -1,6 +1,6 @@
 {
   "name": "travel-aa",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "private": true,
   "description": "TravelAA · 旅行 AA 记账（携程高校 AI HACKATHON）——根级验收入口",
   "scripts": {

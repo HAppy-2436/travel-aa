@@ -220,8 +220,9 @@ report('★ 网页版：解说条与浮动栏共用同一份内容（不出现�
 report('★ 网页版：品牌行只放产品定位，不再被解说词覆盖',
   /var TAGLINE = /.test(html) && /if\(sub\)sub\.textContent=TAGLINE/.test(html) &&
   !/sub\.textContent = '每个手机 = 一个真实用户/.test(html));
-report('★ 网页版：人数只有 setPhoneCount 一个写入口（?n= 也走它）',
-  /if \(m\) setPhoneCount\(/.test(html));
+report('★ 网页版：人数只有 setPhoneCount 一个写入口（默认 4 台，?n= 也走它）',
+  /setPhoneCount\(m \? Math\.max\(1, Math\.min\(4, parseInt\(m\[1\], 10\) \|\| 1\)\) : 4\)/.test(html) &&
+  !/State\.phoneCount = n;/.test(html));
 report('★ 网页版：手机舞台下方有"给评委看的一屏"（定位 / 五层能力 / 验收证据 / 诚实边界）',
   /id="judgeSection"/.test(html) && /会听/.test(html) && /诚实边界/.test(html) && /jnItems/.test(html));
 report('★ 评委面板的验收数字不是写死的：页内自检/交互验收跑完会写入真实结果',

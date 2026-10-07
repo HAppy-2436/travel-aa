@@ -1,0 +1,35 @@
+name: Deploy Demo to Pages
+
+# 交付形态是"网页"，所以把源码树直接发布成静态站点：
+#   站点根 → 根 index.html（自动跳到 ./demo/index.html）
+#   演示页 → /demo/index.html（依赖 ../apps/miniprogram/utils/*.js，整树发布才在）
+# 纯静态、无构建步骤；server/ 与 node_modules 不参与（见 .gitignore）。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          # 整树发布：demo/ 通过相对路径引用 apps/，只发 demo/ 会白屏
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4

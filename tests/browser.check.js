@@ -57,8 +57,21 @@ async function runMode(mode, hash, expectKey, waitMs) {
     window.addEventListener('load', r);
     setTimeout(r, 8000);
   });
-  // 等 #hash 挂钩的 setTimeout(300~400ms) 跑完
-  await new Promise((r) => setTimeout(r, waitMs));
+  /* 轮询等结果，而不是死等固定时长：
+     页面跑完会把结论写进 document.title（`UITEST 101/101 ALL-PASS`）。
+     固定 sleep 的问题：等短了读到中间态 → 假红；等长了每次白等几分钟
+     （实测自动演示变慢后，固定 300s 会让整套验收白等 2 分钟以上）。
+     capMs 只作为上限，正常情况跑完就返回。 */
+  const doneRe = new RegExp('^' + expectKey + ' \\d+/\\d+ (?:ALL-PASS|FAIL)$');
+  {
+    const cap = waitMs;
+    const t0 = Date.now();
+    await new Promise((r) => setTimeout(r, 500));      // 等 #hash 挂钩的 setTimeout(300~400ms)
+    while (Date.now() - t0 < cap) {
+      if (doneRe.test(window.document.title || '')) break;
+      await new Promise((r) => setTimeout(r, 400));
+    }
+  }
 
   const title = window.document.title || '';
   const panel = window.document.getElementById('testPanel');
