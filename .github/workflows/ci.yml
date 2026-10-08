@@ -24,9 +24,20 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: npm
+          # 两个 lockfile 都要参与缓存键，否则改了 server 依赖不会刷新缓存
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
 
       - name: 安装依赖
         run: npm ci
+
+      # ⚠️ 必须单独装 server 依赖：tests/server.test.js 会**真实拉起后端**，
+      # 而 server/ 是独立的 package.json（express / better-sqlite3 / multer …），
+      # 根目录的 npm ci 不会装它 —— 漏掉这一步 CI 会稳定红在"服务器集成测试"，
+      # 且报错是"后端未能启动"，很容易被误判成代码问题。
+      - name: 安装服务端依赖（server.test.js 需要真实拉起后端）
+        run: npm ci --prefix server
 
       - name: 全量验收
         run: npm test
