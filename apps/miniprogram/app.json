@@ -3,17 +3,24 @@
     "pages/index/index",
     "pages/room/room",
     "pages/add-bill/add-bill",
+    "pages/capture/capture",
     "pages/settle/settle",
     "pages/history/history"
   ],
   "window": {
     "backgroundTextStyle": "light",
-    "navigationBarBackgroundColor": "#FF6B35",
+    "navigationBarBackgroundColor": "#FFFFFF",
     "navigationBarTitleText": "TravelAA",
-    "navigationBarTextStyle": "white",
-    "backgroundColor": "#F5F5F5"
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F7F7F8"
   },
   "style": "v2",
   "sitemapLocation": "sitemap.json",
-  "cloud": true
+  "cloud": true,
+  "permission": {
+    "scope.record": {
+      "desc": "用于语音记账：把你说的一句话转成账单"
+    }
+  },
+  "plugins": {}
 }

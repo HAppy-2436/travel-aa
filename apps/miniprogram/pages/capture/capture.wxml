@@ -1,0 +1,53 @@
+<!-- pages/capture/capture.wxml -->
+<view class="container">
+  <view class="card fade-in">
+    <text class="card-title">📷 拍张票据，自动变账单</text>
+    <text class="card-sub">微信/支付宝账单截图、小票、发票都行 —— 识别出金额和商家，你确认一下就能入账。</text>
+
+    <view class="shot-box" bindtap="chooseAndRecognize">
+      <image wx:if="{{imagePath}}" class="shot-img" src="{{imagePath}}" mode="aspectFit"></image>
+      <block wx:else>
+        <text class="shot-icon">🧾</text>
+        <text class="shot-tip">点这里拍照 / 从相册选</text>
+      </block>
+    </view>
+
+    <view wx:if="{{busy}}" class="shot-busy">识别中…</view>
+
+    <block wx:if="{{result}}">
+      <view class="result-head">
+        <text class="result-title">识别结果（{{resultSourceText}}）</text>
+      </view>
+
+      <view class="form-group">
+        <text class="form-label">消费金额 / Amount</text>
+        <input class="form-input" type="digit" value="{{draft.amount}}" bindinput="onAmountInput" placeholder="0.00" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">消费说明 / Description</text>
+        <input class="form-input" value="{{draft.description}}" bindinput="onDescInput" placeholder="如：一兰拉面" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">消费分类 / Category</text>
+        <view class="dest-pills">
+          <view wx:for="{{categories}}" wx:key="id"
+            class="dest-pill {{draft.category === item.id ? 'dest-pill-active' : ''}}"
+            bindtap="selectCategory" data-id="{{item.id}}">{{item.icon}} {{item.name}}</view>
+        </view>
+      </view>
+      <view class="form-group">
+        <text class="form-label">付款人 / Paid By</text>
+        <view class="members-row">
+          <view wx:for="{{members}}" wx:key="id"
+            class="member-name-chip {{draft.payer === item.id ? 'active' : ''}} {{item.leftAt ? 'member-left' : ''}}"
+            bindtap="selectPayer" data-id="{{item.id}}" data-name="{{item.name}}">
+            {{item.name}}{{item.leftAt ? ' · 已离队' : ''}}
+          </view>
+        </view>
+      </view>
+
+      <view class="btn btn-primary btn-block" bindtap="confirm">{{busy ? '入账中…' : '确认入账（均分给还在队里的人）'}}</view>
+      <view class="btn btn-secondary btn-block" style="margin-top: 16rpx;" bindtap="goManual">改用完整表单（币种 / 自定义分摊）</view>
+    </block>
+  </view>
+</view>

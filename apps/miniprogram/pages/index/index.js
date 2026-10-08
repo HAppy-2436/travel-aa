@@ -17,7 +17,8 @@ Page({
       destination: '',
       startDate: '',
       endDate: '',
-      creatorName: ''
+      creatorName: '',
+      budget: ''
     }
   },
 
@@ -97,7 +98,10 @@ Page({
         startDate: form.startDate,
         endDate: form.endDate,
         creatorName: form.creatorName,
-        creatorAvatar: (app.globalData.userInfo && app.globalData.userInfo.avatarUrl) || ''
+        creatorAvatar: (app.globalData.userInfo && app.globalData.userInfo.avatarUrl) || '',
+        /* Bug#3：人均预算以前没传 → 云函数早支持的 budget 永远收不到，
+           房间页只能"事后补设"。这里补上（留空即 0，房间页仍可随时改）。 */
+        budget: Number(form.budget) || 0
       });
 
       wx.showToast({ title: '创建成功！', icon: 'success' });

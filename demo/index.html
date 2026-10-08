@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -751,7 +751,7 @@ body.present .judge,body.present .fh{display:none}
         <div class="judge-tech-body">
           <div class="judge-nums">
             <div><b id="jnSuite">9</b><span>套自动化验收</span></div>
-            <div><b id="jnItems">890</b><span>项断言</span></div>
+            <div><b id="jnItems">962</b><span>项断言</span></div>
             <div><b id="jnSelf">—</b><span>页内自检</span></div>
             <div><b id="jnUI">—</b><span>交互验收</span></div>
           </div>
@@ -903,6 +903,7 @@ function myPersonalCNY(userId, roomId) {
    注意是**按创建时间**比，不是按消费日期：离队是一个动作，之后再记的账就不算他。
    ============================================================ */
 function activeMembersFor(room, atIso) {
+  if (AI && AI.activeMembers) return AI.activeMembers(room, atIso);
   var all = (room && room.members) || [];
   var at = atIso || new Date().toISOString();
   /* 用 `<` 而不是 `<=`：同一毫秒内"标记离队 → 立刻记账"也要算作离队之后（否则偶发把他算回去） */
@@ -912,19 +913,25 @@ function activeMembersFor(room, atIso) {
 }
 /* 谁先走了（供 UI 显示与结算说明用） */
 function leftMembers(room) {
+  if (AI && AI.leftMembers) return AI.leftMembers(room);
   return ((room && room.members) || []).filter(function (m) { return !!m.leftAt; });
 }
 function toggleMemberLeave(userId, memberId) {
   var u = USERS.filter(function (x) { return x.id === userId })[0]; if (!u) return;
   var room = State.rooms.filter(function (r) { return r.id === u._roomId })[0]; if (!room) return;
-  var m = room.members.filter(function (x) { return x.id === memberId })[0]; if (!m) return;
-  if (m.leftAt) {
-    delete m.leftAt;
-    showToast(userId, '↩️ ' + m.name + ' 归队：之后记的账重新算他');
-  } else {
-    m.leftAt = new Date().toISOString();
-    showToast(userId, '🚪 ' + m.name + ' 先离队：之后记的账不再分摊给他（已发生的账不动）');
-  }
+  /* 状态改动交给内核（三端口径一致），这里只负责提示与重渲染 */
+  var res = (AI && AI.toggleMemberLeave)
+    ? AI.toggleMemberLeave(room, memberId)
+    : (function () {
+        var m = room.members.filter(function (x) { return x.id === memberId })[0];
+        if (!m) return { left: false, member: null };
+        if (m.leftAt) { delete m.leftAt; return { left: false, member: m }; }
+        m.leftAt = new Date().toISOString(); return { left: true, member: m };
+      })();
+  if (!res.member) return;
+  showToast(userId, res.left
+    ? ('🚪 ' + res.member.name + ' 先离队：之后记的账不再分摊给他（已发生的账不动）')
+    : ('↩️ ' + res.member.name + ' 归队：之后记的账重新算他'));
   renderApp(u); syncAll();
 }
 
@@ -1196,6 +1203,7 @@ function renderHome(user,myRooms){
 /* 是不是「私账（人情账）」：不进 AA、只该给本人看。
    口径与 AI.groupSpend / groupExpenseBills 保持一致（scope==='personal' 或 splitType==='sole'）。 */
 function isPersonalBill(b) {
+  if (AI && AI.isPersonalBill) return AI.isPersonalBill(b);
   if (!b) return false;
   return (b.scope || (b.splitType === 'sole' ? 'personal' : 'group')) === 'personal';
 }
@@ -1203,11 +1211,15 @@ function isPersonalBill(b) {
    ⚠️ 之前直接把房间全部账单铺出来 → 别人的私账（人情账）也显示给所有人，
       和我们自己写的"私账只有本人可见"直接矛盾（自查发现）。 */
 function visibleBills(roomId, userId) {
-  return roomBills(roomId).filter(function (b) { return !isPersonalBill(b) || b.payer === userId; });
+  var all = roomBills(roomId);
+  if (AI && AI.visibleBills) return AI.visibleBills(all, userId);
+  return all.filter(function (b) { return !isPersonalBill(b) || b.payer === userId; });
 }
 /* 只含集体账 —— 要发出去的东西（结清卡片 / 旅行报告）一律用这个口径 */
 function groupBillsOf(roomId) {
-  return roomBills(roomId).filter(function (b) { return !isPersonalBill(b); });
+  var all = roomBills(roomId);
+  if (AI && AI.groupBills) return AI.groupBills(all);
+  return all.filter(function (b) { return !isPersonalBill(b); });
 }
 
 function renderRoomDetail(userId,roomId){
@@ -1402,6 +1414,8 @@ function renderStats(userId,roomId){
   var html='<div class="hs" style="padding:8px 0 16px;"><div class="hl">SPENDING REPORT</div><div class="ht">消费统计</div><div style="font-size:11px;color:var(--g400);margin-top:4px;">'+esc(scopeName)+'</div></div>';
   html+='<div class="og"><div class="oi"><div class="ol">集体账 / TOTAL</div><div class="ov">¥'+moneyK(total)+'</div></div><div class="oi"><div class="ol">笔数 / BILLS</div><div class="ov sm">'+bills.length+'</div></div></div>';
   if(room)html+='<button class="btn lt" data-feat="export-csv" style="width:100%;margin-bottom:8px;" onclick="exportCsv(\''+userId+'\',\''+roomId+'\')">📥 导出这本账（CSV：集体账 + 你自己的私账）</button>';
+  /* 导出的表要能读回来：换设备 / 合并账本 / 在 Excel 里改完再导回来 */
+  if(room)html+='<button class="btn lt" data-feat="import-csv" style="width:100%;margin-bottom:8px;" onclick="openImportModal(\''+userId+'\',\''+roomId+'\')">📤 导入这本账（把导出的 CSV 读回来）</button>';
 
   /* ---- 我的私账（人情账）：不进 AA 的零碎钱，只有本人可见 ---- */
   if(myP.count>0){
@@ -1517,6 +1531,178 @@ function exportCsv(userId,roomId){
   }
   showToast(userId,'📥 已导出 '+count+' 笔账单（CSV）');
   return true;
+}
+
+/* ============================================================
+   CSV **导回来**（往返一致性）
+   ------------------------------------------------------------
+   为什么需要：导出的表得能读回来，否则"导出"只是个单向快照 ——
+   换设备、合并两个账本、或者手工在 Excel 里改完再导回来都做不到。
+   做法：解析我们自己的导出格式（带 BOM、带引号转义、中文表头），
+   按「分摊明细」里的**名字**匹配房间成员还原 splits，并保留归属/调整单标记。
+   安全性：只往指定房间加账单；成员名对不上的行**跳过并如实报告**，不猜。
+   ============================================================ */
+
+/* CSV 一行 → 字段数组（处理引号转义："" 表示一个引号，引号内的逗号不是分隔符） */
+function parseCsvRow(line){
+  var out=[],cur='',q=false;
+  for(var i=0;i<line.length;i++){
+    var ch=line[i];
+    if(q){
+      if(ch==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else q=false; }
+      else cur+=ch;
+    }else{
+      if(ch==='"')q=true;
+      else if(ch===','){out.push(cur);cur='';}
+      else cur+=ch;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+/* 整段文本 → 行数组（去 BOM、兼容 \r\n 与 \n） */
+function parseCsvText(text){
+  var s=String(text||'').replace(/^\uFEFF/,'');
+  return s.split(/\r\n|\n|\r/).filter(function(l){return l.length>0}).map(parseCsvRow);
+}
+/* 表头名 → 列下标（允许列顺序变化，也容忍手工改过表头） */
+function csvHeaderIndex(head){
+  var idx={};
+  (head||[]).forEach(function(h,i){idx[String(h||'').trim()]=i});
+  return idx;
+}
+function csvCellAt(row,idx,name){
+  var i=idx[name];
+  return (i==null||i<0)?'':String(row[i]==null?'':row[i]);
+}
+/* 「小王 12.34 / 小红 5.00」→ [{memberId,memberName,amount}]，靠名字匹配房间成员 */
+function parseSharesCell(cell,members){
+  var out=[];
+  String(cell||'').split('/').forEach(function(seg){
+    var t=seg.trim();
+    if(!t)return;
+    var m=t.match(/^(.*?)\s+(-?[\d.]+)$/);
+    if(!m)return;
+    var nm=m[1].trim(),amt=Number(m[2]);
+    if(!isFinite(amt))return;
+    var hit=members.filter(function(x){return x.name===nm})[0];
+    out.push({memberId:hit?hit.id:('name:'+nm),memberName:nm,amount:amt,unknown:!hit});
+  });
+  return out;
+}
+
+/**
+ * 把导出的 CSV 文本导回某个房间。
+ * @returns {{added:number, skipped:number, unknownNames:string[], errors:string[]}}
+ */
+function importBillsFromCsv(roomId,text,opts){
+  opts=opts||{};
+  var room=State.rooms.filter(function(r){return r.id===roomId})[0];
+  var res={added:0,skipped:0,unknownNames:[],errors:[]};
+  if(!room){res.errors.push('房间不存在');return res}
+  var rows=parseCsvText(text);
+  if(rows.length<2){res.errors.push('没有可导入的数据行');return res}
+  var idx=csvHeaderIndex(rows[0]);
+  if(idx['金额']==null||idx['分摊明细']==null){res.errors.push('表头不对：至少需要「金额」和「分摊明细」两列');return res}
+  var existing={};                       /* 幂等：同一份文件导两次不会翻倍 */
+  State.bills.forEach(function(b){
+    if(b.roomId===roomId)existing[roomId+'|'+(b.description||'')+'|'+(Number(b.amount)||0).toFixed(2)+'|'+String(b.createdAt||'').slice(0,10)]=1;
+  });
+  var idOf={};room.members.forEach(function(m){idOf[m.name]=m.id});
+  for(var r=1;r<rows.length;r++){
+    var row=rows[r];
+    try{
+      var amount=Number(csvCellAt(row,idx,'金额'));
+      if(!isFinite(amount)){res.skipped++;continue}
+      var desc=csvCellAt(row,idx,'说明')||'导入的账单';
+      var dateStr=csvCellAt(row,idx,'日期')||'';
+      var createdAt=(dateStr?dateStr+'T00:00:00.000Z':new Date().toISOString());
+      var key=roomId+'|'+desc+'|'+amount.toFixed(2)+'|'+String(createdAt).slice(0,10);
+      if(existing[key]&&!opts.allowDuplicate){res.skipped++;continue}
+      existing[key]=1;                  /* 同一份文件里重复的行也只进一次 */
+      var payerName=csvCellAt(row,idx,'付款人');
+      var payerId=idOf[payerName]||'';
+      if(!payerId){res.errors.push('第 '+r+' 行：付款人「'+payerName+'」不是本房间成员，已跳过');res.skipped++;continue}
+      var shares=parseSharesCell(csvCellAt(row,idx,'分摊明细'),room.members);
+      shares.forEach(function(s){if(s.unknown&&res.unknownNames.indexOf(s.memberName)<0)res.unknownNames.push(s.memberName)});
+      var cur=(csvCellAt(row,idx,'币种')||'CNY').toUpperCase();
+      var mark=csvCellAt(row,idx,'标记');
+      var isAdj=/调整单/.test(mark);
+      /* 名字对得上就用真 id；对不上的（别人账本里的人）**不猜**，这条整行跳过并说明 */
+      if(!shares.length){res.errors.push('第 '+r+' 行：读不出分摊明细，已跳过');res.skipped++;continue}
+      if(shares.some(function(s){return s.unknown})){
+        res.errors.push('第 '+r+' 行：分摊里有不是本房间成员的人（'+shares.filter(function(s){return s.unknown}).map(function(s){return s.memberName}).join('、')+'），已跳过');
+        res.skipped++;continue;
+      }
+      var scopeCell=csvCellAt(row,idx,'归属');
+      var scope=/私账/.test(scopeCell)?'personal':(/集体/.test(scopeCell)?'group':'');
+      var splits=shares.map(function(s){return {memberId:s.memberId,memberName:s.memberName,amount:s.amount}});
+      var sum=splits.reduce(function(a,b){return a+b.amount},0);
+      /* 账恒平守卫：Σsplits 必须严格等于金额（调整单除外，它恒为 0 且零和） */
+      if(!isAdj&&Math.abs(sum-amount)>0.011){res.errors.push('第 '+r+' 行：分摊合计 '+sum.toFixed(2)+' ≠ 金额 '+amount.toFixed(2)+'，已跳过');res.skipped++;continue}
+      if(isAdj&&Math.abs(sum)>0.011){res.errors.push('第 '+r+' 行：调整单分摊不零和，已跳过');res.skipped++;continue}
+      var bill=makeBill(room,{
+        payer:payerId,payerName:payerName,amount:amount,currency:cur,
+        description:desc,category:catKeyOf(csvCellAt(row,idx,'分类')),
+        source:sourceKeyOf(csvCellAt(row,idx,'入账来源'))||'manual',
+        createdAt:createdAt,splits:splits
+      });
+      bill.scope=scope||(isPersonalBill(bill)?'personal':'group');
+      if(isAdj)bill.isAdjustment=true;
+      State.bills.push(bill);res.added++;
+    }catch(e){res.errors.push('第 '+r+' 行：'+e.message);res.skipped++}
+  }
+  return res;
+}
+function catKeyOf(label){
+  var t=String(label||'');
+  for(var i=0;i<CATS.length;i++){if(CATS[i][1]===t||t.indexOf(CATS[i][1])>=0)return CATS[i][0]}
+  return 'other';
+}
+function sourceKeyOf(label){
+  var t=String(label||'');
+  var map={'一句话':'text','语音':'voice','票据':'ocr','携程订单':'ctrip','手动':'manual','手动填表':'manual'};
+  for(var k in map){if(t.indexOf(k)>=0)return map[k]}
+  return t?t.toLowerCase():'';
+}
+/* 未知归属时的兜底由 isPersonalBill() 按内核口径推导，这里不再单独实现 */
+
+function openImportModal(userId,roomId){
+  var body=document.getElementById('modalBody-'+userId);
+  document.getElementById('modalTitle-'+userId).textContent='导入这本账（CSV）';
+  body.innerHTML='<div class="fg"><div class="fl">把导出的 CSV 内容粘进来（Excel 里复制也行）</div>'+
+    '<textarea class="fi" id="csvText-'+userId+'" rows="7" placeholder="日期,说明,分类,..." style="height:150px;font-size:11px;line-height:1.5;font-family:ui-monospace,monospace;"></textarea></div>'+
+    '<div class="fg"><div class="fl">或者选一个 .csv 文件</div><input class="fi" type="file" accept=".csv,text/csv" onchange="readCsvFile(\''+userId+'\',this)"></div>'+
+    '<div class="os" style="margin-bottom:10px;"><span>🔁</span><span>导回的账单会加进当前房间；<b>分摊明细里的名字必须是本房间成员</b>，对不上的行会跳过并说明原因。同一份文件重复导入不会翻倍。</span></div>'+
+    '<button class="btn dk" style="width:100%;" onclick="doImportCsv(\''+userId+'\',\''+roomId+'\')">开始导入</button>';
+  document.getElementById('modal-'+userId).classList.add('show');
+  a11yOpen(document.getElementById('modal-'+userId));
+}
+function readCsvFile(userId,input){
+  var f=input&&input.files&&input.files[0];
+  if(!f)return;
+  var ta=document.getElementById('csvText-'+userId);
+  if(typeof FileReader!=='function'){showToast(userId,'当前环境不支持读取本地文件，请直接粘贴内容');return}
+  var fr=new FileReader();
+  fr.onload=function(){if(ta)ta.value=String(fr.result||'');showToast(userId,'📄 已读取 '+f.name+'，点「开始导入」')};
+  fr.readAsText(f,'UTF-8');
+}
+function doImportCsv(userId,roomId){
+  var ta=document.getElementById('csvText-'+userId);
+  var text=ta?ta.value:'';
+  var u=USERS.filter(function(x){return x.id===userId})[0];
+  if(!String(text||'').trim()){showToast(userId,'⚠️ 还没有内容：先粘贴 CSV 或选个文件');return}
+  var res=importBillsFromCsv(roomId,text,{});
+  closeModal(userId);
+  var msg='📥 导入 '+res.added+' 笔';
+  if(res.skipped)msg+=' · 跳过 '+res.skipped+' 笔';
+  showToast(userId,msg);
+  if(res.errors.length){
+    /* 有问题必须说清楚，不能"看起来成功了" */
+    setTimeout(function(){alert('导入结果：成功 '+res.added+' 笔，跳过 '+res.skipped+' 笔。\n\n' + res.errors.slice(0,8).join('\n'));},100);
+  }
+  if(u)renderApp(u);
+  syncAll();
 }
 
 function phoneGoStats(userId,roomId){
@@ -3487,7 +3673,7 @@ var NARR_IDLE = '4 台手机 = 4 位同行成员，共用同一本账、操作�
 /* 给评委看的验收数字。**只有一个地方要维护**（`node tests/run-all.js` 的实际输出），
    每次加测试后改这里；`tests/demo.check.js` 会检查这三个数还在、没被写成占位符。
    页内自检/交互验收的数字不写死 —— 点「🩺 自检」后会用**真实跑出来的结果**覆盖。 */
-var SUITE_STATS = { suites: 9, items: 890 };
+var SUITE_STATS = { suites: 11, items: 962 };
 function fillJudgeStats() {
   var set = function (id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
   set('jnSuite', String(SUITE_STATS.suites));
@@ -5357,7 +5543,68 @@ function runUITest() {
         resetAll();
       })();
 
-      /* ⑬ 私账隐私：别人的「我的私账」不能出现在我的账单列表里 */
+      /* ⑯ 导出 → 导入**往返一致**：换设备/合并账本/在 Excel 里改完再导回来都得对得上 */
+      (function () {
+        resetAll();
+        var room = ensureAllPhones();
+        /* 造几笔有代表性的：外币、私账、带逗号引号、多笔分摊 */
+        State.bills.push(makeBill(room, { payer: 'u1', payerName: '小明', amount: 300, description: '晚餐,带了"朋友"',
+          category: 'food', source: 'manual', createdAt: '2024-10-01T12:00:00.000Z' }));
+        State.bills.push(makeBill(room, { payer: 'u2', payerName: '小红', amount: 12000, currency: 'JPY',
+          description: '京都交通', category: 'transport', source: 'ocr', createdAt: '2024-10-02T12:00:00.000Z' }));
+        State.bills.push(makeBill(room, { payer: 'u4', payerName: '小王', amount: 1280, splitType: 'sole',
+          scope: 'personal', description: '给自己买的伴手礼', category: 'shopping', source: 'manual',
+          createdAt: '2024-10-03T12:00:00.000Z' }));
+        /* 以 u4 的身份导出：既有全部集体账，也含他自己的私账（别人的私账不导出） */
+        var csv = buildCsv(room.id, 'u4');
+        var beforeAll = roomBills(room.id);
+        var before = beforeAll.filter(function (b) { return !isPersonalBill(b); });
+        var beforeTotal = roomTotalCNY(room.id);
+        var beforeSettle = calcSettlement(room, before);
+        var beforeBalanced = AI.netBalances(before, room.members).balanced;
+        var csvRows = csv.split('\r\n').length - 1;
+        /* 清空这间房的全部账单（模拟"换设备后重新导回来"） */
+        State.bills = State.bills.filter(function (b) { return b.roomId !== room.id; });
+        var res = importBillsFromCsv(room.id, csv, {});
+        var after = roomBills(room.id).filter(function (b) { return !isPersonalBill(b); });
+        var afterTotal = roomTotalCNY(room.id);
+        var afterSettle = calcSettlement(room, after);
+        var afterBalanced = AI.netBalances(after, room.members).balanced;
+        var sameCount = after.length === before.length;
+        var sameTotal = Math.abs(afterTotal - beforeTotal) < 0.011;
+        var sameTransfers = JSON.stringify(afterSettle.transfers.map(function (t) { return [t.from, t.to, t.amount]; }).sort()) ===
+          JSON.stringify(beforeSettle.transfers.map(function (t) { return [t.from, t.to, t.amount]; }).sort());
+        var privKept = roomBills(room.id).some(function (b) { return isPersonalBill(b) && b.payer === 'u4'; });
+        add('★ 导出→导入往返一致（笔数 / 集体总消费 / 最简转账方案 / 账恒平 / 私账归属 全部对得上）',
+          res.added === csvRows && sameCount && sameTotal && sameTransfers && beforeBalanced && afterBalanced && privKept,
+          'CSV ' + csvRows + ' 行 → 导入 ' + res.added + ' 笔（跳过 ' + res.skipped + '）· 集体笔数 ' +
+          before.length + '→' + after.length + ' · 合计 ¥' + beforeTotal + '→¥' + afterTotal +
+          ' · 转账方案一致=' + sameTransfers + ' · 恒平 ' + beforeBalanced + '→' + afterBalanced +
+          ' · 私账保留=' + privKept);
+        /* 幂等：同一份文件再导一次不该翻倍 */
+        var again = importBillsFromCsv(room.id, csv, {});
+        add('★ 同一份 CSV 重复导入不会翻倍（按 房间+说明+金额+日期 去重）',
+          again.added === 0 && roomBills(room.id).length === csvRows,
+          '第二次导入 ' + again.added + ' 笔 · 当前 ' + roomBills(room.id).length + ' 笔 / CSV ' + csvRows + ' 行');
+        /* 名字对不上的行要**跳过并说明**，不能猜 */
+        var alien = '日期,说明,分类,币种,金额,汇率,折合人民币,付款人,分摊明细,归属,入账来源,标记\r\n' +
+          '2024-10-05,外星人的账,餐饮,CNY,100.00,1,100.00,外星人,外星人 100.00,集体AA,手动,\r\n' +
+          '2024-10-05,分摊里有外人,餐饮,CNY,100.00,1,100.00,小明,小明 50.00 / 外人 50.00,集体AA,手动,\r\n';
+        var bad = importBillsFromCsv(room.id, alien, {});
+        add('★ 导不进来的行会被跳过并说明原因（不猜、不静默丢）',
+          bad.added === 0 && bad.skipped === 2 && bad.errors.length === 2,
+          'added=' + bad.added + ' skipped=' + bad.skipped + ' errors=' + bad.errors.length);
+        /* 分摊合计与金额不符的行必须被拦下（否则导入就把账改不平了） */
+        var broken = '日期,说明,分类,币种,金额,汇率,折合人民币,付款人,分摊明细,归属,入账来源,标记\r\n' +
+          '2024-10-05,不平的账,餐饮,CNY,100.00,1,100.00,小明,小明 30.00,集体AA,手动,\r\n';
+        var badSum = importBillsFromCsv(room.id, broken, {});
+        add('★ 导入时守账恒平：分摊合计 ≠ 金额的行一律拦下',
+          badSum.added === 0 && badSum.errors.some(function (e) { return /≠/.test(e); }),
+          JSON.stringify(badSum.errors));
+        resetAll();
+      })();
+
+      /* ⑰ 私账隐私：别人的「我的私账」不能出现在我的账单列表里 */
       (function () {
         var room = ensureAllPhones();
         var mine = makeBill(room, { payer: 'u1', payerName: '小明', amount: 88, splitType: 'sole',

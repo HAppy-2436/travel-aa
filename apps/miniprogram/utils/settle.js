@@ -8,7 +8,7 @@
  * V2：多币种结算 —— 外币账单按记账时快照汇率折算人民币（utils/ai.js#billCNY），
  * 分摊明细按同一比例折算，保证折算后账恒平。
  */
-const { allocateEvenly, billCNY } = require('./ai');
+const { allocateEvenly, billCNY, isSettleable, isPersonalBill, groupSpend } = require('./ai');
 
 /**
  * 计算最简转账方案
@@ -23,13 +23,10 @@ function calculateSettlement(members, bills) {
     balanceMap[m.id] = { ...m, amount: 0 };
   });
 
-  // 只结算「集体账」：私账（人情账）不进 AA，占位单/作废单也不参与
-  const settleable = (bills || []).filter(b => {
-    if (!b || !b.splits) return false;
-    if (b.status === 'draft' || b.status === 'placeholder' || b.needsCompletion || b.voided) return false;
-    const scope = b.scope || (b.splitType === 'sole' ? 'personal' : 'group');
-    return scope === 'group';
-  });
+  /* 只结算「集体账」：私账（人情账）不进 AA，占位单/作废单也不参与。
+     ⚠️ 判据一律走共享内核（isSettleable / isPersonalBill），不在这里另写一套 ——
+        三端口径只用一份代码，否则网页说私账、小程序说集体账。 */
+  const settleable = (bills || []).filter(b => isSettleable(b) && !isPersonalBill(b));
 
   settleable.forEach(bill => {
     const cny = billCNY(bill);
@@ -91,13 +88,17 @@ function calculateSettlement(members, bills) {
   }
 
   // 4. 币种汇总（有外币时提示折算结算）
-  const currencies = [...new Set(bills.map(b => (b && b.currency) || 'CNY'))];
+  const currencies = [...new Set(settleable.map(b => (b && b.currency) || 'CNY'))];
   const hasForeign = currencies.some(c => c !== 'CNY');
 
   return {
     balances: balances.sort((a, b) => b.amount - a.amount),
     transfers,
-    totalExpense: Math.round(bills.reduce((sum, b) => sum + billCNY(b), 0) * 100) / 100,
+    /* ⚠️ 这里的「总消费」必须和 `balances/transfers` 同一口径（只算集体账）。
+       以前是 bills.reduce(...) 把**全部**账单求和 → 私账把钱撑进"旅行总消费"，
+       可是下面各人收支又只算集体账，于是"总额 ≠ 各人之和"，也对不上网页端。
+       统一用内核 groupSpend()。 */
+    totalExpense: Math.round(groupSpend(bills).total * 100) / 100,
     currencies,
     hasForeign
   };

@@ -30,7 +30,9 @@ Page({
       payer: '',
       payerName: '',
       splitType: 'equal',
-      currency: 'CNY'
+      currency: 'CNY',
+      /* 归属：'group' 集体账 / 'personal' 我的私账（人情账），默认集体 */
+      scope: 'group'
     },
     customTotal: '0.00',
     ocrImage: '',
@@ -300,14 +302,16 @@ Page({
     }
   },
 
-  onCustomAmount(e) {
-    const index = e.currentTarget.dataset.index;
-    const value = e.detail.value;
-    const members = [...this.data.members];
-    members[index].customAmount = value;
-
-    const total = members.reduce((sum, m) => sum + (parseFloat(m.customAmount) || 0), 0);
-    this.setData({ members, customTotal: total.toFixed(2) });
+  /* 归属：集体账 / 我的私账（人情账）。
+     语义与网页端、服务端完全一致（判据在内核 AI.isPersonalBill）：
+     私账不进 AA、不影响别人，只累计到"我自己花了多少"。 */
+  selectScope(e) {
+    const scope = e.currentTarget.dataset.scope === 'personal' ? 'personal' : 'group';
+    const patch = { 'form.scope': scope };
+    /* 私账只用"自己承担"这一种分摊方式，顺手把分摊方式对齐，避免出现
+       "私账 + 均分"这种内核判成私账、界面却写均分的自相矛盾状态 */
+    if (scope === 'personal') patch['form.splitType'] = 'treat';
+    this.setData(patch);
   },
 
   /**
@@ -317,14 +321,31 @@ Page({
     const { form, members } = this.data;
     const amount = parseFloat(form.amount);
 
-    if (form.splitType === 'equal') {
-      // 最大余额法均分：分摊合计恒等于账单金额（修复均分尾差）
-      const amounts = AI.allocateEvenly(amount, members.length);
-      return members.map((m, i) => ({
+    /* 私账：由付款人自己全额承担（其余人 0），与内核 isPersonalBill 口径一致 */
+    if (form.scope === 'personal') {
+      return members.map(m => ({
         memberId: m.id,
         memberName: m.name,
-        amount: amounts[i]
+        amount: m.id === form.payer ? amount : 0
       }));
+    }
+
+    /* 均分只摊给**还在队里**的人：有人先走之后记的账不该再算他。
+       判据走共享内核 AI.activeMembers（网页/服务端同一份实现）。
+       已离队的成员仍保留 0 元分摊行，方便对账时看到"这笔与他无关"。 */
+    if (form.splitType === 'equal') {
+      const active = AI.activeMemberIds({ members }, new Date().toISOString());
+      const sharers = members.filter(m => active.indexOf(m.id) >= 0);
+      const base = sharers.length ? sharers : members;
+      const amounts = AI.allocateEvenly(amount, base.length);
+      return members.map(m => {
+        const i = base.map(x => x.id).indexOf(m.id);
+        return {
+          memberId: m.id,
+          memberName: m.name,
+          amount: i < 0 ? 0 : amounts[i]
+        };
+      });
     } else if (form.splitType === 'custom') {
       return members.map(m => ({
         memberId: m.id,
@@ -383,7 +404,10 @@ Page({
         currency,
         rate,
         cnyAmount,
-        imageUrl: ''
+        imageUrl: '',
+        /* V3 归属：私账（人情账）不进 AA、不计入房间集体消费。
+           以前没传 scope → 云端把它当集体账，两端算出的"旅行总消费"不一样。 */
+        scope: form.scope === 'personal' ? 'personal' : 'group'
       };
 
       if (this.data.isEdit && this.data.editBillId) {

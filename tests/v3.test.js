@@ -861,6 +861,72 @@ function mb(bills) { return AI.netBalances(bills, MEMBERS); }
     ok('dailyStats({all:true}) 可看全部', AI.dailyStats(junk, { all: true }).days.reduce((s, d) => s + d.total, 0) === 1500);
   })();
 
+  /* ---------- G6. 三端唯一口径：私账可见性 / 有人先走 ---------- */
+  (function () {
+    /* isPersonalBill：scope 优先，其次回落到 splitType/分摊形态 */
+    ok('★ isPersonalBill：scope=personal 就是私账（哪怕 splitType 是 equal）',
+      AI.isPersonalBill({ scope: 'personal', splitType: 'equal' }) === true);
+    ok('★ isPersonalBill：scope=group 就是集体账（哪怕 splitType 是 sole）',
+      AI.isPersonalBill({ scope: 'group', splitType: 'sole' }) === false);
+    ok('isPersonalBill：splitType=sole 且没写 scope → 私账',
+      AI.isPersonalBill({ splitType: 'sole' }) === true);
+    ok('isPersonalBill：全员均摊 → 集体账',
+      AI.isPersonalBill({ splitType: 'equal', splits: MEMBERS.map((m) => ({ memberId: m.id, amount: 10 })) }) === false);
+    ok('isPersonalBill 空值不炸', AI.isPersonalBill(null) === false && AI.isPersonalBill(undefined) === false);
+
+    /* groupBills / visibleBills：可见性 */
+    const mk6 = (id, amount, payer) => ({
+      id, roomId: 'r1', payer, payerName: payer, amount, currency: 'CNY', rate: 1, cnyAmount: amount,
+      description: id, category: 'food', splitType: 'equal',
+      splits: AI.allocateEvenly(amount, MEMBERS.length).map((v, i) => ({
+        memberId: MEMBERS[i].id, memberName: MEMBERS[i].name, amount: v,
+      })),
+      createdAt: '2024-10-01T09:00:00.000Z',
+    });
+    const g = mk6('g1', 100, 'u1');
+    const mine = { id: 'p1', payer: 'u1', scope: 'personal', splitType: 'sole', amount: 50 };
+    const other = { id: 'p2', payer: 'u3', scope: 'personal', splitType: 'sole', amount: 70 };
+    const all = [g, mine, other];
+    ok('★ groupBills：只留集体账', AI.groupBills(all).length === 1 && AI.groupBills(all)[0].id === 'g1');
+    ok('★ visibleBills：集体账 + 我自己的私账（别人的私账不出现）',
+      AI.visibleBills(all, 'u1').length === 2 &&
+      AI.visibleBills(all, 'u1').every((b) => b.id !== 'p2') &&
+      AI.visibleBills(all, 'u3').length === 2 && AI.visibleBills(all, 'u3').every((b) => b.id !== 'p1'));
+
+    /* 有人先走：时间点语义 */
+    const members = [{ id: 'u1', name: '小明' }, { id: 'u2', name: '小红' }, { id: 'u4', name: '小王', leftAt: '2024-10-03T12:00:00.000Z' }];
+    const room = { members: members };
+    ok('★ 有人先走：离队之前记的账仍算他',
+      AI.activeMemberIds(room, '2024-10-02T00:00:00.000Z').length === 3);
+    ok('★ 有人先走：离队之后记的账不再分摊给他',
+      JSON.stringify(AI.activeMemberIds(room, '2024-10-04T00:00:00.000Z')) === JSON.stringify(['u1', 'u2']));
+    ok('★ 有人先走：同一毫秒也算"之后"（否则"标记完立刻记账"会偶发把他算回来）',
+      AI.activeMemberIds(room, '2024-10-03T12:00:00.000Z').length === 2);
+    ok('leftMembers 能报出谁先走了', AI.leftMembers(room).length === 1 && AI.leftMembers(room)[0].id === 'u4');
+    ok('★ 全都离队时兜底返回全体（否则没法分摊）',
+      AI.activeMembers({ members: [{ id: 'a', leftAt: '2020-01-01T00:00:00.000Z' }] }, '2024-01-01T00:00:00.000Z').length === 1);
+
+    /* toggleMemberLeave 只改时间戳，不动账单 */
+    const r2 = { members: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }] };
+    const on = AI.toggleMemberLeave(r2, 'b', '2024-10-03T00:00:00.000Z');
+    ok('toggleMemberLeave 标记离队', on.left === true && r2.members[1].leftAt === '2024-10-03T00:00:00.000Z');
+    const off = AI.toggleMemberLeave(r2, 'b');
+    ok('toggleMemberLeave 再点一下归队', off.left === false && !r2.members[1].leftAt);
+    ok('toggleMemberLeave 对不存在的人不炸', AI.toggleMemberLeave(r2, 'zzz').member === null);
+
+    /* 离队 + 账恒平：离队的人仍参与结算（他之前该摊的一分不少） */
+    const room2 = {
+      id: 'r', name: 'R', members: [{ id: 'u1', name: '小明' }, { id: 'u2', name: '小红' },
+        { id: 'u4', name: '小王', leftAt: '2024-10-03T12:00:00.000Z' }],
+    };
+    const before = { id: 'b1', roomId: 'r', payer: 'u1', payerName: '小明', amount: 300, currency: 'CNY', rate: 1,
+      cnyAmount: 300, description: '离队前', splitType: 'equal', createdAt: '2024-10-02T00:00:00.000Z',
+      splits: room2.members.map((m) => ({ memberId: m.id, memberName: m.name, amount: 100 })) };
+    const nb = AI.netBalances([before], room2.members);
+    ok('★ 有人先走：他仍出现在结算里（不会"人走了钱凭空消失"）',
+      nb.balances.length === 3 && nb.balanced === true, JSON.stringify(nb.balances));
+  })();
+
   /* ---------- 汇总 ---------- */
   console.log('\n========================================');
   console.log(`V3 旅行记账语义测试：通过 ${pass} 项，失败 ${fail} 项`);

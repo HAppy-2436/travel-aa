@@ -33,6 +33,20 @@ Page({
     this.stopWatching();
   },
 
+  /* Bug#2：**必须有 onShow**。以前只有 onLoad + watch*，
+     而在「演示模式」（db 的 watch 是空函数）下，记完账返回房间页看不到新账 ——
+     用户以为没记上，其实是页面没刷新。onShow 里补一次加载即可（有监听时也无害）。 */
+  onShow() {
+    if (this.data.roomId) {
+      this.loadRoomData();
+      this.startWatching();
+    }
+  },
+
+  onHide() {
+    this.stopWatching();
+  },
+
   /**
    * 开始实时监听数据变化
    */
@@ -200,6 +214,55 @@ Page({
   goToSettle() {
     wx.navigateTo({
       url: `/pages/settle/settle?roomId=${this.data.roomId}`
+    });
+  },
+
+  /* history（消费统计）此前**没有入口** —— 页面写好了却点不到。
+     现在从房间页「📊 统计 ›」直达。 */
+  goToHistory() {
+    wx.navigateTo({
+      url: `/pages/history/history?roomId=${this.data.roomId}`
+    });
+  },
+
+  /* capture（记账方式总入口：拍照识别 / 携程订单 / 一句话 / 手填）。
+     票据识别 UI 以前完全缺失（db.recognizeBill + ocr 云函数都已就绪却没人调）。 */
+  goToCapture() {
+    wx.navigateTo({
+      url: `/pages/capture/capture?roomId=${this.data.roomId}`
+    });
+  },
+
+  // ========== V3：预算 & 有人先走 ==========
+
+  /**
+   * 「有人先走，剩下的人继续 AA」：标记 / 取消某位成员离队。
+   *
+   * 语义（三端一致，判据走共享内核 AI.toggleMemberLeave / AI.activeMembers）：
+   *   · 只打一个 leftAt 时间戳，**不动任何账单** —— 历史账单的 splits 是事实；
+   *   · 之后新建的账单默认只分摊给还在队里的人；
+   *   · 他仍在成员表里参与结算，不会"人走了钱就凭空消失"。
+   */
+  toggleMemberLeave(e) {
+    const { id, name, left } = e.currentTarget.dataset;
+    if (!id) return;
+    const leaving = !left;
+    wx.showModal({
+      title: leaving ? '标记先离队' : '归队',
+      content: leaving
+        ? `${name} 先离队：之后记的账不再分摊给他，之前记的账照旧留痕。`
+        : `${name} 归队：之后记的账重新算他。`,
+      success: async (res) => {
+        if (!res.confirm) return;
+        try {
+          const out = await db.setMemberLeave(this.data.roomId, id, leaving);
+          const room = Object.assign({}, this.data.room, { members: out.members || this.data.room.members });
+          this.setData({ room });
+          wx.showToast({ title: leaving ? '已标记离队' : '已归队', icon: 'success' });
+        } catch (err) {
+          wx.showToast({ title: '操作失败: ' + err.message, icon: 'none' });
+        }
+      }
     });
   },
 

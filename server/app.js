@@ -268,7 +268,7 @@ app.post('/api/rooms/join', (req, res) => {
       INSERT INTO room_members (room_id, user_id, nickname, avatar, joined_at) VALUES (?, ?, ?, ?, ?)
     `).run(room.id, userId, nickname || '新成员', avatar || '', new Date().toISOString());
 
-    const members = db.prepare('SELECT * FROM room_members WHERE room_id = ?').all(room.id);
+    const members = db.prepare('SELECT * FROM room_members WHERE room_id = ?').all(room.id).map(toMemberDTO);
     res.json({ success: true, room: { ...room, members } });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
@@ -291,7 +291,7 @@ app.get('/api/rooms/my/:userId', (req, res) => {
 
     // 为每个房间添加成员列表
     const result = rooms.map(room => {
-      const members = db.prepare('SELECT * FROM room_members WHERE room_id = ?').all(room.id);
+      const members = db.prepare('SELECT * FROM room_members WHERE room_id = ?').all(room.id).map(toMemberDTO);
       return { ...room, members };
     });
 
@@ -307,7 +307,7 @@ app.get('/api/rooms/:roomId', (req, res) => {
     const room = db.prepare('SELECT * FROM rooms WHERE id = ?').get(req.params.roomId);
     if (!room) return res.status(404).json({ success: false, error: '房间不存在' });
 
-    const members = db.prepare('SELECT * FROM room_members WHERE room_id = ?').all(room.id);
+    const members = db.prepare('SELECT * FROM room_members WHERE room_id = ?').all(room.id).map(toMemberDTO);
     res.json({ success: true, room: { ...room, members } });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
@@ -323,9 +323,33 @@ app.get('/api/rooms/:roomId/bills', (req, res) => {
       SELECT * FROM bills WHERE room_id = ? ORDER BY created_at DESC LIMIT 100
     `).all(req.params.roomId);
 
-    // 解析splits
-    const result = bills.map(b => ({ ...b, splits: JSON.parse(b.splits || '[]') }));
+    /* 统一走 toBillDTO：splits 解析 + V3 归属/调整单字段的驼峰映射。
+       `?userId=` 给了就再按"私账只有本人可见"过滤一层（别人的私账不返回）。 */
+    let result = bills.map(toBillDTO);
+    const uid = req.query.userId || req.query.user_id;
+    if (uid) result = AI.visibleBills(result, uid);
     res.json({ success: true, bills: result });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+/* 「有人先走」：标记 / 取消某位成员离队。
+   只改 room_members.left_at，**不动任何账单** —— 历史账单的 splits 是事实。
+   之后新建的账单由客户端用 AI.activeMembers(room) 算分摊对象。 */
+app.post('/api/rooms/:roomId/members/:userId/leave', (req, res) => {
+  try {
+    const { roomId, userId } = req.params;
+    const m = db.prepare('SELECT * FROM room_members WHERE room_id = ? AND user_id = ?').get(roomId, userId);
+    if (!m) return res.status(404).json({ success: false, error: '该成员不在房间里' });
+
+    const wantLeave = req.body && req.body.leave === false ? false : (req.body && req.body.leave === true ? true : !m.left_at);
+    const leftAt = wantLeave ? (req.body && req.body.leftAt ? String(req.body.leftAt) : new Date().toISOString()) : '';
+    db.prepare('UPDATE room_members SET left_at = ? WHERE room_id = ? AND user_id = ?').run(leftAt, roomId, userId);
+    db.prepare('UPDATE rooms SET updated_at = ? WHERE id = ?').run(new Date().toISOString(), roomId);
+
+    const members = db.prepare('SELECT * FROM room_members WHERE room_id = ?').all(roomId).map(toMemberDTO);
+    res.json({ success: true, left: !!leftAt, leftAt, members });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
   }
@@ -345,17 +369,70 @@ app.get('/api/rooms/:roomId/bills', (req, res) => {
  *   ④ 空 splits 也能落库
  *
  * 校验口径：**统一以「分」为单位比较，容差 0**。
+ *
+ * ============ V3 补充（三端一致性） ============
+ *   ⑤ `scope` / `splitType` 以前不校验也不入库 → 客户端标了「我的私账」，
+ *      落库后却按集体账统计（网页说私账、服务端说集体账）。
+ *      现在：只接受 group/personal 与 equal/treat/sole，且**私账必须由付款人自己全额承担**。
+ *   ⑥ 调整单（多退少补 / 暂估改价）amount 恒为 0，以前被 `金额必须大于 0` 一刀拒掉 →
+ *      这类账单根本无法上云。现在：`isAdjustment` 为真时改走另一套校验 ——
+ *      金额必须为 0、**分摊必须零和**（Σsplits === 0）、且必须指向同房间的原账单。
+ *   校验用共享内核的 `AI.isPersonalBill` 判"这笔到底算不算私账"，不在这里另写一套口径。
  * ============================================================
  * @returns {string|null} 错误信息；null 表示通过
  */
-function validateBillInput({ amount, splits, currency, rate, roomId, payerId }) {
+function validateBillInput({ amount, splits, currency, rate, roomId, payerId, scope, splitType, isAdjustment, adjustsBillId }) {
   const amt = Number(amount);
+  const adjustment = isAdjustment === true || isAdjustment === 1 || isAdjustment === '1';
+
+  /* ---- 调整单：金额 0、分摊零和、必须挂到同房间的原账单 ---- */
+  if (adjustment) {
+    if (!(amt === 0)) return '调整单金额必须为 0（差额体现在分摊明细里）';
+    const alist = Array.isArray(splits) ? splits : [];
+    if (!alist.length) return '调整单必须提供分摊明细';
+    for (const s of alist) {
+      const v = Number(s && s.amount);
+      if (!isFinite(v)) return '分摊金额必须是数字';
+      if (Math.abs(v * 100 - Math.round(v * 100)) > 1e-6) return '分摊金额最多两位小数';
+    }
+    const zeroSum = alist.reduce((s, x) => s + Math.round((Number(x && x.amount) || 0) * 100), 0);
+    if (zeroSum !== 0) {
+      return `调整单的分摊必须零和（合计 ${(zeroSum / 100).toFixed(2)} ≠ 0），否则会把账改不平`;
+    }
+    if (!adjustsBillId) return '调整单必须说明它调整的是哪一笔（adjustsBillId）';
+    if (roomId) {
+      const row = db.prepare('SELECT room_id FROM bills WHERE id = ?').get(adjustsBillId);
+      if (!row) return '被调整的原账单不存在';
+      if (row.room_id !== roomId) return '被调整的原账单不属于该房间';
+      const memberIds = new Set(
+        db.prepare('SELECT user_id FROM room_members WHERE room_id = ?').all(roomId).map((m) => m.user_id)
+      );
+      if (memberIds.size) {
+        const ghosts = alist.filter((s) => s && s.memberId && !memberIds.has(s.memberId)).map((s) => s.memberId);
+        if (ghosts.length) return `分摊成员不属于该房间：${[...new Set(ghosts)].join('、')}`;
+      }
+    }
+    return null;
+  }
+
   if (!isFinite(amt) || amt <= 0) return '金额必须大于 0';
   if (amt > 1e7) return '金额超出合理范围（上限 1000 万）';
   // 不允许超过两位小数 —— 否则落库时会悄悄进位（实测 100.999 → 101），
   // 而 splits 仍是 100.999，库内 Σsplits ≠ amount
   const amtCents = Math.round(amt * 100);
   if (Math.abs(amt * 100 - amtCents) > 1e-6) return '金额最多两位小数';
+
+  /* ---- 归属与分摊方式 ---- */
+  if (scope != null && scope !== '' && scope !== 'group' && scope !== 'personal') {
+    return '归属只能是 group（集体账）或 personal（我的私账）';
+  }
+  if (splitType != null && splitType !== '' && ['equal', 'treat', 'sole'].indexOf(String(splitType)) < 0) {
+    return '分摊方式只能是 equal（均分）/ treat（我请客）/ sole（不参与 AA）';
+  }
+  const effScope = scope || (splitType === 'sole' ? 'personal' : 'group');
+  if (effScope === 'personal' && splitType != null && splitType !== '' && splitType !== 'sole' && splitType !== 'treat') {
+    return '标记为「我的私账」时分摊方式只能是 sole（不参与 AA）';
+  }
 
   const list = Array.isArray(splits) ? splits : [];
   if (!list.length) return '必须提供分摊明细（有金额却没人承担会让账不平）';
@@ -396,22 +473,31 @@ function validateBillInput({ amount, splits, currency, rate, roomId, payerId }) 
   if (splitCents !== amtCents) {
     return `分摊合计（${(splitCents / 100).toFixed(2)}）必须严格等于账单金额（${(amtCents / 100).toFixed(2)}）`;
   }
+  /* 私账只能由付款人自己承担：否则它会一边被当作"不进 AA"、
+     一边又让别人的名字出现在这笔账里的账单里 —— 说不清是谁的人情账。 */
+  if (effScope === 'personal') {
+    const freeloaders = list.filter((s) => s && Math.abs(Number(s.amount) || 0) > 0.004 && s.memberId !== payerId);
+    if (freeloaders.length) {
+      return '「我的私账」必须由付款人自己全额承担（不能摊给别人）';
+    }
+  }
   return null;
 }
 
 app.post('/api/bills', (req, res) => {
   try {
     const { roomId, payerId, payerName, amount, description, category, splitType, splits, imageUrl, createdBy,
-      currency, rate, orderNo, source } = req.body;
+      currency, rate, orderNo, source, scope, isAdjustment, adjustsBillId } = req.body;
 
     if (!roomId) return res.status(400).json({ success: false, error: '缺少房间 ID' });
     if (!payerId) return res.status(400).json({ success: false, error: '请选择付款人' });
 
-    // 统一校验（分单位、容差 0、成员/汇率/分摊齐备）
-    const verr = validateBillInput({ amount, splits, currency, rate, roomId, payerId });
+    // 统一校验（分单位、容差 0、成员/汇率/分摊齐备 + 私账/调整单规则）
+    const verr = validateBillInput({ amount, splits, currency, rate, roomId, payerId, scope, splitType, isAdjustment, adjustsBillId });
     if (verr) return res.status(400).json({ success: false, error: verr });
 
     const billId = genId();
+    const adjustment = isAdjustment === true || isAdjustment === 1 || isAdjustment === '1';
     // ⚠️ 落库金额必须与"已校验过的分摊合计"一致 —— 先按分取整再换算，
     //    避免 `amount:100.999` 被四舍五入成 101 而 splits 仍是 100.999
     const amountCents = Math.round(Number(amount) * 100);
@@ -420,26 +506,31 @@ app.post('/api/bills', (req, res) => {
     const cur = (currency || 'CNY').toUpperCase();
     const finalRate = cur === 'CNY' ? 1 : (Number(rate) > 0 ? Number(rate) : (AI.getRates()[cur] || 1));
     const cnyAmount = Math.round(finalAmount * finalRate * 100) / 100;
+    /* 归属：默认按 splitType 推导（sole → 私账），与共享内核 AI.isPersonalBill 同一口径 */
+    const finalScope = scope || (splitType === 'sole' ? 'personal' : 'group');
 
     db.prepare(`
-      INSERT INTO bills (id, room_id, payer_id, payer_name, amount, description, category, split_type, splits, image_url, created_by, currency, rate, cny_amount, order_no, source, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO bills (id, room_id, payer_id, payer_name, amount, description, category, split_type, splits, image_url, created_by, currency, rate, cny_amount, order_no, source, created_at, scope, is_adjustment, adjusts_bill_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       billId, roomId, payerId, payerName || '', finalAmount,
       description || '', category || 'other', splitType || 'equal',
       JSON.stringify(splits || []), imageUrl || '', createdBy || payerId,
       cur, finalRate, cnyAmount, orderNo || '', source || '',
-      new Date().toISOString()   /* created_at：带 Z 的 ISO-8601 UTC，见 database.js 顶部说明 */
+      new Date().toISOString(),  /* created_at：带 Z 的 ISO-8601 UTC，见 database.js 顶部说明 */
+      finalScope, adjustment ? 1 : 0, adjustsBillId || ''
     );
 
-    // 更新房间统计（按人民币折算额）
+    /* 房间统计口径必须和网页/小程序一致：**私账不进集体消费**，调整单金额恒为 0 也不影响。
+       以前一律 +cnyAmount，于是私账把钱撑进了 total_expense（首页/统计都对不上）。 */
+    const countsInGroup = finalScope !== 'personal' && !adjustment;
     db.prepare(`
-      UPDATE rooms SET bill_count = bill_count + 1, total_expense = total_expense + ?, updated_at = ?
+      UPDATE rooms SET bill_count = bill_count + ?, total_expense = total_expense + ?, updated_at = ?
       WHERE id = ?
-    `).run(cnyAmount, new Date().toISOString(), roomId);
+    `).run(countsInGroup ? 1 : 0, countsInGroup ? cnyAmount : 0, new Date().toISOString(), roomId);
 
     const bill = db.prepare('SELECT * FROM bills WHERE id = ?').get(billId);
-    res.json({ success: true, bill: { ...bill, splits: JSON.parse(bill.splits) } });
+    res.json({ success: true, bill: toBillDTO(bill) });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
   }
@@ -451,18 +542,24 @@ app.put('/api/bills/:billId', (req, res) => {
     const bill = db.prepare('SELECT * FROM bills WHERE id = ?').get(req.params.billId);
     if (!bill) return res.status(404).json({ success: false, error: '账单不存在' });
 
-    const { amount, description, category, payerId, payerName, splitType, splits, currency, rate } = req.body;
+    const { amount, description, category, payerId, payerName, splitType, splits, currency, rate, scope } = req.body;
+    const isAdjustmentRow = bill.is_adjustment === 1 || bill.is_adjustment === true || bill.is_adjustment === '1';
     const finalAmount = amount != null ? Math.round(Number(amount) * 100) / 100 : bill.amount;
 
-    if (finalAmount <= 0) return res.status(400).json({ success: false, error: '金额必须大于0' });
+    // 调整单金额恒为 0，不该被"金额必须大于 0"卡住
+    if (finalAmount <= 0 && !isAdjustmentRow) return res.status(400).json({ success: false, error: '金额必须大于0' });
 
     const finalSplits = splits || JSON.parse(bill.splits || '[]');
+    const finalSplitType = splitType || bill.split_type;
 
-    // 与 POST 用同一套校验（分单位、容差 0、成员/汇率/分摊齐备）
+    // 与 POST 用同一套校验（分单位、容差 0、成员/汇率/分摊齐备 + 私账/调整单规则）
     const verr = validateBillInput({
       amount: finalAmount, splits: finalSplits,
       currency: currency || bill.currency, rate: rate != null ? rate : bill.rate,
       roomId: bill.room_id, payerId: payerId || bill.payer_id,
+      scope: scope || bill.scope || (finalSplitType === 'sole' ? 'personal' : 'group'),
+      splitType: finalSplitType,
+      isAdjustment: isAdjustmentRow, adjustsBillId: bill.adjusts_bill_id,
     });
     if (verr) return res.status(400).json({ success: false, error: verr });
 
@@ -472,15 +569,16 @@ app.put('/api/bills/:billId', (req, res) => {
     const finalRate = cur === 'CNY' ? 1
       : (Number(rate) > 0 ? Number(rate) : (Number(bill.rate) > 0 ? Number(bill.rate) : (AI.getRates()[cur] || 1)));
     const cnyAmount = Math.round(finalAmountFixed * finalRate * 100) / 100;
+    const finalScope = scope || bill.scope || (finalSplitType === 'sole' ? 'personal' : 'group');
 
     db.prepare(`
       UPDATE bills SET amount = ?, description = ?, category = ?, payer_id = ?, payer_name = ?,
-        split_type = ?, splits = ?, currency = ?, rate = ?, cny_amount = ?, updated_at = ?
+        split_type = ?, splits = ?, currency = ?, rate = ?, cny_amount = ?, scope = ?, updated_at = ?
       WHERE id = ?
     `).run(
       finalAmountFixed, description != null ? description : bill.description,
       category || bill.category, payerId || bill.payer_id, payerName != null ? payerName : bill.payer_name,
-      splitType || bill.split_type, JSON.stringify(finalSplits), cur, finalRate, cnyAmount,
+      finalSplitType, JSON.stringify(finalSplits), cur, finalRate, cnyAmount, finalScope,
       new Date().toISOString(), bill.id
     );
 
@@ -488,7 +586,7 @@ app.put('/api/bills/:billId', (req, res) => {
     recomputeRoomStats(bill.room_id);
 
     const updated = db.prepare('SELECT * FROM bills WHERE id = ?').get(bill.id);
-    res.json({ success: true, bill: { ...updated, splits: JSON.parse(updated.splits) } });
+    res.json({ success: true, bill: toBillDTO(updated) });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
   }
@@ -496,10 +594,18 @@ app.put('/api/bills/:billId', (req, res) => {
 
 /**
  * 重算房间统计（编辑/删除/导入后调用，保证账面一致）
+ *
+ * ⚠️ 口径必须和网页/小程序一致：**私账不进"集体消费"，调整单金额恒为 0 也不计入笔数**。
+ *    以前这里是 `COUNT(*)` + `SUM(cny_amount)`（把私账和调整单全算进去），
+ *    而增量路径又只加集体账 → 只要编辑过一次账，房间总数就会突然变大。
  */
 function recomputeRoomStats(roomId) {
   const row = db.prepare(`
-    SELECT COUNT(*) as cnt, COALESCE(SUM(cny_amount), 0) as total FROM bills WHERE room_id = ?
+    SELECT COUNT(*) as cnt, COALESCE(SUM(cny_amount), 0) as total FROM bills
+    WHERE room_id = ?
+      AND COALESCE(scope, 'group') <> 'personal'
+      AND COALESCE(is_adjustment, 0) = 0
+      AND COALESCE(voided, 0) = 0
   `).get(roomId);
   db.prepare(`
     UPDATE rooms SET bill_count = ?, total_expense = ?, updated_at = ? WHERE id = ?
@@ -583,13 +689,51 @@ app.get('/api/rooms/:roomId/daily', (req, res) => {
 
 /**
  * DB 行 → AI 引擎账单 DTO（splits 解析 + 字段名对齐）
+ *
+ * ⚠️ 必须把 V3 的**归属/调整单**字段也映射成驼峰：共享内核（AI.isPersonalBill /
+ *    AI.isSettleable / groupSpend）读的都是 `bill.scope` 与 `bill.isAdjustment`。
+ *    以前只映射了 cnyAmount/createdAt，于是服务端返回的调整单在内核眼里是普通账单、
+ *    私账在结算里被当成集体账 —— 同一份数据在三端算出不同结果。
  */
 function toBillDTO(b) {
   return {
     ...b,
     splits: typeof b.splits === 'string' ? JSON.parse(b.splits || '[]') : (b.splits || []),
     cnyAmount: b.cny_amount || null,
-    createdAt: b.created_at
+    createdAt: b.created_at,
+    /* 三端口径字段 */
+    scope: b.scope || 'group',
+    isAdjustment: b.is_adjustment === 1 || b.is_adjustment === true || b.is_adjustment === '1',
+    adjustsBillId: b.adjusts_bill_id || '',
+    voided: b.voided === 1 || b.voided === true || b.voided === '1',
+    payer: b.payer_id,
+    payerName: b.payer_name || '',
+    amount: b.amount,
+    currency: b.currency || 'CNY',
+    rate: b.rate == null ? 1 : b.rate,
+    description: b.description || '',
+    category: b.category || 'other',
+    splitType: b.split_type,
+    source: b.source || ''
+  };
+}
+
+/**
+ * DB 行 → 成员 DTO。
+ * ⚠️ 内核（AI.activeMembers / leftMembers）读的是 `member.leftAt`，而库里是 `left_at`：
+ *    不映射的话服务端永远算"全员分摊"，网页/小程序说的"有人先走"在云端看不见。
+ */
+function toMemberDTO(m) {
+  return {
+    ...m,
+    id: m.user_id,
+    userId: m.user_id,
+    name: m.nickname || m.user_id,
+    nickname: m.nickname || '',
+    avatar: m.avatar || '',
+    joinedAt: m.joined_at,
+    leftAt: m.left_at || '',
+    left: !!m.left_at
   };
 }
 

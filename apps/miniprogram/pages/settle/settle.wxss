@@ -5,10 +5,12 @@
   padding: 60rpx 0 72rpx;
 }
 
+/* ⚠️ 排版守卫：Demo 端正文硬上限是 36px。100rpx ≈ 50px（按 375 逻辑宽换算 1rpx≈0.5px）
+   会明显"跳号"，也让手机屏只剩一个数字。收到 72rpx ≈ 36px。 */
 .settle-value {
-  font-size: 100rpx;
+  font-size: 72rpx;
   font-weight: 700;
-  letter-spacing: -5rpx;
+  letter-spacing: -3rpx;
   line-height: 1.1;
   display: block;
   margin-top: 16rpx;
@@ -16,4 +18,88 @@
 
 .overview-3 {
   grid-template-columns: 1fr 1fr 1fr;
+}
+
+/* ---- 转账行：待转出 / 待收到 / 与我无关（与网页端同一套语义） ---- */
+.transfer-role {
+  display: inline-block;
+  flex: 0 0 auto;
+  font-size: 20rpx;
+  font-weight: 600;
+  padding: 4rpx 14rpx;
+  border-radius: 100rpx;
+  margin-right: 16rpx;
+}
+
+.transfer-role-out {
+  background: #FDECEC;
+  color: #C64040;
+}
+
+.transfer-role-in {
+  background: #E8F6EE;
+  color: #046B35;
+}
+
+.transfer-role-other {
+  background: #F2F2F2;
+  color: #9A9A9A;
+}
+
+.transfer-names {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---- 分享结算：真实存在的画布 + 预览层（以前两者都缺，点了没反应） ---- */
+.share-canvas {
+  position: fixed;
+  left: -9999rpx;
+  top: 0;
+  width: 600px;
+  height: 800px;
+}
+
+.preview-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, .55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.preview-box {
+  width: 560rpx;
+  background: #FFFFFF;
+  border-radius: 24rpx;
+  padding: 40rpx 32rpx;
+  text-align: center;
+}
+
+.preview-title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #18181B;
+}
+
+.preview-tip {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #8A8A8A;
+  line-height: 1.6;
+}
+
+.preview-actions {
+  display: flex;
+  gap: 18rpx;
+  margin-top: 32rpx;
 }

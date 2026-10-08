@@ -12,6 +12,57 @@
   text-align: right;
 }
 
+/* ---- 成员：姓名文字胶囊（不做圆头像，见 room.wxml 说明） ---- */
+.members-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.member-name-chip {
+  padding: 10rpx 24rpx;
+  border: 2rpx solid var(--gray-200);
+  border-radius: var(--radius-full);
+  font-size: 24rpx;
+  font-weight: 600;
+  color: var(--gray-500);
+  font-family: var(--font-num);
+}
+
+.member-name-chip.active {
+  background: var(--text-primary);
+  color: var(--white);
+  border-color: var(--text-primary);
+}
+
+.member-name-chip.member-left {
+  border-style: dashed;
+  color: var(--gray-400);
+  text-decoration: line-through;
+}
+
+/* ---- 有人先走：可点的名字胶囊 ---- */
+.leave-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.leave-chip {
+  padding: 10rpx 24rpx;
+  border: 2rpx solid var(--gray-200);
+  border-radius: var(--radius-full);
+  font-size: 24rpx;
+  color: var(--gray-600);
+}
+
+.leave-chip-on {
+  background: var(--amber-bg);
+  color: var(--amber);
+  border-color: var(--amber);
+}
+
 /* 底部栏 */
 .bottom-bar {
   position: fixed;

@@ -1423,6 +1423,105 @@
   }
 
   /**
+   * 是不是「私账（人情账）」—— 不进 AA、只该给本人看。
+   *
+   * ★ 这是**三端唯一口径**（网页 demo / 小程序 / 服务端都必须调它）：
+   *   `scope` 优先，其次回落到 `isSoleBill()`。
+   *   以前网页统计页用 isSoleBill()、结算与导出用 scope==='personal'，
+   *   遇到 `scope:'personal'` 但 splitType 不是 sole 的账单会各算一次 → 同一笔账两个口径。
+   *
+   * @param {Object} bill
+   * @returns {boolean}
+   */
+  function isPersonalBill(bill) {
+    if (!bill) return false;
+    var scope = bill.scope || (isSoleBill(bill) ? 'personal' : 'group');
+    return scope === 'personal';
+  }
+
+  /**
+   * 只保留「集体账」—— 统计 / 结算 / 要发出去的卡片与报告都用这个口径。
+   * @param {Array} bills
+   * @returns {Array}
+   */
+  function groupBills(bills) {
+    return (bills || []).filter(function (b) { return b && !isPersonalBill(b); });
+  }
+
+  /**
+   * 当前用户**看得见**的账单：全部集体账 + 他自己的私账。
+   * 用途：房间账单列表 / 导出 CSV / 个人小作文（别人的私账一律不出现在这些地方）。
+   *
+   * @param {Array}  bills
+   * @param {string} userId
+   * @returns {Array}
+   */
+  function visibleBills(bills, userId) {
+    return (bills || []).filter(function (b) {
+      return b && (!isPersonalBill(b) || b.payer === userId);
+    });
+  }
+
+  /**
+   * 「有人先走，剩下的人继续 AA」—— 某一时刻**还在队里**的人。
+   *
+   * ★ 同样是三端唯一口径。做法：给成员打一个 `leftAt` 时间戳（离队时刻），
+   *   这之后**新建**的账单只分摊给还在队里的人；之前的账单不动（splits 是历史事实）；
+   *   他仍在成员表里，结算照算 —— 不会"人走了钱就凭空消失"。
+   *
+   * 用 `<` 而不是 `<=`：同一毫秒内"标记离队 → 立刻记账"也要算作离队之后。
+   *
+   * @param {Object} room  房间（room.members[].leftAt）
+   * @param {string} atIso 记账时刻（ISO 字符串），默认"现在"
+   * @returns {Array} 成员数组；全都离队时兜底返回全体（否则没法分摊）
+   */
+  function activeMembers(room, atIso) {
+    var all = (room && room.members) || [];
+    var at = atIso || toIsoSafe(new Date());
+    var stay = all.filter(function (m) {
+      return m && (!m.leftAt || String(at) < String(m.leftAt));
+    });
+    return stay.length ? stay : all;
+  }
+
+  /**
+   * 已离队的成员（供 UI 显示「已离队」与结算说明用）。
+   * @param {Object} room
+   * @returns {Array}
+   */
+  function leftMembers(room) {
+    return ((room && room.members) || []).filter(function (m) { return !!(m && m.leftAt); });
+  }
+
+  /**
+   * 按「谁还在队里」算出默认分摊对象。
+   *
+   * @param {Object} room
+   * @param {string} [atIso]
+   * @returns {Array<string>} memberId 数组
+   */
+  function activeMemberIds(room, atIso) {
+    return activeMembers(room, atIso).map(function (m) { return m.id; });
+  }
+
+  /**
+   * 标记 / 取消某个成员的"先离队"。**只改时间戳**，不动任何账单：
+   * 历史账单的 splits 是事实，不该被追溯修改。
+   *
+   * @param {Object} room
+   * @param {string} memberId
+   * @param {string} [atIso] 不传则用当前时间
+   * @returns {{left: boolean, member: Object|null}}
+   */
+  function toggleMemberLeave(room, memberId, atIso) {
+    var m = ((room && room.members) || []).filter(function (x) { return x.id === memberId; })[0];
+    if (!m) return { left: false, member: null };
+    if (m.leftAt) { delete m.leftAt; return { left: false, member: m }; }
+    m.leftAt = atIso || toIsoSafe(new Date());
+    return { left: true, member: m };
+  }
+
+  /**
    * 人情账 / 私账：只统计"某个人自己花的、不进 AA 的钱"。
    *
    * 场景（用户明确提出的需求）：
@@ -2389,6 +2488,16 @@
     applyRoundingLoss: applyRoundingLoss,
     buildSoleSplits: buildSoleSplits,
     isSoleBill: isSoleBill,
+    /* ★ 三端唯一口径（网页 demo / 小程序 / 服务端都调这几个，别各写一份）：
+       isPersonalBill / groupBills / visibleBills = 私账与"谁能看见"；
+       activeMembers / leftMembers / activeMemberIds / toggleMemberLeave = 有人先走。 */
+    isPersonalBill: isPersonalBill,
+    groupBills: groupBills,
+    visibleBills: visibleBills,
+    activeMembers: activeMembers,
+    activeMemberIds: activeMemberIds,
+    leftMembers: leftMembers,
+    toggleMemberLeave: toggleMemberLeave,
     personalSpend: personalSpend,
     groupSpend: groupSpend,
     groupExpenseBills: groupExpenseBills,

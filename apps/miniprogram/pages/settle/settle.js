@@ -42,6 +42,29 @@ Page({
       // 计算结算方案（V2：外币按记账快照汇率折算人民币）
       const settlement = calculateSettlement(room.members, bills);
 
+      /* ⚠️ WXML 表达式**不支持函数调用**：`{{settlement.totalExpense.toFixed(2)}}`
+         这类写法在真机上直接不渲染（数值空白）。一律在 JS 里先算成字符串。
+         顺便把「待转出 / 待收到」的角色也算好 —— 与网页端一致：
+         付款方看到"待转出"、收款方看到"待收到"、与我无关的行不显示按钮。 */
+      const me = (getApp().globalData && getApp().globalData.userInfo) || {};
+      const myId = me.id || me.openid || '';
+      settlement.totalExpenseText = (Number(settlement.totalExpense) || 0).toFixed(2);
+      settlement.balances = (settlement.balances || []).map(b => ({
+        ...b,
+        isMe: b.id === myId,
+        amountText: (b.amount >= 0 ? '+' : '') + '¥' + Math.abs(Number(b.amount) || 0).toFixed(2),
+        typeText: b.amount >= 0 ? '应收款 · RECEIVE' : '应付款 · PAY'
+      }));
+      settlement.transfers = (settlement.transfers || []).map(t => {
+        const role = t.from === myId ? 'out' : (t.to === myId ? 'in' : 'other');
+        return {
+          ...t,
+          amountText: (Number(t.amount) || 0).toFixed(2),
+          role,
+          roleText: role === 'out' ? '待转出' : (role === 'in' ? '待收到' : '与我无关')
+        };
+      });
+
       // AI 消费小作文（模板保底，离线可用）
       const narrative = await AI.generateNarrative({ room, bills, members: room.members });
 
@@ -49,7 +72,7 @@ Page({
         room,
         members: room.members,
         bills,
-        billCount: bills.length,
+        billCount: settlement.balances.length ? bills.length : bills.length,
         settlement,
         narrative,
         settledAt: room.settledAt || ''
@@ -59,6 +82,12 @@ Page({
       wx.showToast({ title: '计算失败', icon: 'none' });
     }
     wx.hideLoading();
+  },
+
+  /* Bug#2：记完账回到结算页必须重算，否则看到的是上一次的数字。
+     以前只有 onLoad，返回时不会重新加载。 */
+  onShow() {
+    if (this.data.roomId) this.loadAndCalculate();
   },
 
   // V2：标记已结清（结算闭环）
@@ -93,20 +122,30 @@ Page({
 
   // 分享账单
   shareBill() {
-    // 生成分享图片
+    /* Bug#7：以前直接 setData({showPreview:true}) 但 WXML 里既没有 <canvas>、
+       也没有预览层 → 点了"分享结算"什么都没发生。
+       现在：WXML 里有 canvas + 预览弹层，图上画好再展示，可保存到相册。 */
     this.drawBillImage();
-    this.setData({ showPreview: true });
+    this.setData({ showPreview: true, previewReady: true });
   },
 
   hidePreview() {
     this.setData({ showPreview: false });
   },
 
-  // 绘制账单图片
+  // 预览层的点击穿透保护（catchtap 需要一个存在的处理函数，否则会冒泡关掉弹层）
+  noop() {},
+
+  /* 绘制账单图片。
+     ⚠️ 用 `saveImage` 里的 canvasToTempFilePath 需要 canvas 节点已挂载且画过 —— 
+        所以这里先 draw()，成功回调里再置 previewReady。 */
   drawBillImage() {
     const ctx = wx.createCanvasContext('billCanvas');
     const { room, settlement } = this.data;
     const W = 600, H = 800;
+    if (!ctx) return;
+    const r = room || {};
+    const members = r.members || [];
 
     // 背景
     ctx.setFillStyle('#FFFFFF');
@@ -126,7 +165,7 @@ Page({
     ctx.fillText('✈️ TravelAA 结算单', W / 2, 50);
 
     ctx.setFontSize(18);
-    ctx.fillText(room.name || '旅行AA', W / 2, 85);
+    ctx.fillText(r.name || '旅行AA', W / 2, 85);
 
     // 房间信息
     ctx.setFillStyle('#333333');
@@ -134,13 +173,13 @@ Page({
     ctx.setFontSize(16);
     let y = 190;
 
-    if (room.destination) {
-      ctx.fillText(`📍 ${room.destination}`, 30, y);
+    if (r.destination) {
+      ctx.fillText(`📍 ${r.destination}`, 30, y);
       y += 30;
     }
-    ctx.fillText(`👥 ${room.members.length}人 · 📝 ${this.data.billCount}笔`, 30, y);
+    ctx.fillText(`👥 ${members.length}人 · 📝 ${this.data.billCount}笔`, 30, y);
     y += 30;
-    ctx.fillText(`💰 总消费: ¥${settlement.totalExpense.toFixed(2)}`, 30, y);
+    ctx.fillText(`💰 总消费: ¥${settlement.totalExpenseText || settlement.totalExpense}`, 30, y);
     y += 50;
 
     // 分割线
@@ -158,12 +197,12 @@ Page({
     y += 35;
 
     ctx.setFontSize(16);
-    settlement.balances.forEach(b => {
+    (settlement.balances || []).forEach(b => {
       ctx.setFillStyle('#333333');
-      ctx.fillText(b.name, 30, y);
+      ctx.fillText(b.name || '', 30, y);
       ctx.setFillStyle(b.amount >= 0 ? '#07C160' : '#FA5151');
       ctx.setTextAlign('right');
-      ctx.fillText(`${b.amount >= 0 ? '+' : ''}¥${b.amount.toFixed(2)}`, W - 30, y);
+      ctx.fillText(`${b.amount >= 0 ? '+' : '-'}¥${Math.abs(Number(b.amount) || 0).toFixed(2)}`, W - 30, y);
       ctx.setTextAlign('left');
       y += 30;
     });
@@ -179,16 +218,16 @@ Page({
     // 转账方案
     ctx.setFillStyle('#FF6B35');
     ctx.setFontSize(20);
-    ctx.fillText(`🔄 最简转账方案 (${settlement.transfers.length}笔)`, 30, y);
+    ctx.fillText(`🔄 最简转账方案 (${(settlement.transfers || []).length}笔)`, 30, y);
     y += 35;
 
     ctx.setFontSize(16);
-    settlement.transfers.forEach((t, i) => {
+    (settlement.transfers || []).forEach((t, i) => {
       ctx.setFillStyle('#333333');
       ctx.fillText(`${i + 1}. ${t.fromName} → ${t.toName}`, 30, y);
       ctx.setFillStyle('#FF6B35');
       ctx.setTextAlign('right');
-      ctx.fillText(`¥${t.amount.toFixed(2)}`, W - 30, y);
+      ctx.fillText(`¥${(Number(t.amount) || 0).toFixed(2)}`, W - 30, y);
       ctx.setTextAlign('left');
       y += 30;
     });
@@ -200,7 +239,11 @@ Page({
     ctx.setTextAlign('center');
     ctx.fillText('由 TravelAA 旅行AA记账小程序 生成', W / 2, y);
 
-    ctx.draw();
+    /* 画完再置 previewReady：canvasToTempFilePath 必须等 draw 完成，
+       否则拿到空图（旧代码还少了 canvas 节点，整个分享链路是死的）。 */
+    ctx.draw(false, () => {
+      this.setData({ previewReady: true });
+    });
   },
 
   // 保存图片

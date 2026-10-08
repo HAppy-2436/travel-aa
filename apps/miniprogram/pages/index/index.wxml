@@ -83,6 +83,12 @@
         <text class="form-label">你的昵称 / Your Name</text>
         <input class="form-input" placeholder="在房间中显示的名称" value="{{form.creatorName}}" bindinput="onInput" data-field="creatorName" />
       </view>
+      <!-- ⚠️ Bug#3：预算字段以前**根本没有**，而云函数 createRoom 早已支持 budget
+           → 创建时设不了预算，只能事后进房间页补（等于这个能力少了一半） -->
+      <view class="form-group">
+        <text class="form-label">人均预算 / Budget（可留空）</text>
+        <input class="form-input" type="digit" placeholder="如：5000（元／人）" value="{{form.budget}}" bindinput="onInput" data-field="budget" />
+      </view>
     </view>
     <view class="modal-footer">
       <view class="btn btn-primary btn-block" bindtap="createRoom">创建房间</view>

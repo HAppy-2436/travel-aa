@@ -29,12 +29,13 @@
   min-width: 4rpx;
 }
 
-.stat-bar-fill.tag-food { background: #FF9800; }
-.stat-bar-fill.tag-transport { background: #2196F3; }
-.stat-bar-fill.tag-hotel { background: #9C27B0; }
-.stat-bar-fill.tag-ticket { background: #4CAF50; }
-.stat-bar-fill.tag-shopping { background: #E91E63; }
-.stat-bar-fill.tag-other { background: #9E9E9E; }
+/* 分类条一律单色（对齐网页 Demo 的黑条），不再 6 色彩虹 */
+.stat-bar-fill.tag-food { background: var(--text-primary); }
+.stat-bar-fill.tag-transport { background: var(--text-primary); }
+.stat-bar-fill.tag-hotel { background: var(--text-primary); }
+.stat-bar-fill.tag-ticket { background: var(--text-primary); }
+.stat-bar-fill.tag-shopping { background: var(--text-primary); }
+.stat-bar-fill.tag-other { background: var(--gray-500); }
 
 .stat-bar-percent {
   font-size: 22rpx;

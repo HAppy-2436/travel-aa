@@ -32,10 +32,28 @@
     <text class="section-title">成员</text>
     <text class="section-count">{{room.members.length}} PEOPLE</text>
   </view>
+  <!-- ⚠️ 设计约定：**不做圆形首字母头像**（网页端一律用姓名文字）。
+       以前这里是 member-av 圆头像 {{item.name[0]}}，与 Demo 的视觉语言冲突。 -->
   <view class="members-row">
-    <view wx:for="{{room.members}}" wx:key="id" class="member" bindlongpress="removeMember" data-id="{{item.id}}" data-name="{{item.name}}">
-      <view class="member-av {{index === 0 ? 'active' : ''}}">{{item.name[0]}}</view>
-      <text class="member-name">{{item.name}}</text>
+    <view wx:for="{{room.members}}" wx:key="id"
+      class="member-name-chip {{item.leftAt ? 'member-left' : ''}} {{index === 0 ? 'active' : ''}}"
+      bindlongpress="removeMember" data-id="{{item.id}}" data-name="{{item.name}}">
+      {{item.name}}{{index === 0 ? ' · 我' : ''}}{{item.leftAt ? ' · 已离队' : ''}}
+    </view>
+  </view>
+
+  <!-- V3：有人先走 —— 之后记的账不再分摊给他，已发生的账留痕 -->
+  <view class="card" style="margin-top: 16rpx;">
+    <text class="card-title">🚪 有人先走了？</text>
+    <text style="display:block; margin-top:8rpx; font-size:24rpx; color:#666; line-height:1.6;">
+      点名字标记「先离队」：<text style="font-weight:700; color:#18181B;">之后记的账不再分摊给他</text>，之前记的账照旧留痕；他仍参与最后的结算。
+    </text>
+    <view class="leave-row">
+      <view wx:for="{{room.members}}" wx:key="id"
+        class="leave-chip {{item.leftAt ? 'leave-chip-on' : ''}}"
+        bindtap="toggleMemberLeave" data-id="{{item.id}}" data-name="{{item.name}}" data-left="{{item.leftAt}}">
+        {{item.leftAt ? '🚪 ' : ''}}{{item.name}}
+      </view>
     </view>
   </view>
 
@@ -74,6 +92,9 @@
   <view class="section-head" style="margin-top: 40rpx;">
     <text class="section-title">账单记录</text>
     <text class="section-count">{{filteredBills.length}} ITEMS</text>
+    <!-- ⚠️ history（消费统计）以前**没有任何入口**，页面写好了却点不到。
+         这里补一个直达入口，与网页端的「STATS」同一位置语义。 -->
+    <text class="section-link" bindtap="goToHistory">📊 统计 ›</text>
   </view>
 
   <view wx:if="{{filteredBills.length === 0}}" class="empty-state">
@@ -98,6 +119,7 @@
 <!-- 底部操作栏 -->
 <view class="bottom-bar">
   <view class="btn btn-secondary" style="flex:1;" bindtap="goToAddBill">＋ 记一笔</view>
+  <view class="btn btn-secondary" style="flex:1;" bindtap="goToCapture">📷 识别</view>
   <view class="btn btn-secondary" style="flex:1;" bindtap="goImportOrders">🧳 订单</view>
   <view class="btn btn-primary" style="flex:1;" bindtap="goToSettle">一键结算</view>
 </view>

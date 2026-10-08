@@ -1,4 +1,4 @@
-﻿/**
+/**
  * run-all.js —— 全量验收：一条命令跑完所有测试（CI 与交接验收的唯一入口）
  *
  * 用法：node tests/run-all.js  或  npm test
@@ -38,7 +38,9 @@ const SUITES = [
   { name: '相对路径检查', file: 'tests/requires.check.js', min: 1, hint: 'require 与 script src 是否可解析' },
   { name: '交付物可打开性', file: 'tests/resource.check.js', min: 22, hint: 'file:// 下外部脚本/渲染/挂钩是否齐备' },
   { name: 'Demo 完整性', file: 'tests/demo.check.js', min: 270, hint: 'onclick 交叉校验/内核引用/功能清单/评审与模式状态机回归' },
-  { name: '服务器集成测试', file: 'tests/server.test.js', min: 70, hint: '真实拉起后端 + 全部路由打点' },
+  { name: '服务器集成测试', file: 'tests/server.test.js', min: 88, hint: '真实拉起后端 + 全部路由打点（含 V3 私账/调整单/离队）' },
+  { name: '小程序静态闸门', file: 'tests/miniprogram.check.js', min: 34, hint: '三端口径/真机坑（WXML 函数调用、onShow、未定义变量、字号、页面可达）' },
+  { name: '编码卫生（BOM）', file: 'tests/tools/strip-bom.js', min: 1, hint: 'PowerShell 的 Set-Content 会偷偷加 UTF-8 BOM，wxml/json 会多一个不可见字符' },
   {
     name: '浏览器验收', file: 'tests/browser.check.js', min: 3,
     hint: '#selftest / #tourtest / #uitest',

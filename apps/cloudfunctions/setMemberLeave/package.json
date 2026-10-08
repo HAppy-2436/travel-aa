@@ -1,0 +1,9 @@
+{
+  "name": "setMemberLeave",
+  "version": "1.0.0",
+  "description": "标记/取消成员先离队（有人先走，剩下的人继续 AA）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

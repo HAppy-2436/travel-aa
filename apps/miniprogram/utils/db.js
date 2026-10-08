@@ -4,6 +4,8 @@
  */
 
 const demo = require('./demo');
+/* 共享内核：离队/私账这类"口径"必须走它，别在页面里另写一份 */
+const AI = require('./ai');
 
 // 演示模式标记
 let _isDemo = false;
@@ -311,6 +313,34 @@ async function markSettled(roomId) {
 }
 
 /**
+ * 「有人先走」：标记 / 取消某位成员离队（只改时间戳，不动任何账单）
+ *
+ * 语义与网页端、服务端一致（判据在共享内核 AI.toggleMemberLeave / AI.activeMembers）：
+ *   · 打一个 leftAt：之后新建的账单只分摊给还在队里的人；
+ *   · 历史账单的 splits 保持不变（那是事实，不追溯改）；
+ *   · 他仍在成员表里参与结算。
+ * @returns {{left:boolean, leftAt:string, members:Array}}
+ */
+async function setMemberLeave(roomId, memberId, leave, leftAt) {
+  if (_isDemo) {
+    const room = demo.DEMO_ROOMS.find(r => r._id === roomId);
+    if (!room) throw new Error('房间不存在');
+    const out = AI.toggleMemberLeave(room, memberId, leftAt);
+    if (leave === true && !out.left) out.member.leftAt = leftAt || new Date().toISOString();
+    if (leave === false && out.left) delete out.member.leftAt;
+    return { left: !!(out.member && out.member.leftAt), leftAt: (out.member && out.member.leftAt) || '', members: room.members };
+  }
+
+  initDB();
+  const { result } = await wx.cloud.callFunction({
+    name: 'setMemberLeave',
+    data: { roomId, memberId, leave, leftAt: leftAt || '' }
+  });
+  if (!result.success) throw new Error(result.error);
+  return result;
+}
+
+/**
  * 移除成员（有未结清余额时由调用方拦截）
  */
 async function removeMember(roomId, memberId) {
@@ -439,6 +469,7 @@ module.exports = {
   // V2：预算 / 成员 / 结清
   setBudget,
   markSettled,
+  setMemberLeave,
   removeMember,
 
   // OCR

@@ -99,7 +99,18 @@ const migrations = [
   "ALTER TABLE bills ADD COLUMN source TEXT DEFAULT ''",
   "ALTER TABLE bills ADD COLUMN updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
   "ALTER TABLE rooms ADD COLUMN budget REAL DEFAULT 0",
-  "ALTER TABLE rooms ADD COLUMN settled_at TEXT DEFAULT ''"
+  "ALTER TABLE rooms ADD COLUMN settled_at TEXT DEFAULT ''",
+  /* ============ V3 增量（三端一致性必需的列） ============
+     ⚠️ 这三列以前根本没有，于是：
+       · 客户端标了「我的私账」→ scope 被写接口丢掉 → 落库后按集体账统计
+         （同一笔账网页说是私账、服务端说是集体账）
+       · 调整单 amount 恒为 0 → 直接被 `金额必须大于 0` 拒掉 → 「多退少补/暂估改价」根本无法上云
+       · 成员「先离队」没有落点 → 服务端永远算全员分摊 */
+  "ALTER TABLE bills ADD COLUMN scope TEXT DEFAULT 'group'",
+  "ALTER TABLE bills ADD COLUMN is_adjustment INTEGER DEFAULT 0",
+  "ALTER TABLE bills ADD COLUMN adjusts_bill_id TEXT DEFAULT ''",
+  "ALTER TABLE bills ADD COLUMN voided INTEGER DEFAULT 0",
+  "ALTER TABLE room_members ADD COLUMN left_at TEXT DEFAULT ''"
 ];
 migrations.forEach(sql => {
   try { db.exec(sql); } catch (e) { /* 列已存在，忽略 */ }

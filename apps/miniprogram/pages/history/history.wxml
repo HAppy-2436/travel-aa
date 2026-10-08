@@ -7,12 +7,12 @@
       <view wx:for="{{categoryStats}}" wx:key="id" class="stat-bar-item">
         <view class="stat-bar-label">
           <text>{{item.icon}} {{item.name}}</text>
-          <text class="stat-bar-value">¥{{item.amount.toFixed(2)}}</text>
+          <text class="stat-bar-value">¥{{item.amountText}}</text>
         </view>
         <view class="stat-bar-track">
           <view class="stat-bar-fill {{item.tagClass}}" style="width: {{item.percent}}%"></view>
         </view>
-        <text class="stat-bar-percent">{{item.percent.toFixed(1)}}%</text>
+        <text class="stat-bar-percent">{{item.percentText}}%</text>
       </view>
     </view>
   </view>
@@ -21,15 +21,15 @@
   <view class="card fade-in" wx:if="{{dailyInfo}}">
     <view class="card-title">📅 每日消费分析</view>
     <view style="display:flex; justify-content:space-between; font-size: 24rpx; color:#666; margin-bottom: 12rpx;">
-      <text>日均 ¥{{dailyInfo.dailyAvg.toFixed(2)}}</text>
-      <text wx:if="{{dailyInfo.maxDay}}">最贵一天 {{dailyInfo.maxDay.date}} ¥{{dailyInfo.maxDay.total.toFixed(2)}}</text>
+      <text>日均 ¥{{dailyInfo.dailyAvgText}}</text>
+      <text wx:if="{{dailyInfo.maxDay}}">最贵一天 {{dailyInfo.maxDay.date}} ¥{{dailyInfo.maxDay.totalText}}</text>
       <text wx:if="{{dailyInfo.trend === 'up'}}" style="color:#FA9D3B;">📈 越花越多</text>
       <text wx:elif="{{dailyInfo.trend === 'down'}}" style="color:#07C160;">📉 越花越省</text>
     </view>
     <view wx:for="{{dailyInfo.days}}" wx:key="date" class="stat-bar-item">
       <view class="stat-bar-label">
         <text>{{item.date}} {{item.weekday}}</text>
-        <text class="stat-bar-value">¥{{item.total.toFixed(2)}} · {{item.count}}笔</text>
+        <text class="stat-bar-value">¥{{item.totalText}} · {{item.count}}笔</text>
       </view>
       <view class="stat-bar-track">
         <view class="stat-bar-fill" style="width: {{dailyInfo.maxDay ? item.total / dailyInfo.maxDay.total * 100 : 0}}%"></view>

@@ -3,7 +3,7 @@
   <!-- Hero -->
   <view class="settle-hero">
     <text class="hero-label">TOTAL EXPENSE · 旅行总消费</text>
-    <text class="settle-value">¥{{settlement.totalExpense.toFixed(2)}}</text>
+    <text class="settle-value">¥{{settlement.totalExpenseText}}</text>
     <text wx:if="{{settlement.hasForeign}}" class="hero-label" style="margin-top: 8rpx;">💱 含外币消费，已按记账汇率折算人民币结算</text>
     <text wx:if="{{settledAt}}" class="hero-label" style="margin-top: 8rpx;">✅ 已结清 · {{settledAt}}</text>
   </view>
@@ -31,13 +31,13 @@
   </view>
 
   <view wx:for="{{settlement.balances}}" wx:key="id" class="balance-row">
-    <view class="balance-av">{{item.name[0]}}</view>
+    
     <view class="balance-info">
       <text class="balance-name">{{item.name}}</text>
-      <text class="balance-type">{{item.amount >= 0 ? '应收款 · RECEIVE' : '应付款 · PAY'}}</text>
+      <text class="balance-type">{{item.typeText}}</text>
     </view>
     <text class="balance-amount {{item.amount >= 0 ? 'balance-amount-pos' : 'balance-amount-neg'}}">
-      {{item.amount >= 0 ? '+' : ''}}¥{{item.amount.toFixed(2)}}
+      {{item.amountText}}
     </text>
   </view>
 
@@ -55,9 +55,12 @@
   <view wx:for="{{settlement.transfers}}" wx:key="index" class="transfer-row">
     <view class="transfer-step">{{index + 1}}</view>
     <view class="transfer-flow">
-      <text class="transfer-name">{{item.fromName}}</text>
-      <text class="transfer-amount">→ ¥{{item.amount.toFixed(2)}} →</text>
-      <text class="transfer-name">{{item.toName}}</text>
+      <text class="transfer-role transfer-role-{{item.role}}">{{item.roleText}}</text>
+      <view class="transfer-names">
+        <text class="transfer-name">{{item.fromName}}{{item.role === 'out' ? '（我）' : ''}}</text>
+        <text class="transfer-amount">→ ¥{{item.amountText}} →</text>
+        <text class="transfer-name">{{item.toName}}{{item.role === 'in' ? '（我）' : ''}}</text>
+      </view>
     </view>
   </view>
 
@@ -77,3 +80,20 @@
     <view class="btn btn-secondary" style="flex: 1;" bindtap="markSettled">{{settledAt ? '✅ 已结清' : '🤝 标记已结清'}}</view>
   </view>
 </view>
+
+<!-- ⚠️ Bug#7：`wx.createCanvasContext('billCanvas')` 需要一个真实的 canvas 节点，
+     以前 WXML 里根本没有 <canvas> → 点「分享结算」毫无反应（画布不存在，静默失败）。
+     canvas 放在屏幕外（不占版面），生成后由下面的预览层展示、可保存到相册。 -->
+<canvas canvas-id="billCanvas" id="billCanvas" class="share-canvas"></canvas>
+
+<view wx:if="{{showPreview}}" class="preview-mask" bindtap="hidePreview">
+  <view class="preview-box" catchtap="noop">
+    <text class="preview-title">结算单已生成</text>
+    <text class="preview-tip">点「保存到相册」可存成图片发到群里</text>
+    <view class="preview-actions">
+      <view class="btn btn-secondary" bindtap="hidePreview">关闭</view>
+      <view class="btn btn-primary" bindtap="saveImage">保存到相册</view>
+    </view>
+  </view>
+</view>
+

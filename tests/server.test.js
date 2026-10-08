@@ -264,6 +264,101 @@ async function waitReady(proc, ms = 25000) {
       (await req('GET', `/api/rooms/${vroomId}/bills`)).data.bills.length === 1,
       String((await req('GET', `/api/rooms/${vroomId}/bills`)).data.bills.length));
 
+    /* ============ V3 三端一致性：私账 / 调整单 / 有人先走 ============ */
+    // 私账：scope=personal，必须由付款人自己全额承担
+    const privBad = await req('POST', '/api/bills', {
+      roomId: vroomId, payerId: 't_v1', payerName: '校验员', amount: 100, description: '私账却摊给别人',
+      scope: 'personal', splitType: 'sole',
+      splits: [{ memberId: 't_v1', amount: 50 }, { memberId: 't_v2', amount: 50 }],
+    });
+    ok('★ 私账不能摊给别人（否则"人情账"说不清是谁的）', privBad.status === 400 && /私账/.test(privBad.data.error), privBad.data.error);
+
+    const badScope = await req('POST', '/api/bills', {
+      roomId: vroomId, payerId: 't_v1', amount: 100, scope: 'weird',
+      splits: [{ memberId: 't_v1', amount: 100 }],
+    });
+    ok('归属只接受 group / personal', badScope.status === 400 && /归属/.test(badScope.data.error), badScope.data.error);
+
+    const badSplitType = await req('POST', '/api/bills', {
+      roomId: vroomId, payerId: 't_v1', amount: 100, splitType: 'whatever',
+      splits: [{ memberId: 't_v1', amount: 100 }],
+    });
+    ok('分摊方式只接受 equal / treat / sole', badSplitType.status === 400 && /分摊方式/.test(badSplitType.data.error), badSplitType.data.error);
+
+    const privOk = await req('POST', '/api/bills', {
+      roomId: vroomId, payerId: 't_v1', payerName: '校验员', amount: 88, description: '我的私账',
+      scope: 'personal', splitType: 'sole',
+      splits: [{ memberId: 't_v1', amount: 88 }],
+    });
+    ok('★ 私账能落库，且 scope 被持久化（以前这个字段被写接口丢掉）',
+      privOk.status === 200 && privOk.data.bill.scope === 'personal',
+      'scope=' + (privOk.data.bill && privOk.data.bill.scope));
+    /* 私账不能撑进房间"集体消费" */
+    const roomAfterPriv = (await req('GET', '/api/rooms/' + vroomId)).data.room;
+    const privCents = Math.round(88 * (privOk.data.bill.rate || 1) * 100);
+    ok('★ 私账不计入房间 total_expense（三端口径一致）',
+      Math.round(roomAfterPriv.total_expense * 100) === Math.round(100 * 100),
+      '房间合计 ' + roomAfterPriv.total_expense + '（应仍为 100，私账 88 不该进来）');
+
+    /* 私账只给本人看：带 userId 拉账单时看不到别人的私账 */
+    const listU2 = await req('GET', `/api/rooms/${vroomId}/bills?userId=t_v2`);
+    ok('★ 别人的私账不出现在我的账单列表里（?userId= 过滤）',
+      listU2.data.bills.every((b) => b.scope !== 'personal'),
+      'u2 看到 ' + listU2.data.bills.length + ' 笔');
+    const listU1 = await req('GET', `/api/rooms/${vroomId}/bills?userId=t_v1`);
+    ok('★ 我自己的私账能看到', listU1.data.bills.some((b) => b.scope === 'personal' && b.payer === 't_v1'));
+
+    /* 调整单：amount 恒为 0，分摊零和，必须挂到同房间原账单 */
+    const anyBill = (await req('GET', `/api/rooms/${vroomId}/bills`)).data.bills.find((b) => b.scope !== 'personal');
+    const adjBadSum = await req('POST', '/api/bills', {
+      roomId: vroomId, payerId: 't_v1', amount: 0, isAdjustment: true, adjustsBillId: anyBill.id,
+      description: '不零和的调整单',
+      splits: [{ memberId: 't_v1', amount: 10 }, { memberId: 't_v2', amount: 0 }],
+    });
+    ok('★ 调整单分摊必须零和（否则会把账改不平）',
+      adjBadSum.status === 400 && /零和/.test(adjBadSum.data.error), adjBadSum.data.error);
+
+    const adjNoTarget = await req('POST', '/api/bills', {
+      roomId: vroomId, payerId: 't_v1', amount: 0, isAdjustment: true,
+      description: '没指向原账单', splits: [{ memberId: 't_v1', amount: 0 }],
+    });
+    ok('调整单必须说明调整的是哪一笔', adjNoTarget.status === 400 && /哪一笔/.test(adjNoTarget.data.error), adjNoTarget.data.error);
+
+    const adjOk = await req('POST', '/api/bills', {
+      roomId: vroomId, payerId: 't_v1', payerName: '校验员', amount: 0, isAdjustment: true,
+      adjustsBillId: anyBill.id, description: '多退少补：他退出这笔',
+      splits: [{ memberId: 't_v1', amount: -50 }, { memberId: 't_v2', amount: 50 }],
+    });
+    ok('★ 调整单（amount=0）现在能上云了（以前被"金额必须大于 0"一刀拒掉）',
+      adjOk.status === 200 && adjOk.data.bill.is_adjustment === 1,
+      adjOk.status === 200 ? 'ok' : (adjOk.data && adjOk.data.error));
+    if (adjOk.status === 200) {
+      const dto = adjOk.data.bill;
+      ok('★ 调整单在返回体里映射成 isAdjustment 驼峰（内核才认得）',
+        dto.isAdjustment === true && dto.adjustsBillId === anyBill.id);
+      ok('调整单不影响房间集体消费', Math.round((await req('GET', '/api/rooms/' + vroomId)).data.room.total_expense * 100)
+        === Math.round(100 * 100));
+    }
+
+    /* 有人先走：members 必须回 leftAt（内核读的是驼峰） */
+    const leave = await req('POST', `/api/rooms/${vroomId}/members/t_v2/leave`, { leave: true });
+    ok('★ 标记成员「先离队」成功', leave.status === 200 && leave.data.left === true && !!leave.data.leftAt,
+      JSON.stringify(leave.data).slice(0, 80));
+    const roomMembers = (await req('GET', '/api/rooms/' + vroomId)).data.room.members;
+    const m2 = roomMembers.find((m) => m.id === 't_v2');
+    const m1 = roomMembers.find((m) => m.id === 't_v1');
+    ok('★ 成员 DTO 暴露 leftAt 驼峰（否则云端永远算全员分摊）',
+      !!m2 && !!m2.leftAt && m1.leftAt === '', JSON.stringify(roomMembers.map((m) => [m.id, m.leftAt])));
+    /* 内核拿到这份 members 就能算出"之后只分摊给还在队里的人" */
+    const AIkernel = require('../apps/miniprogram/utils/ai.js');
+    const activeNow = AIkernel.activeMemberIds({ members: roomMembers }, new Date(Date.now() + 60000).toISOString());
+    ok('★ 云端数据 + 共享内核 = 之后记的账不再分摊给先走的人',
+      activeNow.indexOf('t_v2') < 0 && activeNow.indexOf('t_v1') >= 0, JSON.stringify(activeNow));
+    const back = await req('POST', `/api/rooms/${vroomId}/members/t_v2/leave`, { leave: false });
+    ok('★ 归队能取消（leftAt 清空）',
+      back.status === 200 && back.data.left === false &&
+      (await req('GET', '/api/rooms/' + vroomId)).data.room.members.find((m) => m.id === 't_v2').leftAt === '');
+
     // 外币账单：汇率快照
     const bJpy = await req('POST', '/api/bills', {
       roomId, payerId: 't_u2', payerName: '小红', amount: 12000, currency: 'JPY',

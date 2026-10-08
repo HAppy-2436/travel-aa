@@ -28,11 +28,14 @@ exports.main = async (event, context) => {
     //    删一笔 24000 JPY（rate 0.048）会让房间总消费凭空少 24000 而非 1152（差 20.8 倍）。
     //    更稳妥的是删完按库内剩余账单重算（见下方 recompute），避免长期增量漂移。
     const deduct = Number.isFinite(Number(bill.cnyAmount)) ? Number(bill.cnyAmount) : Number(bill.amount) || 0;
+    /* ⚠️ 口径与 addBill / 网页 / 服务端一致：私账与调整单**从未**计入房间统计，
+       删它们时就不能再减一次（否则删一笔私账会把"集体消费"减出一个负数）。 */
+    const countsInGroup = (bill.scope || 'group') !== 'personal' && !bill.isAdjustment;
 
     await db.collection('rooms').doc(bill.roomId).update({
       data: {
-        billCount: _.inc(-1),
-        totalExpense: _.inc(-deduct),
+        billCount: _.inc(countsInGroup ? -1 : 0),
+        totalExpense: _.inc(countsInGroup ? -deduct : 0),
         updatedAt: new Date()
       }
     });
@@ -46,9 +49,11 @@ exports.main = async (event, context) => {
       const { data: rest } = await db.collection('bills')
         .where({ roomId: bill.roomId }).limit(MAX).get();
       const truncated = rest.length >= MAX;
-      const total = rest.reduce((s, b) => s + (Number(b.cnyAmount) || Number(b.amount) || 0), 0);
+      /* 重算口径也要过滤：只算集体账（私账不进 AA、调整单金额恒为 0） */
+      const inGroup = rest.filter(b => (b.scope || 'group') !== 'personal' && !b.isAdjustment);
+      const total = inGroup.reduce((s, b) => s + (Number(b.cnyAmount) || Number(b.amount) || 0), 0);
       const patch = { totalExpense: Math.round(total * 100) / 100, updatedAt: new Date() };
-      if (!truncated) patch.billCount = rest.length;
+      if (!truncated) patch.billCount = inGroup.length;
       await db.collection('rooms').doc(bill.roomId).update({ data: patch });
     } catch (e) {
       // 重算失败不影响主流程（增量值已经写入）

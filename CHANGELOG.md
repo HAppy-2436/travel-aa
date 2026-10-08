@@ -13,6 +13,89 @@
 
 ---
 
+## [2.11.0] 多端一致性：内核收口 + 小程序对齐 + 服务端补齐 + CSV 往返
+
+用户要求「全部修改，然后完成你上面说的所有改进点」——把我自己列出的三块（多端一致性、服务端校验、导出往返）全部做掉。
+
+### 0️⃣ 先立规矩：口径只留一份（共享内核）
+
+三端（网页 demo / 小程序 / Node 服务端）以前**各写一份**"什么算私账""谁还在队里"：
+
+| 能力 | 之前 | 现在 |
+|---|---|---|
+| 私账判据 | 网页 `isPersonalBill`、小程序 `AI.isSoleBill`、服务端无 | 内核 `AI.isPersonalBill`（scope 优先，回落 splitType） |
+| 谁能看见 | 各页面各写 | `AI.groupBills()` / `AI.visibleBills(bills, userId)` |
+| 有人先走 | 只在网页 demo 里 | `AI.activeMembers / leftMembers / activeMemberIds / toggleMemberLeave` |
+
+`tests/v3.test.js` **+16 项**把这几条钉在单元层（含"同一毫秒也算离队之后"这种边界）。
+
+### 1️⃣ 服务端：三处「根本没有这个能力」
+
+| 问题 | 后果 | 修 |
+|---|---|---|
+| **`scope` 不入库** | 客户端标了「我的私账」，落库后按集体账统计 —— 网页说私账、服务端说集体账 | 加 `scope` 列 + 校验（私账必须由付款人**自己全额承担**）+ 前端提交带上 |
+| **调整单被一刀拒掉** | 调整单 `amount` 恒为 0 → 被 `金额必须大于 0` 挡下 → **多退少补/暂估改价永远上不了云** | `isAdjustment` 走单独校验：金额必须 0、**分摊必须零和**、必须挂同房间原账单 |
+| **成员离队没有落点** | 云端永远算全员分摊 | `room_members.left_at` + `POST /api/rooms/:id/members/:uid/leave` + 成员 DTO 出 `leftAt` |
+
+另外：
+- `recomputeRoomStats()` 原来是 `COUNT(*)` + `SUM(cny_amount)`（**把私账和调整单全算进去**），
+  而增量路径只加集体账 → 编辑过一次账，房间总消费就会突然变大。现在两处同一口径。
+- `toBillDTO` 补 `scope / isAdjustment / adjustsBillId / voided / payer / splitType…` 驼峰映射
+  （不映射，内核拿到服务端数据认不出调整单和私账）。
+- `toMemberDTO` 补 `leftAt`（不映射，云端"有人先走"永远算不出来）。
+- `GET /api/rooms/:id/bills?userId=` 会按"私账只有本人可见"过滤。
+
+`tests/server.test.js` **77 → 93 项**（私账摊给别人要拦、调整单零和、离队标记/归队、成员 DTO 驼峰）。
+
+### 2️⃣ 小程序端：审计清单 20 项全部处理
+
+| 类 | 具体 | 修 |
+|---|---|---|
+| 白屏级 | `settle.wxml`(3) + `history.wxml`(5) 在 `{{}}` 里调 `.toFixed()` —— **WXML 不支持函数调用**，真机数值整块空白 | 一律在 JS 里先算成字符串（`amountText/percentText/dailyAvgText/…`） |
+| 数据不刷新 | `room.js / history.js / settle.js` 没有 `onShow`，演示模式下 `watch*` 是空函数 → 记完账返回看不到新账 | 三个页面补 `onShow`（room 另加 `onHide` 停监听） |
+| 能力不可达 | 创建房间不传 `budget`（云函数早就支持） | 创建表单加「人均预算」并传下去 |
+| 点了没反应 | 「分享结算」用 `createCanvasContext('billCanvas')` 但 WXML 里**没有 canvas** | 补真实 `<canvas>` + 预览层 + 保存到相册 |
+| 高亮缺失 | 编辑账单时 `activeTab='manual'` 没有对应 pill → 两个都不高亮 | 补第三个 tab「✍️ 手动填表」 |
+| 样式失效 | `history.wxss` 6 处引用**未定义**的 CSS 变量（`--primary/--text-hint/--border-color/…`）→ 分隔线整条消失 | `app.wxss` 补语义层令牌（值对齐网页） |
+| 统计错 | 云函数 `addBill` 无条件 `_.inc(cnyAmount)`，而注释写着"私账不计入总消费" | 私账/调整单不计入 `billCount`/`totalExpense`（`deleteBill` 同步，重算也过滤） |
+| 口径错 | `utils/settle.js` 的「旅行总消费」把**全部**账单求和（私账被算进去），而下面各人收支又只算集体账 | 统一走内核 `groupSpend()` |
+| 真机坑 | 云端 `addBill` 分摊校验容差 0.05（服务端是分严格相等） | 改成**按分严格相等**；调整单要求零和 |
+| 视觉 | 旧橙色导航栏 / 紫色 AI 卡 11 处 / 分类条 6 色彩虹 / 3 处圆形首字母头像 / `Space Grotesk` 真机必缺 | 白底黑字导航栏、品牌色、单色分类条、姓名文字胶囊、统一字体栈 |
+| 排版守卫 | `18rpx`(9px) 看不清、`100rpx`(50px) 跳号 | 抬到 10px 下限；`.settle-value` 收到 36px |
+
+**新增能力**：
+- `pages/capture`（识别入账）：真正调用 `db.recognizeBill()` + `ocr` 云函数 —— 此前**票据识别 UI 完全缺失**，7 个方法全是死代码
+- `history`（消费统计）以前**没有任何入口**，现在房间页「📊 统计 ›」直达
+- 「有人先走」：房间页成员区点名字标记离队（`toggleMemberLeave` → 新云函数 `setMemberLeave`），
+  记账页均分时**只摊给还在队里的人**（`AI.activeMemberIds`）
+- 记账页新增「这笔算谁的：大家 AA / 我的私账」，提交时带 `scope`
+
+### 3️⃣ 导出 → 导入往返一致
+
+以前"导出"是**单向快照**：换设备、合并两个账本、在 Excel 里改完再导回来都做不到。
+
+现在 `demo` 里加了 `parseCsvText / importBillsFromCsv` + 「📤 导入这本账」入口（粘贴或选文件）：
+- 解析自家导出格式（BOM、引号转义、中文表头、列顺序可变）
+- 按「分摊明细」里的**名字**匹配成员还原 splits；对不上的行**跳过并说明原因**，不猜
+- **守账恒平**：Σsplits ≠ 金额的行一律拦下
+- **幂等**：同一份文件重复导入不会翻倍（按 房间+说明+金额+日期 去重）
+- 往返断言：`#uitest` 里导出 → 清空 → 导入，比对 **笔数 / 集体总消费 / 最简转账方案 / 账恒平 / 私账归属** 全部一致
+
+### 4️⃣ 顺手抓到的两个卫生问题
+
+- **PowerShell 的 `Set-Content -Encoding UTF8` 会写 UTF-8 BOM**：本轮确实给 8 个文件（含 `demo/index.html`、`server/app.js`、3 个 wxml/wxss）加上了 BOM。
+  新增 `tests/tools/strip-bom.js` 体检并全部清掉，并作为**第 10 套闸门**进 `run-all`（BOM 会让 wxml/json 多一个不可见字符）。
+- 编辑含中文的文件改用 node 脚本 / `edit` 工具，不再用 PS 字符串替换。
+
+### 🧪 闸门
+
+- 新增 `tests/miniprogram.check.js`（**37 项**）：WXML 不许有函数调用、关键页面必须有 `onShow`、
+  `var(--x)` 必须有定义、字号在 [10px,48px]、不做圆头像/不引外部字体/无彩虹条、
+  三端口径必须调内核、云函数统计口径、页面可达性、分享要有真画布、BOM/TODO
+- `run-all` 从 **9 套 → 11 套**：`11 套 / 962 项` → **`11 套 / 962 项`全绿**（`SUITE_STATS` / `jnItems` 同步）
+
+---
+
 ## [2.10.1] 第十五轮补：以验收方视角再审一遍，又抓出 4 类同类问题
 
 用户要求「再检查一下有没有类似的这种逻辑上或者演示上的问题」。按"同一类问题还会藏在哪"逐条查，
@@ -59,7 +142,7 @@
 
 - 页内 `#uitest` **+3 项**：首页卡片口径、导出 CSV 的按人可见性、结算标记的金额快照失效（造一个两人的确定场景验证）
 - `tests/demo.check.js` **+6 项**：首页口径、四个隐私出口、结算页只看集体账、标记金额快照+失效提示、收官不暴露金额、统计页口径统一
-- **9 套 / 890 项断言全绿**（`SUITE_STATS` 同步为 890）
+- **11 套 / 962 项断言全绿**（`SUITE_STATS` 同步为 890）
 
 ---
 

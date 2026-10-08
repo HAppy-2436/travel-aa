@@ -22,6 +22,27 @@ page {
   --green-bg: #ecfdf5;
   --red: #dc2626;
   --red-bg: #fef2f2;
+  --amber: #B45309;
+  --amber-bg: #FEF3C7;
+
+  /* ⚠️ 语义别名：history.wxss 等页面用的是 --primary / --text-hint / --border-color…
+      这些变量**以前一个都没定义**，于是 `color: var(--primary)` 整条声明失效 ——
+      分隔线整条消失、文字颜色悄悄继承（审计实测：6 处引用全部落空）。
+      这里补上语义层，值对齐网页 Demo 的设计令牌，避免两端"同一套设计两个色值"。 */
+  --primary: #FF6B35;
+  --bg-page: #F7F7F8;
+  --text-primary: #18181B;
+  --text-secondary: #52525B;
+  --text-hint: #8A8A8A;
+  --border-color: #EDEDED;
+  --pri: #FF6B35;
+  --pri-ink: #C2410C;
+
+  /* 字体：小程序**不能**像网页那样引外部字体（Space Grotesk 在真机上必然缺失，
+     以前 WXSS 里写了它、真机静默回落）。这里统一成一个栈：数字/字母优先用系统几何字体，
+     中文走系统黑体 —— 观感接近且**端上一定有**。 */
+  --font-num: -apple-system, 'SF Pro Display', 'Helvetica Neue', 'Segoe UI', 'PingFang SC', sans-serif;
+  --font-sans: -apple-system, 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif;
 
   /* 间距系统 */
   --space-xs: 8rpx;
@@ -176,7 +197,7 @@ page {
 }
 
 .room-code-label {
-  font-size: 18rpx;
+  font-size: 20rpx;
   font-weight: 700;
   letter-spacing: 3rpx;
   color: var(--gray-400);
@@ -204,7 +225,7 @@ page {
 }
 
 .room-stat-label {
-  font-size: 18rpx;
+  font-size: 20rpx;
   font-weight: 600;
   letter-spacing: 3rpx;
   text-transform: uppercase;
@@ -229,7 +250,7 @@ page {
 }
 
 .overview-label {
-  font-size: 18rpx;
+  font-size: 20rpx;
   font-weight: 700;
   letter-spacing: 3rpx;
   text-transform: uppercase;

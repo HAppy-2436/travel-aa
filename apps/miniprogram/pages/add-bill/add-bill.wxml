@@ -8,9 +8,13 @@
   </view>
 
   <!-- 入账方式切换 -->
+  <!-- ⚠️ Bug#5：编辑已有账单时 js 会把 activeTab 置为 'manual'，
+       而这里以前只有 ai / order 两个 pill → **两个都不高亮**，用户以为"哪个都没选"。
+       补上「✍️ 手动填表」，三种入账方式各有一个 tab（网页端也是这三条路径）。 -->
   <view class="dest-pills" style="margin-bottom: 20rpx;">
     <view class="dest-pill {{activeTab === 'ai' ? 'dest-pill-active' : ''}}" bindtap="switchTab" data-tab="ai">🤖 AI 一句话</view>
     <view class="dest-pill {{activeTab === 'order' ? 'dest-pill-active' : ''}}" bindtap="switchTab" data-tab="order">🧳 携程订单</view>
+    <view class="dest-pill {{activeTab === 'manual' ? 'dest-pill-active' : ''}}" bindtap="switchTab" data-tab="manual">✍️ 手动填表</view>
   </view>
 
   <!-- AI 一句话记账 -->
@@ -108,13 +112,28 @@
   <!-- 付款人 -->
   <view class="form-group">
     <text class="form-label">付款人 / Paid By</text>
+    <!-- ⚠️ 不做圆形首字母头像（与网页端统一为姓名文字胶囊） -->
     <view class="members-row">
       <view wx:for="{{members}}" wx:key="id"
-        class="member" bindtap="selectPayer" data-id="{{item.id}}" data-name="{{item.name}}">
-        <view class="member-av {{form.payer === item.id ? 'active' : ''}}">{{item.name[0]}}</view>
-        <text class="member-name">{{item.name}}</text>
+        class="member-name-chip {{form.payer === item.id ? 'active' : ''}} {{item.leftAt ? 'member-left' : ''}}"
+        bindtap="selectPayer" data-id="{{item.id}}" data-name="{{item.name}}">
+        {{item.name}}{{item.leftAt ? ' · 已离队' : ''}}
       </view>
     </view>
+  </view>
+
+  <!-- 归属：集体账 / 我的私账（人情账）—— 与网页端同一个语义，判据在内核 -->
+  <view class="form-group">
+    <text class="form-label">这笔算谁的 / Shared or Private</text>
+    <view class="dest-pills">
+      <view class="dest-pill {{form.scope !== 'personal' ? 'dest-pill-active' : ''}}"
+        bindtap="selectScope" data-scope="group">👥 大家 AA</view>
+      <view class="dest-pill {{form.scope === 'personal' ? 'dest-pill-active' : ''}}"
+        bindtap="selectScope" data-scope="personal">🧾 我的私账</view>
+    </view>
+    <text wx:if="{{form.scope === 'personal'}}" style="display:block; margin-top:10rpx; font-size:22rpx; color:#8A8A8A;">
+      私账（人情账）不进 AA、不影响别人，只累计到"我这次花了多少"
+    </text>
   </view>
 
   <!-- 分摊方式 -->
