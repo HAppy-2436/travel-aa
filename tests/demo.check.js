@@ -388,6 +388,30 @@ report('★ 自动演示把"到底结没结清"说清楚：分角色标记 → �
   /笔已结清（每笔都是各自在自己手机上确认的）/.test(html) &&
   /㉕ 有人先走/.test(html));
 
+// ============ 10++++++. 第十五轮自查：口径与"结清状态"的一致性 ============
+report('★ 首页卡片 = 集体账口径（私账不进"总消费"，也不暴露别人的私账笔数）',
+  /var groupBills=allBills\.filter\(function\(b\)\{return !isPersonalBill\(b\)\}\);/.test(html) &&
+  /var total=roomTotalCNY\(room\.id\);/.test(html) &&
+  /'\+groupBills\.length\+'<\/div><div class="rsl">账单 \/ BILLS/.test(html));
+report('★ 导出/小作文按人过滤；结清卡片与旅行报告只含集体账（要发群里的东西不能夹带私账）',
+  /function buildCsv\(roomId,userId\)/.test(html) && /visibleBills\(roomId,userId\)\s*\n\s*\.slice\(\)/.test(html) &&
+  /var csv=buildCsv\(roomId,userId\);/.test(html) &&
+  /function groupBillsOf\(roomId\)/.test(html) &&
+  /function copyShareCard\(userId,roomId\)\{[\s\S]{0,220}groupBillsOf\(roomId\)/.test(html) &&
+  /function copyReport\(userId,roomId\)\{[\s\S]{0,200}groupBillsOf\(roomId\)/.test(html) &&
+  /function genNarrative\(userId,roomId\)\{[\s\S]{0,420}visibleBills\(roomId,userId\)/.test(html));
+report('★ 结算页只看集体账（否则别人没记清的私账会跑到我的"结算前置校验"里报警）',
+  /function renderSettle\(userId,roomId\)\{[\s\S]{0,420}var bills=groupBillsOf\(roomId\);/.test(html));
+report('★ 结清标记带金额快照：账目改了旧的「已结清」自动失效，并且页面上明确提示',
+  /function settleMarkOf/.test(html) && /function staleSettleCount/.test(html) &&
+  /room\.settled\[k\] = \{ at: new Date\(\)\.toISOString\(\), amount: amount \};/.test(html) &&
+  /data-feat="settle-stale"/.test(html) && /已自动失效/.test(html));
+report('★ 收官面板不暴露任何人的私账金额（只报笔数，和"只有本人可见"保持一致）',
+  /personalCount = bills\.filter\(function \(b\) \{ return isPersonalBill\(b\); \}\)\.length/.test(html) &&
+  !/personalSpend\(bills, 'u4'\)/.test(html));
+report('★ 统计页与内核同一口径（统一用 isPersonalBill，不再混用 isSoleBill）',
+  /var bills=allBills\.filter\(function\(b\)\{return !isPersonalBill\(b\)\}\);/.test(html));
+
 // ============ 11. 共享 AI 引擎浏览器形态冒烟 ============
 const aiSrc = fs.readFileSync(path.join(__dirname, '..', 'apps', 'miniprogram', 'utils', 'ai.js'), 'utf8');
 globalThis.self = {};

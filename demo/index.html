@@ -751,7 +751,7 @@ body.present .judge,body.present .fh{display:none}
         <div class="judge-tech-body">
           <div class="judge-nums">
             <div><b id="jnSuite">9</b><span>套自动化验收</span></div>
-            <div><b id="jnItems">884</b><span>项断言</span></div>
+            <div><b id="jnItems">890</b><span>项断言</span></div>
             <div><b id="jnSelf">—</b><span>页内自检</span></div>
             <div><b id="jnUI">—</b><span>交互验收</span></div>
           </div>
@@ -1182,9 +1182,13 @@ function renderHome(user,myRooms){
   html+='<div class="sh"><div class="st">我的旅行</div><div class="sc">'+myRooms.length+' ROOMS</div></div>';
   if(myRooms.length===0){html+='<div class="em"><div class="ei">✈️</div><div class="et">还没有旅行房间</div><div class="es">点击上方「创建房间」开始</div></div>';}
   else{myRooms.forEach(function(room){
-    var bills=State.bills.filter(function(b){return b.roomId===room.id});
-    var total=bills.reduce(function(s,b){return s+billCNY(b)},0);
-    html+='<div class="rc" onclick="openRoom(\''+user.id+'\',\''+room.id+'\')"><div class="rt"><div class="rn">'+esc(room.name)+'</div><div class="rco"><small>房间号</small>'+esc(room.code)+'</div></div><div class="rs"><div><div class="rsv">'+room.members.length+'</div><div class="rsl">成员 / MEMBERS</div></div><div><div class="rsv">'+bills.length+'</div><div class="rsl">账单 / BILLS</div></div><div><div class="rsv" style="color:var(--pri-ink)">¥'+money(total,0)+'</div><div class="rsl">总消费 / TOTAL</div></div></div></div>';
+    /* ⚠️ 口径必须和房间页一致：这里以前是"全部账单求和"，把**私账也算进了总消费**
+       （还顺带把别人的私账笔数暴露出来）—— 同一本账在首页显示 ¥1,403、进房间显示 ¥123.45。
+       现在首页卡片 = 集体账口径：私账（人情账）不进 AA，就不该出现在"总消费"里。 */
+    var allBills=State.bills.filter(function(b){return b.roomId===room.id});
+    var groupBills=allBills.filter(function(b){return !isPersonalBill(b)});
+    var total=roomTotalCNY(room.id);
+    html+='<div class="rc" onclick="openRoom(\''+user.id+'\',\''+room.id+'\')"><div class="rt"><div class="rn">'+esc(room.name)+'</div><div class="rco"><small>房间号</small>'+esc(room.code)+'</div></div><div class="rs"><div><div class="rsv">'+room.members.length+'</div><div class="rsl">成员 / MEMBERS</div></div><div><div class="rsv">'+groupBills.length+'</div><div class="rsl">账单 / BILLS</div></div><div><div class="rsv" style="color:var(--pri-ink)">¥'+money(total,0)+'</div><div class="rsl">总消费 / TOTAL</div></div></div></div>';
   });}
   return html;
 }
@@ -1200,6 +1204,10 @@ function isPersonalBill(b) {
       和我们自己写的"私账只有本人可见"直接矛盾（自查发现）。 */
 function visibleBills(roomId, userId) {
   return roomBills(roomId).filter(function (b) { return !isPersonalBill(b) || b.payer === userId; });
+}
+/* 只含集体账 —— 要发出去的东西（结清卡片 / 旅行报告）一律用这个口径 */
+function groupBillsOf(roomId) {
+  return roomBills(roomId).filter(function (b) { return !isPersonalBill(b); });
 }
 
 function renderRoomDetail(userId,roomId){
@@ -1383,14 +1391,17 @@ function renderStats(userId,roomId){
   var allBills=room?State.bills.filter(function(b){return b.roomId===roomId}):State.bills;
   var scopeName=room?room.name:'全部旅行';
   if(!allBills.length)return '<div class="em"><div class="ei">📊</div><div class="et">还没有数据</div><div class="es">先记几笔账再来看统计</div></div>';
-  /* 统计口径：默认只看「集体账」；私账（人情账）单独一块，不混进总消费 */
-  var bills=allBills.filter(function(b){return !AI||!AI.isSoleBill||!AI.isSoleBill(b)});
+  /* 统计口径：默认只看「集体账」；私账（人情账）单独一块，不混进总消费。
+     ⚠️ 统一用 isPersonalBill()（= 内核 groupSpend 的口径：scope 优先，其次 splitType==='sole'）——
+        以前这里用 AI.isSoleBill()，遇到 scope:'personal' 但 splitType 不是 sole 的账单，
+        统计页会把它当集体账、而结算/导出又当私账，同一笔账两个口径。 */
+  var bills=allBills.filter(function(b){return !isPersonalBill(b)});
   var total=bills.reduce(function(s,b){return s+billCNY(b)},0);
   var me=USERS.filter(function(x){return x.id===userId})[0];
   var myP=AI&&AI.personalSpend?AI.personalSpend(allBills,userId):{total:0,count:0,list:[]};
   var html='<div class="hs" style="padding:8px 0 16px;"><div class="hl">SPENDING REPORT</div><div class="ht">消费统计</div><div style="font-size:11px;color:var(--g400);margin-top:4px;">'+esc(scopeName)+'</div></div>';
   html+='<div class="og"><div class="oi"><div class="ol">集体账 / TOTAL</div><div class="ov">¥'+moneyK(total)+'</div></div><div class="oi"><div class="ol">笔数 / BILLS</div><div class="ov sm">'+bills.length+'</div></div></div>';
-  if(room)html+='<button class="btn lt" data-feat="export-csv" style="width:100%;margin-bottom:8px;" onclick="exportCsv(\''+userId+'\',\''+roomId+'\')">📥 导出这本账（CSV，含私账与调整单）</button>';
+  if(room)html+='<button class="btn lt" data-feat="export-csv" style="width:100%;margin-bottom:8px;" onclick="exportCsv(\''+userId+'\',\''+roomId+'\')">📥 导出这本账（CSV：集体账 + 你自己的私账）</button>';
 
   /* ---- 我的私账（人情账）：不进 AA 的零碎钱，只有本人可见 ---- */
   if(myP.count>0){
@@ -1461,10 +1472,13 @@ function csvCell(v){
   var s=(v==null?'':String(v));
   return /[",\r\n]/.test(s) ? ('"'+s.replace(/"/g,'""')+'"') : s;
 }
-function buildCsv(roomId){
+/* 导出 CSV。⚠️ 必须按人过滤：以前导出房间**全部**账单，
+   于是谁点一下导出就拿到了别人的人情账（和我们写的"私账只有本人可见"矛盾）。
+   现在 = 集体账 + 我自己的私账（用户的私账列里标了"私账(不进AA)"）。 */
+function buildCsv(roomId,userId){
   var room=State.rooms.filter(function(r){return r.id===roomId})[0];
   if(!room)return '';
-  var bills=State.bills.filter(function(b){return b.roomId===roomId})
+  var bills=visibleBills(roomId,userId)
     .slice().sort(function(a,b){return String(a.createdAt||'').localeCompare(String(b.createdAt||''))});
   var head=['日期','说明','分类','币种','金额','汇率','折合人民币','付款人','分摊明细','归属','入账来源','标记'];
   var rows=bills.map(function(b){
@@ -1481,7 +1495,7 @@ function buildCsv(roomId){
   return '\uFEFF'+lines.join('\r\n');
 }
 function exportCsv(userId,roomId){
-  var csv=buildCsv(roomId);
+  var csv=buildCsv(roomId,userId);
   if(!csv){showToast(userId,'没有可导出的账单');return false}
   var room=State.rooms.filter(function(r){return r.id===roomId})[0];
   var count=csv.split('\r\n').length-1;
@@ -1969,6 +1983,26 @@ function orderImport(userId,roomId){
    ============================================================ */
 function transferKey(t){ return (t.from||'') + '>' + (t.to||''); }
 
+/* 取一笔转账的"有效"结清标记。
+   ⚠️ 标记必须**带金额快照**：以前只存一个时间戳，于是改了账目之后
+      （同一对转账仍然存在、但金额变了）旧勾还留着，界面上写着"已转出"，实际金额早已不是那笔 ——
+      注释里说"金额变化后旧的打勾会自动失效"，但代码从来没校验过（实测确认）。
+   现在：金额对不上、或遇到只有时间戳的旧格式，都算过期。 */
+function settleMarkOf(marks, t){
+  var m = marks && marks[transferKey(t)];
+  if (!m) return null;
+  if (typeof m === 'string') return null;                                  // 旧格式，无法校验 → 视为过期
+  if (Math.abs((Number(m.amount) || 0) - (Number(t.amount) || 0)) > 0.004) return null;
+  return m;
+}
+/* 有多少笔"曾经标过、但因账目变动已失效"（结算页要明确告诉用户，而不是默默不显示） */
+function staleSettleCount(room, transfers){
+  var marks = (room && room.settled) || {};
+  return transfers.filter(function (t) {
+    return marks[transferKey(t)] && !settleMarkOf(marks, t);
+  }).length;
+}
+
 /* 这笔转账对「当前这个人」是什么角色：
      out   = 我要转出去（我是付款方）→ 待转出
      in    = 我要收到（我是收款方）  → 待收到
@@ -1991,7 +2025,7 @@ function mySettlePart(room, transfers, userId) {
   var marks = (room && room.settled) || {};
   var pick = function (role, done) {
     return transfers.filter(function (t) {
-      return transferRole(t, userId) === role && (!!marks[transferKey(t)] === done);
+      return transferRole(t, userId) === role && (!!settleMarkOf(marks, t) === done);
     });
   };
   var sum = function (list) { return Math.round(list.reduce(function (s, t) { return s + (Number(t.amount) || 0); }, 0) * 100) / 100; };
@@ -2015,9 +2049,15 @@ function toggleSettled(userId, roomId, from, to){
   var otherId = (role === 'in') ? from : to;
   var m = room.members.filter(function(x){ return x.id===otherId })[0];
   if(m) otherName = m.name;
-  if(room.settled[k]) { delete room.settled[k]; showToast(userId, '↩️ 已撤销「' + meta.done + '」'); }
+  /* 当前方案里这一笔的金额（标记要带金额快照，见 settleMarkOf） */
+  var st = calcSettlement(room, roomBills(roomId));
+  var cur = st.transfers.filter(function(x){ return transferKey(x)===k })[0];
+  var amount = cur ? (Number(cur.amount)||0) : 0;
+  /* 只有"仍然有效"的标记才算撤销；过期标记直接覆盖成新的 */
+  var valid = !!settleMarkOf(room.settled, { from: from, to: to, amount: amount });
+  if(valid) { delete room.settled[k]; showToast(userId, '↩️ 已撤销「' + meta.done + '」'); }
   else {
-    room.settled[k] = new Date().toISOString();
+    room.settled[k] = { at: new Date().toISOString(), amount: amount };
     showToast(userId, role === 'in'
       ? ('✅ 已标记「收到 ' + otherName + ' 的钱」')
       : (role === 'out' ? ('✅ 已标记「已转给 ' + otherName + '」') : ('✅ 已标记「' + otherName + ' 已结清」')));
@@ -2025,11 +2065,11 @@ function toggleSettled(userId, roomId, from, to){
   syncAll();
 }
 
-/* 当前方案里还没结清的转账；金额变化后旧的打勾会自动失效（见 settledInfo） */
+/* 当前方案里还没结清的转账；**金额变了旧的打勾会自动失效**（靠 settleMarkOf 校验金额快照） */
 function settledInfo(room, transfers){
   var marks = (room && room.settled) || {};
-  var done = transfers.filter(function(t){ return !!marks[transferKey(t)] });
-  var remainAmount = transfers.filter(function(t){ return !marks[transferKey(t)] })
+  var done = transfers.filter(function(t){ return !!settleMarkOf(marks, t) });
+  var remainAmount = transfers.filter(function(t){ return !settleMarkOf(marks, t) })
     .reduce(function(s,t){ return s + (Number(t.amount)||0) }, 0);
   return {
     done: done,
@@ -2043,7 +2083,11 @@ function settledInfo(room, transfers){
 function renderSettle(userId,roomId){
   var room=State.rooms.find(function(r){return r.id===roomId});
   if(!room)return emBack('房间不存在',userId);
-  var bills=State.bills.filter(function(b){return b.roomId===roomId});
+  /* 结算只看集体账。
+     ⚠️ 以前这里传的是房间**全部**账单：私账在 netBalances 里天然净额为 0 所以金额没错，
+        但「结算前置校验」（pendingBills / settlementReadiness）会把**别人**没记清的私账
+        也算成"还有 N 笔没记清"，在我的结算页上报警 —— 跨用户的串味。 */
+  var bills=groupBillsOf(roomId);
   var settlement=calcSettlement(room,bills);
   var totalSpent=settlement.totalExpense;
   var html='<div class="shm" data-feat="settle-total"><div class="aml">旅行总消费</div><div class="svm">¥'+moneyK(totalSpent)+'</div></div>';
@@ -2084,6 +2128,9 @@ function renderSettle(userId,roomId){
     html+='<div class="os" data-feat="settle-progress-all" style="margin:-4px 0 10px;"><span>'+(sInfo.allDone?'🎉':'👥')+'</span><span>'+(sInfo.allDone
       ? ('全队 '+sInfo.total+' 笔转账已全部结清')
       : ('全队进度：已结清 '+sInfo.doneCount+' / '+sInfo.total+' 笔 · 还有 ¥'+money(sInfo.remainAmount)+' 在路上'))+'</span></div>';
+    /* 账目改过 → 之前的打勾自动失效，得明确说出来，不能默默不显示 */
+    var stale=staleSettleCount(room,settlement.transfers);
+    if(stale>0)html+='<div class="os" data-feat="settle-stale" style="margin:-4px 0 10px;border-color:var(--amb);"><span>⚠️</span><span>有 '+stale+' 笔之前的结清标记<b>因为账目改了已自动失效</b>，请对着新金额重新确认</span></div>';
   }
   settlement.transfers.forEach(function(t,i){
     var k=transferKey(t), done=!!sInfo.done.filter(function(x){return transferKey(x)===k}).length;
@@ -2164,7 +2211,8 @@ function genNarrative(userId,roomId){
   var u=USERS.find(function(x){return x.id===userId});var room=State.rooms.find(function(r){return r.id===roomId});
   if(!u||!room)return;
   if(!AI||!AI.generateNarrative){showToast(userId,'内核未加载');return}
-  var bills=State.bills.filter(function(b){return b.roomId===roomId});
+  /* 小作文是**我**的复盘：集体账 + 我自己的私账（别人的私账不进来） */
+  var bills=visibleBills(roomId,userId);
   u._narrLoading=true;renderApp(u);
   Promise.resolve(AI.generateNarrative({room:room,bills:bills,members:room.members,currency:'CNY'},{}))
     .then(function(text){u._narr=String(text||'');u._narrLoading=false;renderApp(u);showToast(userId,'🤖 小作文已生成');})
@@ -2177,14 +2225,17 @@ function copyNarrative(userId){
 }
 function copyReport(userId,roomId){
   var room=State.rooms.find(function(r){return r.id===roomId});if(!room||!AI)return;
-  var bills=State.bills.filter(function(b){return b.roomId===roomId});
+  /* 旅行报告是"这次旅行花了多少"的集体口径：**只含集体账**，
+     私账（人情账）不进 AA，也不该被别人看到 */
+  var bills=groupBillsOf(roomId);
   var text=AI.generateTripReport(room,bills,room.members);
   copyWithToast(userId,text,'📄 旅行报告已复制');
 }
 /* 结清卡片：纯文本版，可直接粘到微信/群里 */
 function copyShareCard(userId,roomId){
   var room=State.rooms.find(function(r){return r.id===roomId});if(!room||!AI)return;
-  var bills=State.bills.filter(function(b){return b.roomId===roomId});
+  /* ⚠️ 这张卡片是要**发到群里**的，绝不能夹带任何人的私账 */
+  var bills=groupBillsOf(roomId);
   var text=AI.shareCardText({room:room,bills:bills,members:room.members});
   copyWithToast(userId,text,'📤 结清卡片已复制，去群里发一条吧');
 }
@@ -2582,7 +2633,7 @@ function copySettle(userId,roomId){
   var bills=State.bills.filter(function(b){return b.roomId===roomId});var settlement=calcSettlement(room,bills);
   var marks=room.settled||{};
   var text='【TravelAA 结算方案】\n'+room.name+' · 总消费 ¥'+money(settlement.totalExpense)+'\n\n';
-  settlement.transfers.forEach(function(t,i){text+=(i+1)+'. '+t.fromName+' → '+t.toName+' ¥'+money(t.amount)+(marks[transferKey(t)]?'  ✅ 已转':'')+'\n'});
+  settlement.transfers.forEach(function(t,i){text+=(i+1)+'. '+t.fromName+' → '+t.toName+' ¥'+money(t.amount)+(settleMarkOf(marks,t)?'  ✅ 已转':'')+'\n'});
   copyWithToast(userId,text,'📋 已复制结算方案');
 }
 function closeModal(userId){var m=document.getElementById('modal-'+userId);if(m)m.classList.remove('show');a11yClosed()}
@@ -3277,6 +3328,32 @@ async function autoDemo() {
     await sleep(1800);
     say('㉕ 结算时小王仍然在名单里（他之前该摊的照算）—— 不会有人"先走了账就凭空消失"');
     goPhone('u4', 'settle');
+    await sleep(1600);
+    /* ⚠️ 刚加了一笔账 → 最简转账方案变了 → 之前打的"已结清"**自动失效**。
+       这里必须把它说出来，否则演示就成了"先宣布全队结清、又偷偷加一笔账"，
+       评委看到的收尾状态和刚才那句结论对不上（自查发现的连贯性问题）。 */
+    var stR = calcSettlement(rm, State.bills.filter(function (b) { return b.roomId === demoRoomId; }));
+    var siR = settledInfo(rm, stR.transfers);
+    var staleR = staleSettleCount(rm, stR.transfers);
+    if (staleR > 0) {
+      say('㉕ 新记了一笔 → 转账方案跟着变，之前打的 ' + staleR + ' 个「已结清」自动失效（页面会明确提示），重新确认一次才算数');
+      goPhone('u1', 'settle');
+      await sleep(1800);
+    }
+    /* 重新确认，把收尾状态拉回"全队结清"，别让演示停在"还有钱没转" */
+    var restR = stR.transfers.filter(function (t) { return !settleMarkOf(rm.settled, t); });
+    for (var rj = 0; rj < restR.length; rj++) {
+      var tr = restR[rj];
+      if (!USERS.slice(0, State.phoneCount).some(function (u) { return u.id === tr.from; })) continue;
+      goPhone(tr.from, 'settle');
+      await sleep(1000);
+      toggleSettled(tr.from, demoRoomId, tr.from, tr.to);
+      await sleep(1000);
+    }
+    goPhone('u1', 'settle');
+    await sleep(1400);
+    var siR2 = settledInfo(rm, calcSettlement(rm, State.bills.filter(function (b) { return b.roomId === demoRoomId; })).transfers);
+    say('㉕ 重新确认完：全队 ' + siR2.doneCount + ' / ' + siR2.total + ' 笔结清 —— 账目随时能改，结算状态永远跟得上，不会留下"以为结了"的假象');
     await sleep(1800);
 
     clearCaptions();
@@ -3354,9 +3431,10 @@ function showFinale() {
   var bills = State.bills.filter(function (b) { return b.roomId === room.id; });
   var nb = AI && AI.netBalances ? AI.netBalances(bills, room.members) : null;
   var st = calcSettlement(room, bills);
-  var personal = AI && AI.personalSpend ? AI.personalSpend(bills, 'u4').total : 0;
+  /* ⚠️ 收官面板不能说某个人"私账花了多少"：那句「小王自己另花了 ¥1280」
+     和同一段里写的"只有本人可见"直接矛盾（自查发现）。私账只报**笔数**。 */
   var adjCount = bills.filter(function (b) { return b.isAdjustment; }).length;
-  var personalCount = bills.filter(function (b) { return (b.scope || '') === 'personal' || b.splitType === 'sole'; }).length;
+  var personalCount = bills.filter(function (b) { return isPersonalBill(b); }).length;
   var old = document.getElementById('finale');
   if (old && old.parentNode) old.parentNode.removeChild(old);
   var d = document.createElement('div');
@@ -3382,8 +3460,7 @@ function showFinale() {
     /* 收官一句差异化：评委看完 25 个分镜，最容易记住的是"它和别家到底差在哪"。 */
     '<div class="finale-cmp">和市面上的做法比：<b>收款工具</b>只解决"把钱收上来"，<b>通用分账</b>只解决"算得平"；' +
       'TravelAA 多解决两件 —— <b>记不烦</b>（说一句 / 截图 / 携程订单直接入账）和<b>有交代</b>（账恒平 + 最简转账 + 复盘报告）。</div>' +
-    '<div class="finale-note">另计：' + personalCount + ' 笔私账（人情账）不进 AA、只有本人可见；' + adjCount + ' 笔调整单承载「多退少补 / 暂估改价」，原账全部留痕。' +
-      (personal > 0 ? '小王自己另花了 ¥' + moneyK(personal) + '。' : '') + '</div>' +
+    '<div class="finale-note">另计：' + personalCount + ' 笔私账（人情账）不进 AA、只有本人可见；' + adjCount + ' 笔调整单承载「多退少补 / 暂估改价」，原账全部留痕。</div>' +
     '<div class="finale-acts">' +
       '<button class="btn lt" data-act="finale-tour">🎬 再听一遍导览（' + TOUR_STEPS.length + ' 步）</button>' +
       '<button class="btn lt" data-act="finale-replay">🔁 重播演示</button>' +
@@ -3410,7 +3487,7 @@ var NARR_IDLE = '4 台手机 = 4 位同行成员，共用同一本账、操作�
 /* 给评委看的验收数字。**只有一个地方要维护**（`node tests/run-all.js` 的实际输出），
    每次加测试后改这里；`tests/demo.check.js` 会检查这三个数还在、没被写成占位符。
    页内自检/交互验收的数字不写死 —— 点「🩺 自检」后会用**真实跑出来的结果**覆盖。 */
-var SUITE_STATS = { suites: 9, items: 884 };
+var SUITE_STATS = { suites: 9, items: 890 };
 function fillJudgeStats() {
   var set = function (id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
   set('jnSuite', String(SUITE_STATS.suites));
@@ -3647,7 +3724,7 @@ var TOUR_STEPS = [
     before: function () { ensureV3Samples(); tourSetup('u3', 'room'); } },
 
   { sel: '#app-u4 [data-feat="settle-total"]', covers: ['settle-total', 'balances', 'settle-transfers', 'settle-readiness', 'settle-progress'], title: '小王一键清账：账恒平 + 最简转账 + 结清闭环',
-    script: '总消费按人民币口径汇总（外币按快照汇率折算），下面是各人应收应付 —— 所有净余额之和严格等于 0，这就是「账恒平」。给的是**最少转账笔数**：不是"每个人都转给垫付人"，而是让该收的直接收、该给的直接给。微信/支付宝的 AA 收款收完就结束，这里收完还留着一本能复盘、能导出、能对账的账本。页面还会先自查有没有占位单没补齐。算出方案只是第一步 —— 每笔右边可以标「我转了」，进度变成"已结清 N / M 笔 · 还剩 ¥xxx"，全打完显示 🎉，状态跟着同步快照走、两个窗口都看得见，也能撤销。',
+    script: '总消费按人民币口径汇总（外币按快照汇率折算），下面是各人应收应付 —— 所有净余额之和严格等于 0，这就是「账恒平」。给的是**最少转账笔数**：不是"每个人都转给垫付人"，而是让该收的直接收、该给的直接给。微信/支付宝的 AA 收款收完就结束，这里收完还留着一本能复盘、能导出、能对账的账本。页面还会先自查有没有占位单没补齐。算出方案只是第一步 —— **收款方看到「待收到」、付款方看到「待转出」**，各人在自己手机上确认；账目要是改了，之前的勾会自动失效并提示重新确认，不会留下"以为结了"的假象。',
     before: function () {
       /* ⚠️ 导览**不能改动账目**：这里刻意不调用 toggleSettled。
          之前为了演示"已结清"的进度状态去标了一笔，结果讲解走一遍就把人家的账
@@ -4730,18 +4807,32 @@ function runUITest() {
       /* 造一笔"说明里带逗号和引号"的账单 —— 不转义的话导出的表格会整列错位 */
       State.bills.push(makeBill(room, { payer: 'u1', payerName: '小明', amount: 12.5,
         description: '晚餐,带了"朋友"一起', category: 'food', source: 'manual' }));
-      var csv = buildCsv(room.id);
+      var csv = buildCsv(room.id, 'u1');
       var lines = csv.split('\r\n');
-      var expectedRows = State.bills.filter(function (b) { return b.roomId === room.id; }).length;
-      add('★ 导出 CSV：带 UTF-8 BOM + 表头 + 每笔一行（Excel 双击不乱码）',
+      /* 导出是**按人**的：集体账 + 我自己的私账（别人的私账不导出，见 visibleBills） */
+      var expectedRows = visibleBills(room.id, 'u1').length;
+      add('★ 导出 CSV：带 UTF-8 BOM + 表头 + 我的可见账单每笔一行（Excel 双击不乱码）',
         csv.charCodeAt(0) === 0xFEFF && /日期/.test(lines[0]) && /折合人民币/.test(lines[0]) &&
         lines.length === expectedRows + 1,
-        (lines.length - 1) + ' 行 / 账单 ' + expectedRows + ' 笔');
+        (lines.length - 1) + ' 行 / 我的可见账单 ' + expectedRows + ' 笔');
       var trickyLine = lines.filter(function (l) { return l.indexOf('晚餐') >= 0; })[0] || '';
       add('★ 导出 CSV：说明里的逗号与引号正确转义（否则表格错列）',
         trickyLine.indexOf('"晚餐,带了""朋友""一起"') >= 0, trickyLine.slice(0, 56));
-      add('★ 导出 CSV：私账标在「归属」列，而不是被悄悄丢掉',
-        /私账\(不进AA\)/.test(csv), (csv.match(/私账\(不进AA\)/g) || []).length + ' 笔私账');
+      add('★ 导出 CSV：**自己的**私账标在「归属」列，别人的私账不会被导出',
+        (function () {
+          var room2 = ensureAllPhones();
+          var mineP = makeBill(room2, { payer: 'u1', payerName: '小明', amount: 66, splitType: 'sole',
+            scope: 'personal', description: 'CSV-我的私账', category: 'shopping', source: 'manual' });
+          var otherP = makeBill(room2, { payer: 'u4', payerName: '小王', amount: 88, splitType: 'sole',
+            scope: 'personal', description: 'CSV-别人的私账', category: 'shopping', source: 'manual' });
+          State.bills.push(mineP); State.bills.push(otherP);
+          var c = buildCsv(room2.id, 'u1');
+          var ok = /私账\(不进AA\)/.test(c) && /CSV-我的私账/.test(c) && !/CSV-别人的私账/.test(c);
+          State.bills = State.bills.filter(function (b) { return b.id !== mineP.id && b.id !== otherP.id; });
+          syncAll();
+          return ok;
+        })(),
+        (csv.match(/私账\(不进AA\)/g) || []).length + ' 笔私账（只含自己的）');
       add('★ 导出 CSV：调整单带标记（对账时看得懂）',
         /调整单/.test(csv) || State.bills.filter(function (b) { return b.isAdjustment; }).length === 0,
         State.bills.filter(function (b) { return b.isAdjustment; }).length + ' 笔调整单');
@@ -5282,6 +5373,64 @@ function runUITest() {
           vis.some(function (b) { return b.id === mine.id; }) && !vis.some(function (b) { return b.id === others.id; }),
           '可见 ' + vis.length + ' / 全部 ' + roomBills(room.id).length + ' 笔');
         State.bills = State.bills.filter(function (b) { return b.id !== mine.id && b.id !== others.id; });
+        syncAll();
+      })();
+
+      /* ⑭ 首页卡片必须用**集体口径**：以前是"全部账单求和"，把私账也算进总消费 —
+            同一本账在首页显示 ¥1,403、进房间显示 ¥123.45（自查发现） */
+      (function () {
+        var room = ensureAllPhones();
+        var priv = makeBill(room, { payer: 'u4', payerName: '小王', amount: 1280, splitType: 'sole',
+          scope: 'personal', description: '口径测试-私账', category: 'shopping', source: 'manual' });
+        State.bills.push(priv);
+        syncAll();
+        goPhone('u1', 'home');
+        var card = document.querySelector('#app-u1 .rc');
+        var vals = Array.prototype.map.call(document.querySelectorAll('#app-u1 .rc .rsv'), function (el) {
+          return el.textContent.trim();
+        });
+        var want = '¥' + money(roomTotalCNY(room.id), 0);
+        var groupCount = roomBills(room.id).filter(function (b) { return !isPersonalBill(b); }).length;
+        add('★ 首页卡片口径 = 集体账（私账不进"总消费"，笔数也不算别人的私账）',
+          vals[1] === String(groupCount) && vals[2] === want &&
+          want !== ('¥' + money(roomTotalCNY(room.id) + 1280, 0)),
+          '卡片 ' + JSON.stringify(vals) + ' · 集体口径 ' + want + ' · 集体账单 ' + groupCount + ' 笔');
+        /* 导出也不能夹带别人的私账 */
+        var csv = buildCsv(room.id, 'u1');
+        add('★ 导出的 CSV 不含别人的私账（只有集体账 + 我自己的私账）',
+          !/口径测试-私账/.test(csv) && /集体AA/.test(csv),
+          'CSV ' + (csv.split('\r\n').length - 1) + ' 行 · 含别人的私账=' + /口径测试-私账/.test(csv));
+        State.bills = State.bills.filter(function (b) { return b.id !== priv.id; });
+        syncAll();
+      })();
+
+      /* ⑮ 结算标记必须带金额快照：账目改了，之前的「已结清」要自动失效 */
+      (function () {
+        var m2 = [{ id: 'u1', name: '小明' }, { id: 'u2', name: '小红' }];
+        var rm2 = { id: 'room_marktest', name: '标记失效测试', code: '000001', members: m2.slice() };
+        State.rooms.push(rm2);
+        var b1 = makeBill(rm2, { payer: 'u2', payerName: '小红', amount: 100, description: 'A',
+          category: 'food', source: 'manual', createdAt: '2024-01-01T00:00:00.000Z' });
+        State.bills.push(b1);
+        var s1 = calcSettlement(rm2, [b1]);
+        var tt = s1.transfers[0];
+        if (!tt) { add('★ 结算标记带金额快照', false, '没有生成转账'); return; }
+        toggleSettled('u1', rm2.id, tt.from, tt.to);
+        var marked = settledInfo(rm2, s1.transfers).doneCount;
+        /* 再加一笔，让**同一对转账**的金额变化（金额变了就必须失效） */
+        var b2 = makeBill(rm2, { payer: 'u2', payerName: '小红', amount: 200, description: 'B',
+          category: 'food', source: 'manual', createdAt: '2024-01-02T00:00:00.000Z' });
+        State.bills.push(b2);
+        var s2 = calcSettlement(rm2, [b1, b2]);
+        var same = s2.transfers.filter(function (x) { return transferKey(x) === transferKey(tt); })[0];
+        var after = settledInfo(rm2, s2.transfers).doneCount;
+        var stale = staleSettleCount(rm2, s2.transfers);
+        add('★ 结算标记带金额快照：账目改了，旧的「已结清」自动失效（以前改完钱仍显示已结清）',
+          marked === 1 && !!same && Math.abs(same.amount - tt.amount) > 0.01 && after === 0 && stale === 1,
+          '标记后 ' + marked + ' · 同一对转账 ¥' + tt.amount + ' → ¥' + (same ? same.amount : '-') +
+          ' · 失效后已结清 ' + after + ' · 提示失效 ' + stale + ' 笔');
+        State.rooms = State.rooms.filter(function (r) { return r.id !== rm2.id; });
+        State.bills = State.bills.filter(function (b) { return b.roomId !== rm2.id; });
         syncAll();
       })();
 
