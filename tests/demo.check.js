@@ -207,6 +207,28 @@ report('★ 手机高度只能来自 --phone-h（导览时不许用 100vh 压扁
 
 report('★ 导览加 touring 后必须重新量一次（工具栏重新显示会改变布局）',
   /classList\.add\('touring'\)[\s\S]{0,600}?fitPhones\(\)/.test(html));
+
+/* ★ 整页级提示必须居中于**整个屏幕**，不能落在第一台手机上。
+   背景：.toast 是"手机内"提示（每个 .pf 里各一个，居中于那台手机），
+   而导览开始/结束、播放控制、工具条人数上限、V3 演示就绪这类**整页级**消息
+   以前也统一 showToast('u1', …)，于是永远出现在第一台手机上 ——
+   用户反馈「整体页面的通知会出现在第一个手机上而不是整体屏幕正中」。 */
+report('★ 整页级提示居中于屏幕（#gToast 是 fixed 且不在 .pf 内）',
+  /id="gToast"/.test(html) &&
+  /#gToast\{[^}]*position:fixed/.test(html) &&
+  /#gToast\{[^}]*top:50%/.test(html) &&
+  /#gToast\{[^}]*left:50%/.test(html) &&
+  /function showGlobalToast/.test(html) &&
+  /* 它必须是 body 的直接子元素：一旦被塞进 .pf，就会重新"居中于那台手机" */
+  !/class="pf"[\s\S]{0,900}?id="gToast"/.test(html));
+
+report('★ 导览/播放控制等整页级提示不再走手机内 toast',
+  /showGlobalToast\('🎬 导览开始/.test(html) &&
+  /showGlobalToast\('🎬 自动演示完成/.test(html) &&
+  /showGlobalToast\('🎉 导览结束/.test(html) &&
+  !/showToast\('u1', '🎬 导览开始/.test(html) &&
+  !/showToast\('u1', '🎬 自动演示完成/.test(html) &&
+  !/showToast\('u1', '🎉 导览结束/.test(html));
 report('★ 演示解说栏只在 present 下显示（不影响常规视图）',
   /\.pshow\{display:none\}/.test(html) && /body\.present \.pshow\{[\s\S]{0,90}?display:block/.test(html));
 report('★ 演示模式隐藏人名行，并把"谁在操作"并进字幕条（否则会被解说栏盖住）',

@@ -308,6 +308,21 @@ button.bdg:hover{background:rgba(255,255,255,.08);color:#fff}
 .cbs{display:flex;gap:8px}.cbs .btn{flex:1;padding:11px 16px;font-size:13px}
 .toast{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#18181b;color:#fff;padding:11px 24px;border-radius:100px;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;z-index:70;opacity:0;transition:all .3s cubic-bezier(.4,0,.2,1);pointer-events:none;box-shadow:0 8px 32px rgba(0,0,0,.15)}
 .toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+/* ===== 整页级提示 #gToast =====
+   `.toast` 是**手机内**提示：每个 .pf 里各有一个，居中于"那台手机"。
+   但有些通知是**整页级**的：导览开始/结束、播放控制（暂停/单步/速度）、
+   工具条的人数上/下限、V3 演示就绪……这类消息以前也被丢给 'u1'，
+   于是永远出现在**第一台手机**上 —— 观众会误以为"是不是第一台出问题了"。
+   这里给整页级消息一个**屏幕正中**的提示条。
+   层级必须压过导览遮罩(200)/导览卡(210)/自检面板(220)/收官面板(240)：
+   导览期间恰恰是最需要看到这些提示的时候，被遮罩盖住就等于没提示。 */
+#gToast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.94);
+  background:#18181b;color:#fff;padding:13px 28px;border-radius:100px;
+  font-family:'Space Grotesk',sans-serif;font-size:13.5px;font-weight:600;
+  z-index:300;opacity:0;pointer-events:none;
+  transition:opacity .25s cubic-bezier(.4,0,.2,1),transform .25s cubic-bezier(.4,0,.2,1);
+  box-shadow:0 12px 40px rgba(0,0,0,.45);max-width:min(560px,86vw);text-align:center;line-height:1.5}
+#gToast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
 .sp{position:relative;background:#18181b;border-radius:18px;padding:16px;margin-bottom:16px;overflow:hidden}
 .spc{background:#fff;border-radius:12px;padding:16px;min-height:120px}
 .sl{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--pri),transparent);animation:sm 1.8s ease-in-out infinite;z-index:5;box-shadow:0 0 16px rgba(255,107,53,.5)}
@@ -622,6 +637,8 @@ body.present .judge,body.present .fh{display:none}
 </head>
 <body>
 <div class="bg"></div>
+<!-- 整页级提示：居中于整个屏幕（区别于每台手机内部的 .toast，见 #gToast 样式注释） -->
+<div id="gToast" role="status" aria-live="polite"></div>
 <!-- 窄屏提示（只在 ≤760px 显示，见上方 #mobileHint 样式）：
      本页是"4 台手机并排联动"的桌面/投屏形态，窄屏会横向溢出。
      与其让评委以为页面坏了，不如明确说清"请用电脑打开"。 -->
@@ -2507,6 +2524,20 @@ function calcSettlement(room,bills){
 function getCatIcon(cat){return({food:'🍜',transport:'🚗',hotel:'🏨',ticket:'🎫',shopping:'🛍️'})[cat]||'📦'}
 function genCode(){var code;do{code=String(Math.floor(100000+Math.random()*900000))}while(State.rooms.some(function(r){return r.code===code}));return code}
 function showToast(userId,msg){var t=document.getElementById('toast-'+userId);if(!t)return;t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},1800)}
+/* 整页级提示：居中于**整个屏幕**，而不是某台手机里。
+   用于"不属于任何一台手机"的通知（导览开始/结束、播放控制、工具条人数上下限、
+   V3 演示就绪……）。这类消息以前统一塞给 'u1'，于是永远出现在第一台手机上。
+   ⚠️ 用共享定时器而不是各自 setTimeout：连着触发两条提示时，
+   第一条的旧定时器会把第二条提前关掉。 */
+var _gToastTimer = null;
+function showGlobalToast(msg){
+  var t=document.getElementById('gToast');
+  if(!t)return;
+  t.textContent=msg;
+  t.classList.add('show');
+  if(_gToastTimer)clearTimeout(_gToastTimer);
+  _gToastTimer=setTimeout(function(){t.classList.remove('show');_gToastTimer=null},2200);
+}
 
 /* ============================================================
    复制：**绝不谎报"已复制"**
@@ -2859,8 +2890,8 @@ function setPhoneCount(n){
   fitPhones();          // 台数变了要重新量一次（演示模式下才真的缩放）
   return State.phoneCount;
 }
-function addPhone(){if(State.phoneCount>=4){showToast('u1','最多 4 台手机（4 位成员）');return}setPhoneCount(State.phoneCount+1)}
-function removePhone(){if(State.phoneCount<=1){showToast('u1','至少保留 1 台手机');return}setPhoneCount(State.phoneCount-1)}
+function addPhone(){if(State.phoneCount>=4){showGlobalToast('最多 4 台手机（4 位成员）');return}setPhoneCount(State.phoneCount+1)}
+function removePhone(){if(State.phoneCount<=1){showGlobalToast('至少保留 1 台手机');return}setPhoneCount(State.phoneCount-1)}
 /* ============================================================
    重置：回到"什么都没发生"的初始态
    ------------------------------------------------------------
@@ -3065,7 +3096,7 @@ function seedForJudge() {
   renderPhones();
   syncAll();
   updatePresentBar(0, '样例数据已就绪：点手机里的「国庆东京行」进房间，再试「＋ 记一笔」/「📷 识别入账」/「结算」');
-  showToast('u1', '✅ 已铺好一桌样例数据，直接点手机就行');
+  showGlobalToast('✅ 已铺好一桌样例数据，直接点手机就行');
 }
 
 /* ============================================================
@@ -3095,7 +3126,7 @@ function cycleAutoSpeed() {
   if (b) b.textContent = '⏩ ' + AUTO_SPEED_LABELS[autoSpeed];
   var b2 = document.getElementById('presentSpeed');
   if (b2) b2.textContent = '⏩ ' + AUTO_SPEED_LABELS[autoSpeed];
-  showToast('u1', '⏩ 自动演示速度 ' + AUTO_SPEED_LABELS[autoSpeed]);
+  showGlobalToast('⏩ 自动演示速度 ' + AUTO_SPEED_LABELS[autoSpeed]);
 }
 var autoGate = null;        // 单步模式下当前正在等待放行的 resolve
 var gateWaived = false;     // 「下一步」在闸门注册之前就被点了 —— 先记账，等闸门一注册立刻放行
@@ -3133,15 +3164,15 @@ function autoNext() {
   autoMode = 'step';
   updatePresentControls();
   releaseAutoGate();
-  showToast('u1', '⏭ 单步讲解：再点「下一步」继续，点「继续」恢复自动播放');
+  showGlobalToast('⏭ 单步讲解：再点「下一步」继续，点「继续」恢复自动播放');
 }
 /** 「暂停 / 继续」：单步模式点它就是"恢复自动播放" */
 function toggleAutoPause() {
   if (!autoRunning) return;
-  if (autoMode === 'step') { autoMode = 'run'; updatePresentControls(); releaseAutoGate(); showToast('u1', '▶ 已恢复自动播放'); return; }
+  if (autoMode === 'step') { autoMode = 'run'; updatePresentControls(); releaseAutoGate(); showGlobalToast('▶ 已恢复自动播放'); return; }
   autoMode = autoMode === 'pause' ? 'run' : 'pause';
   updatePresentControls();
-  if (autoMode === 'pause') showToast('u1', '⏸ 已暂停，随时可以接着讲');
+  if (autoMode === 'pause') showGlobalToast('⏸ 已暂停，随时可以接着讲');
 }
 
 /** 取消正在跑的自动演示，并把界面恢复到"开演前"的样子
@@ -3605,7 +3636,7 @@ async function autoDemo() {
 
     clearCaptions();
     say('演示结束 · ' + AUTO_STORYBOARDS + ' 个分镜讲完：从记一笔到清账，再到复盘与导出');
-    showToast('u1', '🎬 自动演示完成');
+    showGlobalToast('🎬 自动演示完成');
     await sleep(2000);
     /* 收官：给评委一屏能读完的结论（也是最好的一张截图） */
     showFinale();
@@ -3989,7 +4020,7 @@ function cycleTourSpeed() {
     tourState.timer = setInterval(tourTick, TOUR_SPEEDS[tourState.speed]);
   }
   updateTourControls();
-  showToast('u1', '⏩ 导览速度 ' + TOUR_SPEED_LABELS[tourState.speed] + '（每步 ' + (TOUR_SPEEDS[tourState.speed] / 1000) + ' 秒）');
+  showGlobalToast('⏩ 导览速度 ' + TOUR_SPEED_LABELS[tourState.speed] + '（每步 ' + (TOUR_SPEEDS[tourState.speed] / 1000) + ' 秒）');
 }
 function tourTick() {
   if (tourState.idx >= TOUR_STEPS.length - 1) { toggleTourAuto(); return; }
@@ -4071,7 +4102,7 @@ function startTour(opts) {
   renderTourStep();
   a11yEnhance(document.getElementById('tourCard'));
   syncModeUi();
-  showToast('u1', '🎬 导览开始 · 共 ' + TOUR_STEPS.length + ' 步（覆盖全部 ' + FEATURES.length + ' 项功能）');
+  showGlobalToast('🎬 导览开始 · 共 ' + TOUR_STEPS.length + ' 步（覆盖全部 ' + FEATURES.length + ' 项功能）');
 }
 function renderTourStep() {
   var step = TOUR_STEPS[tourState.idx];
@@ -4143,7 +4174,7 @@ function renderTourStep() {
   }, 260);
 }
 function tourNext() {
-  if (tourState.idx >= TOUR_STEPS.length - 1) { showToast('u1', '🎉 导览结束，轮到你了'); return tourExit(); }
+  if (tourState.idx >= TOUR_STEPS.length - 1) { showGlobalToast('🎉 导览结束，轮到你了'); return tourExit(); }
   tourState.idx++; renderTourStep();
 }
 function tourPrev() {
@@ -5771,7 +5802,7 @@ Array.prototype.forEach.call(document.querySelectorAll('[data-tour-count]'), fun
      ④ 结清卡片 + 礼貌催账话术
    ============================================================ */
 function startV3Demo() {
-  if (!AI) { showToast('u1', '内核未加载'); return; }
+  if (!AI) { showGlobalToast('内核未加载'); return; }
   resetAll();
   State.phoneCount = Math.max(3, Math.min(USERS.length, State.phoneCount || 1));
   var lbl = document.getElementById('phoneCountLabel'); if (lbl) lbl.textContent = State.phoneCount;
@@ -5842,7 +5873,7 @@ function startV3Demo() {
   var sub = document.getElementById('hdrSub');
   if (sub) sub.textContent = 'V3 一键演示 · 抹零 / 代购不摊 / 多退少补 / 暂估改价 / 结清卡片 —— 点 ▶ 自动演示 或自己点手机';
   syncAll();
-  showToast('u1', '✨ V3 演示已就绪：看「抹零」按钮，再切到结算页看结清卡片');
+  showGlobalToast('✨ V3 演示已就绪：看「抹零」按钮，再切到结算页看结清卡片');
 }
 
 /* ============================================================
