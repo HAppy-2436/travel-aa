@@ -103,7 +103,12 @@ body.present .pshow{
    两种模式下的手机高度都由 fitPhones() 按实测值写内联样式（见该函数），
    下面这行只是保底。 */
 body.present.touring .pshow-narr{display:none}
-body.present.touring .pf{height:calc(100vh - 236px)}
+/* ⚠️ 这里原本有一条 `body.present.touring .pf{height:calc(100vh - 236px)}` —— 已删除。
+   它只在「导览」时生效（body 同时有 present + touring），用 100vh 单独改**高度**、
+   而宽度仍是固定 320px → 手机被压成"方砖"，且窗口高度一变比例就跟着变。
+   这正是用户反馈的「导览时手机比例变化出错」：实测 1366×768 下导览时手机变成
+   320×532（比例 0.6015，正常应为 0.4848），再缩窗口变 0.678。
+   高度只能由 --phone-h（固定设计值 660）决定，适配一律交给 fitPhones() 的**等比 scale**。 */
 /* 演示模式下人名行会被顶部解说栏盖住 → 隐藏它，把"谁在操作"并进字幕条（见 setCaption） */
 body.present .pl{display:none}
 /* ⚠️ 必须禁止 flex 收缩：`flex-wrap:nowrap` + 内容超宽时，flex 会先把手机单元**压缩**
@@ -2944,7 +2949,16 @@ function fitPhones() {
 
   /* ---- ① 纵向的可用高度：顶部（标题/解说条/工具条）与字幕条都按实测算，不写死 calc ---- */
   var top = stage.getBoundingClientRect().top;
-  if (present && bar) { top = bar.offsetHeight + 12; if (wrap) wrap.style.paddingTop = top + 'px'; }
+  if (present && bar) {
+    var barTop = bar.offsetHeight + 12;      // 顶部固定解说栏不占文档流 → 用 padding-top 给它让位
+    if (wrap) wrap.style.paddingTop = barTop + 'px';
+    /* ⚠️ 让位之后要**重新量一次真实顶部**，不能直接用解说栏高度当 top：
+       导览模式下工具栏会重新显示（`body.present.touring .tbar{display:flex}`），
+       舞台被整体往下推约一个工具条的高度；若仍按解说栏高度算，availH 会偏大 →
+       scale 算大 → 手机底部被推出视口。 */
+    var realTop = stage.getBoundingClientRect().top;
+    top = realTop > 0 ? realTop : barTop;
+  }
   var vh = window.innerHeight;
 
   /* ---- ② 量出**自然尺寸**（一行 nowrap、设计高度），再算一个同时满足横竖的 scale ---- */
@@ -4046,6 +4060,9 @@ function startTour(opts) {
   ensureTourDom();
   enterPresent();          // 导览同样进演示模式：一屏装下，不用滚鼠标
   document.body.classList.add('touring');   // 但工具条要留着（前几步要讲演示台）
+  /* ⚠️ 加完 touring 后必须重新量一次：这一步会让工具栏重新显示（present 下默认是隐藏的），
+     布局往下长了一截，不重量就会沿用"工具条还没显示"时的坐标 → 手机被推出视口底部。 */
+  fitPhones();
   tourGen++;               // 新的一代：上一次导览遗留的 260ms 延时回调全部作废
   tourState.idx = 0; tourState.auto = false;
   if (opts && opts.idx != null) tourState.idx = Math.max(0, Math.min(TOUR_STEPS.length - 1, opts.idx));

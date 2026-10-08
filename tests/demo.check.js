@@ -184,7 +184,29 @@ report('★ fitPhones 先量后缩（顺序反了会缩错）', (function () {
 })());
 report('★ 纵向按实测分配：手机高度由 --phone-h 决定（网页版不能出现半截手机）',
   /root\.style\.setProperty\('--phone-h'/.test(html) && /height:var\(--phone-h,660px\)/.test(html) &&
-  /wrap\.style\.paddingTop = top \+ 'px'/.test(html));
+  /* present 下要给顶部固定解说栏让位（padding-top 来自实测的解说栏高度）。
+     这里只认"确实赋了 paddingTop"，不再锚死 `= top + 'px'` 这个字面写法 ——
+     让位偏移量与"舞台的真实顶部"是两个不同的量，不该被写成同一个变量。 */
+  /wrap\.style\.paddingTop\s*=/.test(html));
+
+/* ★ 回归守卫：手机高度**只能**来自 --phone-h（固定设计值 660），不许被 100vh 之类的
+   视口单位单独改。
+   背景：曾经有一条 `body.present.touring .pf{height:calc(100vh - 236px)}`，只在导览时生效
+   （present + touring 同时成立），宽度仍是 320px、高度却跟着窗口变 → 手机被压成"方砖"：
+   实测 1366×768 导览时变成 320×532（比例 0.6015，正常 0.4848），再缩窗口变 0.678。
+   用户原话「导览情况下手机比例变化出错」。比例不变的前提是宽高只能被**同一个 scale** 缩放。 */
+report('★ 手机高度只能来自 --phone-h（导览时不许用 100vh 压扁手机）', (function () {
+  /* ⚠️ 必须先剥掉 CSS 注释再匹配：这条守卫的说明本身就写着那个被删掉的写法
+     （`body.present.touring .pf{height:calc(100vh - 236px)}`），
+     不剥注释会把"注释里提到过"误判成"代码里还有"。 */
+  var css = html.replace(/\/\*[\s\S]*?\*\//g, '');
+  var rules = css.match(/\.pf\{[^}]*height:[^;}]+/g) || [];
+  if (!rules.length) return false;                       // 一条都没匹配到 → 守卫本身失效
+  return rules.every(function (s) { return /var\(--phone-h/.test(s); });
+})());
+
+report('★ 导览加 touring 后必须重新量一次（工具栏重新显示会改变布局）',
+  /classList\.add\('touring'\)[\s\S]{0,600}?fitPhones\(\)/.test(html));
 report('★ 演示解说栏只在 present 下显示（不影响常规视图）',
   /\.pshow\{display:none\}/.test(html) && /body\.present \.pshow\{[\s\S]{0,90}?display:block/.test(html));
 report('★ 演示模式隐藏人名行，并把"谁在操作"并进字幕条（否则会被解说栏盖住）',
