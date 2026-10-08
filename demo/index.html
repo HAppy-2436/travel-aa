@@ -600,10 +600,30 @@ body:not(.touring) .tour-mask,body:not(.touring) .tour-card{display:none!importa
 .judge-tech-body{padding-bottom:18px}
 /* 演示模式下把评委区藏掉：一屏只留手机 */
 body.present .judge,body.present .fh{display:none}
+/* 窄屏提示：本 Demo 的形态是「4 台手机并排实时联动」（桌面 / 投屏），
+   窄屏下品牌行、工具条与手机行会横向溢出。移动端不做重排（改动面大、回归风险高），
+   改为在窄屏给一条明确的提示 —— 避免评委把"排版溢出"误读成"页面坏了"。
+   默认 display:none，桌面渲染与全部验收断言不受影响。 */
+#mobileHint{display:none}
+@media(max-width:760px){
+  #mobileHint{display:block;position:fixed;top:0;left:0;z-index:99999;
+    width:100vw;max-width:100vw;box-sizing:border-box;word-break:break-word;
+    background:#FF6B35;color:#18181b;text-align:center;
+    font:500 13px/1.6 -apple-system,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+    padding:10px 16px 12px;box-shadow:0 6px 24px rgba(0,0,0,.45)}
+  #mobileHint strong{display:block;font-size:15px;font-weight:800;margin-bottom:2px}
+}
 </style>
 </head>
 <body>
 <div class="bg"></div>
+<!-- 窄屏提示（只在 ≤760px 显示，见上方 #mobileHint 样式）：
+     本页是"4 台手机并排联动"的桌面/投屏形态，窄屏会横向溢出。
+     与其让评委以为页面坏了，不如明确说清"请用电脑打开"。 -->
+<div id="mobileHint" role="note">
+  <strong>📱 请用电脑打开（Chrome / Edge）</strong>
+  <span>本 Demo 演示的是「4 台手机实时联动」，需要宽屏才能完整显示，手机竖屏下会溢出。把本链接复制到电脑浏览器打开即可看到完整效果。</span>
+</div>
 <div class="wrap">
   <header class="top">
     <div class="top-brand">
