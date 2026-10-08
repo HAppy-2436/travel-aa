@@ -1,4 +1,4 @@
-/**
+﻿/**
  * run-all.js —— 全量验收：一条命令跑完所有测试（CI 与交接验收的唯一入口）
  *
  * 用法：node tests/run-all.js  或  npm test
@@ -37,13 +37,13 @@ const SUITES = [
   { name: '同步内核单测', file: 'tests/sync.test.js', min: 48, hint: '多窗口合并/墓碑/rev/uid 唯一性' },
   { name: '相对路径检查', file: 'tests/requires.check.js', min: 1, hint: 'require 与 script src 是否可解析' },
   { name: '交付物可打开性', file: 'tests/resource.check.js', min: 22, hint: 'file:// 下外部脚本/渲染/挂钩是否齐备' },
-  { name: 'Demo 完整性', file: 'tests/demo.check.js', min: 240, hint: 'onclick 交叉校验/内核引用/功能清单/评审与模式状态机回归' },
+  { name: 'Demo 完整性', file: 'tests/demo.check.js', min: 260, hint: 'onclick 交叉校验/内核引用/功能清单/评审与模式状态机回归' },
   { name: '服务器集成测试', file: 'tests/server.test.js', min: 70, hint: '真实拉起后端 + 全部路由打点' },
   {
     name: '浏览器验收', file: 'tests/browser.check.js', min: 3,
     hint: '#selftest / #tourtest / #uitest',
     /* 三个挂钩各自还要过 "N/N ALL-PASS"，并保证项数不被偷偷削减 */
-    browser: [['selftest', 22], ['tourtest', 17], ['uitest', 100]],
+    browser: [['selftest', 22], ['tourtest', 18], ['uitest', 110]],
   },
 ];
 

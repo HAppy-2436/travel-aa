@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -67,17 +67,17 @@ body.present .fh{display:none}
    所以导览期间把工具条显示回来，并把手机高度让出这一行，保证仍然一屏装下。 */
 body.present.touring .tbar{display:flex}
 body.present .pu{gap:10px}
-/* 演示模式的纵向高度由 fitPhones() 按实测值直接写在 .pf 的内联样式上；
-   下面的 calc 只是 JS 没跑（无头/量不到）时的保底值。 */
-body.present .pf{height:calc(100vh - 168px)}
-body.present.touring .pf{height:calc(100vh - 236px)}
+/* 手机比例：**高度恒为设计值 660，由 fitPhones() 整体等比缩放**（不再按视口压扁高度，
+   否则 320 宽 × 400 高会变成"方砖"，用户反馈过"手机比例很奇怪"）。
+   下面这行只是 JS 没跑（无头/量不到）时的保底值，和 --phone-h 的默认值一致。 */
+body.present .pf{height:var(--phone-h,660px)}
 
 /* ===== 演示解说栏（评委导向）=====
    问题：自动演示的解说词写进 #hdrSub，而演示模式把 .hdr 整个 display:none 了 ——
    评委看到的是"4 台手机 + 每台一小条字幕"，**既没有产品名、也没有解说、也不知道演到第几步**。
    所以演示模式下单独浮一条固定解说栏，把这三件事补齐：
      · 品牌行（截图/录像脱离上下文也认得出这是什么产品）
-     · 分镜进度（第 N / 24）+ 进度条（评委知道还有多久、现在在哪）
+     · 分镜进度（第 N / 25）+ 进度条（评委知道还有多久、现在在哪）
      · 解说正文（字号 15px、行高 1.6，投影上也读得清）+ 暂停/退出
    高度约 96px，手机高度相应让出，保证仍然一屏装下、不用滚鼠标。 */
 .pshow{display:none}
@@ -228,6 +228,7 @@ button.bdg:hover{background:rgba(255,255,255,.08);color:#fff}
 .mnames{display:flex;flex-wrap:wrap;gap:6px}
 .mname{padding:6px 13px;border:1.5px solid var(--g200);border-radius:100px;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;color:var(--g500);white-space:nowrap;transition:all .2s}
 .mname.ac{background:#18181b;color:#fff;border-color:#18181b}
+.mname.left{border-style:dashed;color:var(--g400);text-decoration:line-through;text-decoration-color:var(--g300)}
 .br{display:flex;align-items:center;padding:12px 0;border-bottom:1px solid var(--g100)}.br:last-child{border-bottom:none}
 .bi{width:40px;height:40px;border-radius:12px;background:var(--g100);display:flex;align-items:center;justify-content:center;font-size:18px;margin-right:12px}
 .bin{flex:1}.bn{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600}.bm{font-family:'Space Grotesk',sans-serif;font-size:10px;color:var(--g400);margin-top:1px}
@@ -235,9 +236,11 @@ button.bdg:hover{background:rgba(255,255,255,.08);color:#fff}
 .bd{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--g200);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-left:10px;font-size:12px;color:var(--g400);transition:all .15s}
 .bd:hover{border-color:var(--red);color:var(--red);background:var(--red-bg)}
 .bbw{margin-bottom:18px}
-.bh{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+/* 预算行：手机设计宽度只有 320px，金额一长（¥13,496.00 / ¥20,000.00 总预算）
+   就会在「总预/算」之间断行。允许这一行折行，数字整块掉到第二行、占满宽度。 */
+.bh{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;flex-wrap:wrap;gap:2px 8px}
 .bl{font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--g400)}
-.bnum{font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;color:var(--g500)}.bnum strong{font-size:18px;color:#18181b}
+.bnum{font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;color:var(--g500);margin-left:auto;white-space:nowrap}.bnum strong{font-size:18px;color:#18181b}
 .bbg{width:100%;height:8px;background:var(--g100);border-radius:4px;overflow:hidden}
 .bf{height:100%;border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1)}
 .bf.safe{background:linear-gradient(90deg,#07C160,#34D399)}.bf.warn{background:linear-gradient(90deg,#FF9500,#FFBB4D)}.bf.over{background:linear-gradient(90deg,#FA5151,#FF7A7A)}
@@ -263,9 +266,20 @@ button.bdg:hover{background:rgba(255,255,255,.08);color:#fff}
 .bin2{flex:1}.bnn{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600}.bnt{font-family:'Space Grotesk',sans-serif;font-size:10px;color:var(--g400)}
 .bam{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700}.bam.pos{color:var(--grn)}.bam.neg{color:var(--red)}
 .trm{display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--g100)}.trm:last-child{border-bottom:none}
-.tsm{width:28px;height:28px;border-radius:50%;background:#18181b;color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;margin-right:12px}
-.ttm{flex:1;display:flex;align-items:center;gap:10px}
-.tnm{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600}
+.trm.done{opacity:.6}
+.trm.silent{opacity:.5}
+.tsm{width:28px;height:28px;border-radius:50%;background:#18181b;color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;margin-right:12px;flex:0 0 auto}
+.ttm{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.troleline{display:flex}
+/* 角色徽标：待转出（我付）/ 待收到（我收）/ 与我无关 —— 一眼看出这笔跟我什么关系 */
+.trole{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.4px;border-radius:100px;padding:2px 8px;border:1px solid transparent}
+.trole.out{background:var(--red-bg);color:var(--red);border-color:rgba(198,64,64,.25)}
+.trole.in{background:var(--grn-bg);color:var(--grn);border-color:rgba(4,107,53,.22)}
+.trole.other{background:var(--g100);color:var(--g400)}
+.tflow{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.tnm{font-family:'Space Grotesk',sans-serif;font-size:12.5px;font-weight:600}
+.tarrow{font-family:'Space Grotesk',sans-serif;font-size:12.5px;font-weight:700;color:var(--pri-ink);white-space:nowrap}
+.tother{font-size:11px;color:var(--g400);flex:0 0 auto}
 .tam{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;color:var(--pri-ink)}
 .abb{display:flex;gap:8px;padding:16px 24px 28px;background:rgba(255,255,255,.92);backdrop-filter:blur(20px) saturate(180%);border-top:1px solid var(--g200)}
 .abb .btn{flex:1;padding:13px 16px}
@@ -622,7 +636,7 @@ body.present .judge,body.present .fh{display:none}
     <span class="narr-text" id="shellNarr">4 台手机 = 4 位同行成员，共用同一本账、操作实时联动 · 想先看全流程就点「▶ 播放演示」（约 1 分半）；想自己点，点「自己上手」先铺一桌样例数据</span>
     <span class="narr-cta">
       <button type="button" class="narr-btn play" onclick="autoDemo()">▶ 播放演示</button>
-      <button type="button" class="narr-btn" onclick="startTour()">逐步导览（15 步）</button>
+      <button type="button" class="narr-btn" onclick="startTour()">逐步导览（<span data-tour-count>16</span> 步）</button>
       <button type="button" class="narr-btn" onclick="seedForJudge()" title="铺一桌样例数据，然后自己点手机试">自己上手</button>
     </span>
     <button type="button" class="narr-btn narr-play" id="shellNext" onclick="autoNext()" title="单步：每点一次前进一个分镜">⏭ 下一步</button>
@@ -647,7 +661,7 @@ body.present .judge,body.present .fh{display:none}
         谁都说不清；<b>外币算不清</b>——日元、泰铢混着记，汇率一波动就扯皮。</p>
         <p>TravelAA 把这三件事收进一本账：<b>一句话 / 一张截图 / 一条携程订单</b>就能入账，
         <b>账恒平</b>（分摊合计恒等于账单金额、净余额合计恒为 0），
-        结算给<b>最少转账笔数</b>，还能标「我转了」把结清闭环。</p>
+        结算给<b>最少转账笔数</b>；收款方看到「待收到」、付款方看到「待转出」，各自在自己手机上确认，结清闭环。</p>
       </div>
 
       <!-- ★ 这一屏的主场：和市面上同类做法**逐项**对比 -->
@@ -695,7 +709,7 @@ body.present .judge,body.present .fh{display:none}
             <li><b>行程即账本</b>：携程订单文本直接解析成机票 / 酒店 / 门票账单，多笔勾选一次入账；
               订单截图也能读。<span>别家要你照着订单手打一遍。</span></li>
             <li><b>算得准、也收得回</b>：分摊合计恒等于账单金额、净余额合计恒为 0；
-              给最少转账笔数；每笔可标「我转了」，进度跟着同步，两个窗口都看得见。</li>
+              给最少转账笔数；<b>收款方标「已收到」、付款方标「已转出」</b>，进度同步，两台手机看到的一样。</li>
             <li><b>旅行专属的那些小事</b>：外币按<b>记账当时</b>的汇率快照；日元 12780 一键抹成 12800
               且差额并入分摊（账不会因凑整而不平）；私账（人情账）不进 AA 但你仍知道自己花了多少；
               有人离队、酒店改价可以事后补一笔调整，原账留痕。</li>
@@ -737,7 +751,7 @@ body.present .judge,body.present .fh{display:none}
         <div class="judge-tech-body">
           <div class="judge-nums">
             <div><b id="jnSuite">9</b><span>套自动化验收</span></div>
-            <div><b id="jnItems">875</b><span>项断言</span></div>
+            <div><b id="jnItems">884</b><span>项断言</span></div>
             <div><b id="jnSelf">—</b><span>页内自检</span></div>
             <div><b id="jnUI">—</b><span>交互验收</span></div>
           </div>
@@ -747,7 +761,7 @@ body.present .judge,body.present .fh{display:none}
           右边两个数字是<b>点「在页面里跑一次自检」后真实跑出来的</b>，不是写死的文案。</p>
           <div class="judge-acts">
             <button class="btn dark" onclick="runSelfTest()">在页面里跑一次自检</button>
-            <button class="btn dark" onclick="startTour()">听 15 步导览</button>
+            <button class="btn dark" onclick="startTour()">听 <span data-tour-count>16</span> 步导览</button>
           </div>
         </div>
       </details>
@@ -766,7 +780,7 @@ body.present .judge,body.present .fh{display:none}
     <div class="pshow-prog"><i id="presentProg"></i></div>
     <span class="pshow-cta">
       <button type="button" class="pshow-btn" onclick="autoDemo()">▶ 播放演示</button>
-      <button type="button" class="pshow-btn" onclick="startTour()">逐步导览（15 步）</button>
+      <button type="button" class="pshow-btn" onclick="startTour()">逐步导览（<span data-tour-count>16</span> 步）</button>
       <button type="button" class="pshow-btn" onclick="seedForJudge()">自己上手（铺样例数据）</button>
     </span>
     <button type="button" class="pshow-btn pshow-play" id="presentSpeed" onclick="cycleAutoSpeed()" title="切换自动演示速度">⏩ 1×</button>
@@ -877,11 +891,50 @@ function myPersonalCNY(userId, roomId) {
      sole   不参与 AA（代购/私人消费，付款人自己承担；语义同 treat 但不计入他人均摊）
    另有 opts.roundedLoss：把金额抹零后的差额并成一笔「抹零损耗」，
    保证 splits 合计恒等于账单金额（账恒平）。 */
+/* ============================================================
+   「有人先走了，剩下的人继续 AA」
+   ------------------------------------------------------------
+   真实旅行里太常见：有人提前飞回去 / 中途有事离队，之后记的账不该再算他，
+   但**已经发生的账照旧留痕**（他之前该摊的一分不少）。
+   做法：给成员打一个 `leftAt` 时间戳（离队时刻），
+     · 这之后**新建**的账单默认只分摊给还在队里的人；
+     · 之前的账单不动（splits 是历史事实，不会被追溯修改）；
+     · 他本人仍在成员表里，结算时该收该付照算 —— 不会"钱凭空消失"。
+   注意是**按创建时间**比，不是按消费日期：离队是一个动作，之后再记的账就不算他。
+   ============================================================ */
+function activeMembersFor(room, atIso) {
+  var all = (room && room.members) || [];
+  var at = atIso || new Date().toISOString();
+  /* 用 `<` 而不是 `<=`：同一毫秒内"标记离队 → 立刻记账"也要算作离队之后（否则偶发把他算回去） */
+  var stay = all.filter(function (m) { return !m.leftAt || String(at) < String(m.leftAt); });
+  /* 全都离队了就别算空集（否则没法分摊）—— 兜底用全体 */
+  return stay.length ? stay : all;
+}
+/* 谁先走了（供 UI 显示与结算说明用） */
+function leftMembers(room) {
+  return ((room && room.members) || []).filter(function (m) { return !!m.leftAt; });
+}
+function toggleMemberLeave(userId, memberId) {
+  var u = USERS.filter(function (x) { return x.id === userId })[0]; if (!u) return;
+  var room = State.rooms.filter(function (r) { return r.id === u._roomId })[0]; if (!room) return;
+  var m = room.members.filter(function (x) { return x.id === memberId })[0]; if (!m) return;
+  if (m.leftAt) {
+    delete m.leftAt;
+    showToast(userId, '↩️ ' + m.name + ' 归队：之后记的账重新算他');
+  } else {
+    m.leftAt = new Date().toISOString();
+    showToast(userId, '🚪 ' + m.name + ' 先离队：之后记的账不再分摊给他（已发生的账不动）');
+  }
+  renderApp(u); syncAll();
+}
+
 function makeBill(room, opts) {
   var amount = Number(opts.amount) || 0;
   var currency = opts.currency || 'CNY';
   var rate = currency === 'CNY' ? 1 : rateOf(currency);
   var members = room.members;
+  /* 默认分摊对象：建这笔账时**还在队里**的人（先走的人不再参与之后的账） */
+  var sharers = opts.splits ? members : activeMembersFor(room, opts.createdAt);
   var splits;
   if (opts.splits) {
     splits = opts.splits;
@@ -890,9 +943,9 @@ function makeBill(room, opts) {
       return { memberId: m.id, memberName: m.name, amount: m.id === opts.payer ? amount : 0 };
     });
   } else {
-    var parts = AI ? AI.allocateEvenly(amount, members.length)
-                   : members.map(function () { return amount / members.length; });
-    splits = members.map(function (m, i) {
+    var parts = AI ? AI.allocateEvenly(amount, sharers.length)
+                   : sharers.map(function () { return amount / sharers.length; });
+    splits = sharers.map(function (m, i) {
       return { memberId: m.id, memberName: m.name, amount: parts[i] };
     });
   }
@@ -1009,9 +1062,9 @@ function renderPhones(){
    评委的视线能跟着动作走（4 台并排时尤其重要）。 */
 var CAPTION = {};
 var presentStep = 0;
-/* 分镜序号从解说词的圈码里取（①…㉔），不需要给 24 个分镜逐个编号 */
-var CIRCLED = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔';
-var AUTO_STORYBOARDS = 24;
+/* 分镜序号从解说词的圈码里取（①…㉕），不需要给 25 个分镜逐个编号 */
+var CIRCLED = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔㉕';
+var AUTO_STORYBOARDS = 25;
 
 function setActing(uid) {
   USERS.forEach(function (u) {
@@ -1097,7 +1150,23 @@ function renderApp(user){
   if(cp==='room')html+='<div class="abb"><button class="btn or" style="flex:1" onclick="phoneGoAdd(\''+user.id+'\',\''+crid+'\')">＋ 记一笔</button><button class="btn lt" style="flex:1.4" onclick="phoneGoCapture(\''+user.id+'\',\''+crid+'\')">📷 识别入账</button><button class="btn lt" style="flex:.85" onclick="phoneGoSettle(\''+user.id+'\',\''+crid+'\')">结算</button></div>';
   else if(cp==='add')html+='<div class="abb"><button class="btn dk" style="flex:1;" onclick="submitBill(\''+user.id+'\',\''+crid+'\')">确认记账</button></div>';
   html+='<div class="mo" id="modal-'+user.id+'"><div class="mm2" role="dialog" aria-modal="true" aria-labelledby="modalTitle-'+user.id+'" tabindex="-1" onclick="event.stopPropagation()"><div class="mh" aria-hidden="true"></div><div class="mhd"><div class="mt" id="modalTitle-'+user.id+'">创建旅行房间</div><button type="button" class="mc" onclick="closeModal(\''+user.id+'\')" aria-label="关闭">✕</button></div><div class="mb" id="modalBody-'+user.id+'"></div></div></div>';
+  /* ⚠️ 重渲染**必须保住手机里的滚动位置**。
+     用户反馈原话：「有时候点一下页面的按钮自动跳转到顶部了，又要重新滑动过，很烦」。
+     根因就是这一行：`app.innerHTML = html` 把整个页面结构换掉，手机内屏那个滚动容器
+     （`.ab`）的 scrollTop 会被重置为 0 —— 你在房间页翻到账单列表底部点一下「✕ / 成员 / 更多选项」，
+     整页就被弹回顶端，得重新往下滑。
+     ⚠️ 只在**同一页**内重渲染时还原：换页（首页→房间→结算…）本来就该从顶部开始，
+        否则会出现"进新页面却停在半中间"的更怪的体验。 */
+  var pageNow = user._page || 'home';
+  var samePage = user._renderedPage === pageNow;
+  var oldAb = app.querySelector('.ab');
+  var keepTop = samePage && oldAb ? oldAb.scrollTop : 0;
   app.innerHTML=html;
+  if (keepTop > 0) {
+    var newAb = app.querySelector('.ab');
+    if (newAb) newAb.scrollTop = keepTop;
+  }
+  user._renderedPage = pageNow;
   /* 页面里大量可点元素是 <div onclick>（房间卡 / 账单行 / 成员胶囊 / 支付人…），
      补 tabindex+role 并交给全局 Enter/空格 处理器，键盘用户才能走完整条流程 */
   a11yEnhance(app);
@@ -1120,10 +1189,28 @@ function renderHome(user,myRooms){
   return html;
 }
 
+/* 是不是「私账（人情账）」：不进 AA、只该给本人看。
+   口径与 AI.groupSpend / groupExpenseBills 保持一致（scope==='personal' 或 splitType==='sole'）。 */
+function isPersonalBill(b) {
+  if (!b) return false;
+  return (b.scope || (b.splitType === 'sole' ? 'personal' : 'group')) === 'personal';
+}
+/* 当前用户在房间里**看得见**的账单：全部集体账 + 自己的私账。
+   ⚠️ 之前直接把房间全部账单铺出来 → 别人的私账（人情账）也显示给所有人，
+      和我们自己写的"私账只有本人可见"直接矛盾（自查发现）。 */
+function visibleBills(roomId, userId) {
+  return roomBills(roomId).filter(function (b) { return !isPersonalBill(b) || b.payer === userId; });
+}
+
 function renderRoomDetail(userId,roomId){
   var room=State.rooms.find(function(r){return r.id===roomId});
   if(!room)return emBack('房间不存在',userId);
-  var bills=State.bills.filter(function(b){return b.roomId===roomId});
+  var allBills=roomBills(roomId);
+  /* 集体账口径：私账不进 AA，所以预算 / 审计 / "笔数"都只看集体账 */
+  var bills=allBills.filter(function(b){return !isPersonalBill(b)});
+  /* 列表口径：集体账 + 我自己的私账 */
+  var listBills=visibleBills(roomId,userId);
+  var hiddenPrivate=allBills.length-listBills.length;   // 别人的私账，不显示（只提示笔数）
   var totalSpent=roomTotalCNY(roomId);
   var hasForeign=bills.some(function(b){return b.currency&&b.currency!=='CNY'});
   var html='<div class="hs" data-feat="room-header" style="padding:8px 0 16px;"><div class="hl">ROOM DETAIL</div><div class="ht">'+esc(room.name)+'</div></div>';
@@ -1153,8 +1240,23 @@ function renderRoomDetail(userId,roomId){
     }).join('')+'</div>';
   }
   html+='<div class="sh" data-feat="members"><div class="st">成员</div><div class="sc">'+room.members.length+' PEOPLE</div></div><div class="mnames">';
-  room.members.forEach(function(m){html+='<div class="mname '+(m.id===userId?'ac':'')+'">'+esc(m.name)+(m.id===userId?' · 我':'')+'</div>';});
+  room.members.forEach(function(m){
+    var left=!!m.leftAt;
+    html+='<div class="mname '+(m.id===userId?'ac':'')+(left?' left':'')+'">'+esc(m.name)+(m.id===userId?' · 我':'')+(left?' · 已离队':'')+'</div>';
+  });
   html+='</div>';
+  /* ---- 有人先走：点名字标记"之后记的账不再算他"（已发生的账不动） ---- */
+  var lefts=leftMembers(room);
+  html+='<div class="os" data-feat="early-leave" style="margin-top:-4px;display:block;">'+
+    '<div style="display:flex;gap:7px;align-items:baseline;"><span>🚪</span><span>有人先走了？点名字 → <b>之后记的账不再分摊给他</b>，已发生的账照旧留痕。</span></div>'+
+    '<div class="pm" style="margin-top:8px;flex-wrap:wrap;overflow:visible;">'+
+    room.members.map(function(m){
+      var on=!!m.leftAt;
+      return '<div class="pi '+(on?'act':'')+'" data-feat="leave-toggle" onclick="toggleMemberLeave(\''+userId+'\',\''+m.id+'\')">'+(on?'🚪 ':'')+esc(m.name)+'</div>';
+    }).join('')+
+    '</div>'+
+    (lefts.length?('<div style="margin-top:8px;font-size:10.5px;color:var(--g500);">已离队：'+lefts.map(function(m){return esc(m.name);}).join('、')+' · 之后的账自动只算剩下 '+(room.members.length-lefts.length)+' 人</div>'):'')+
+    '</div>';
 
   /* ---- 账单详情面板（手动「多退少补」入口） ---- */
   var uh=USERS.filter(function(x){return x.id===userId})[0];
@@ -1185,7 +1287,11 @@ function renderRoomDetail(userId,roomId){
       html+='<div style="display:flex;gap:8px;margin-top:16px;">';
       html+='<button class="btn lt" style="flex:1;" onclick="bdClose(\''+userId+'\')">取消</button>';
       html+='<button class="btn dk" style="flex:1.4;" onclick="bdApply(\''+userId+'\')">应用调整</button>';
-      html+='</div></div>';
+      html+='</div>';
+      /* 删除的第二条路径：账单详情里也能删。
+         走查时"点行 → 进详情 → 想删却找不到入口"是最容易卡住的地方（✕ 在行尾，很多人看不见）。 */
+      html+='<button class="btn lt" style="width:100%;margin-top:8px;color:var(--red);border-color:var(--red);" onclick="askDeleteBill(\''+userId+'\',\''+bill.id+'\',\''+esc(bill.description)+'\')">🗑️ 删除这笔账单'+(bill.payer===userId?'':('（'+esc(bill.payerName||'成员')+'记的）'))+'</button>';
+      html+='</div>';
     }
   }
   /* ---- AI 账单审计（会复盘）---- */
@@ -1198,18 +1304,21 @@ function renderRoomDetail(userId,roomId){
       html+='<div class="mbi" style="margin-bottom:8px;"><div style="font-size:12px;font-weight:600;">⚠️ '+esc(x.message)+'</div><div style="font-size:10px;color:var(--g400);margin-top:4px;">建议：'+esc(x.suggestion)+'</div></div>';
     });
   }
-  html+='<div class="sh" data-feat="bill-list" style="margin-top:16px;"><div class="st">账单记录 / BILLS</div><div class="sc">'+bills.length+' 笔 / ITEMS</div></div>';
-  if(bills.length===0){html+='<div class="em"><div class="ei">📝</div><div class="et">还没有账单</div></div>';}
-  else{bills.slice().reverse().forEach(function(b){
+  html+='<div class="sh" data-feat="bill-list" style="margin-top:16px;"><div class="st">账单记录 / BILLS</div><div class="sc">'+listBills.length+' 笔 / ITEMS</div></div>';
+  if(hiddenPrivate>0)html+='<div class="os" style="margin:-6px 0 8px;"><span>🔒</span><span>另有 '+hiddenPrivate+' 笔别人的私账（人情账）只有本人可见，不在这儿显示</span></div>';
+  if(listBills.length===0){html+='<div class="em"><div class="ei">📝</div><div class="et">还没有账单</div></div>';}
+  else{listBills.slice().reverse().forEach(function(b){
     var amountHtml='¥'+money(b.amount,0);
     if(b.currency&&b.currency!=='CNY')amountHtml=b.currency+' '+money(b.amount,0)+'<div style="font-size:9px;color:var(--g400);font-weight:500;">≈¥'+money(b.cnyAmount,0)+'</div>';
-    var isP=(b.scope||(b.splitType==='sole'?'personal':'group'))==='personal';
-    var tag=isP?'<span style="display:inline-block;margin-left:4px;padding:1px 6px;border-radius:100px;background:var(--g100);color:var(--g500);font-size:10px;font-weight:600;vertical-align:middle;">私账</span>':'';
+    var isP=isPersonalBill(b);
+    var tag=isP?'<span style="display:inline-block;margin-left:4px;padding:1px 6px;border-radius:100px;background:var(--g100);color:var(--g500);font-size:10px;font-weight:600;vertical-align:middle;">我的私账</span>':'';
     var adjTag=b.isAdjustment?'<span style="display:inline-block;margin-left:4px;padding:1px 6px;border-radius:100px;background:var(--amb-bg);color:var(--amb);font-size:10px;font-weight:600;vertical-align:middle;">调整单</span>':'';
-    /* 账单行整行可点 → 打开账单详情（在那儿做「谁该摊这笔」= 多退少补） */
+    /* 账单行整行可点 → 打开账单详情（在那儿做「谁该摊这笔」= 多退少补，也能删除） */
     /* data-feat 让导览能精确高亮"调整单"与"占位单"这两类特殊行（没有独立区块可指） */
     var rowFeat=b.isAdjustment?' data-feat="adjust-bill"':(b.status==='draft'?' data-feat="placeholder-bill"':'');
-    html+='<div class="br"'+rowFeat+' style="cursor:pointer;" onclick="openBillDetail(\''+userId+'\',\''+b.id+'\')"><div class="bi">'+getCatIcon2(b.category)+'</div><div class="bin"><div class="bn">'+esc(b.description)+tag+adjTag+'</div><div class="bm">'+esc(b.payerName)+' · '+(b.timeStr||'刚刚')+' · '+sourceLabel(b.source)+'</div></div><div class="ba">'+amountHtml+'</div><div class="bd" data-feat="delete-bill" onclick="event.stopPropagation();askDeleteBill(\''+userId+'\',\''+b.id+'\',\''+esc(b.description)+'\')">✕</div></div>';
+    /* 删除按钮：**谁的账单都能删**（同一本账、谁记错都能改），文案里写清是谁记的 */
+    var delWho=(b.payer===userId)?'我':(b.payerName||'成员');
+    html+='<div class="br"'+rowFeat+' style="cursor:pointer;" onclick="openBillDetail(\''+userId+'\',\''+b.id+'\')"><div class="bi">'+getCatIcon2(b.category)+'</div><div class="bin"><div class="bn">'+esc(b.description)+tag+adjTag+'</div><div class="bm">'+esc(b.payerName)+' · '+(b.timeStr||'刚刚')+' · '+sourceLabel(b.source)+'</div></div><div class="ba">'+amountHtml+'</div><div class="bd" data-feat="delete-bill" title="删除「'+esc(b.description)+'」（'+delWho+'记的）" onclick="event.stopPropagation();askDeleteBill(\''+userId+'\',\''+b.id+'\',\''+esc(b.description)+'\')">✕</div></div>';
   });}
   return html;
 }
@@ -1860,15 +1969,59 @@ function orderImport(userId,roomId){
    ============================================================ */
 function transferKey(t){ return (t.from||'') + '>' + (t.to||''); }
 
+/* 这笔转账对「当前这个人」是什么角色：
+     out   = 我要转出去（我是付款方）→ 待转出
+     in    = 我要收到（我是收款方）  → 待收到
+     other = 与我无关（别人之间的事）
+   ⚠️ 以前不分角色，所有行都写「我转了」—— 收款方看到的是"我要转给谁"，语义是反的
+      （用户原话：「确认端不能都是要转给谁，别人转给我的要改成待收到，转给别人的是待转出」）。 */
+function transferRole(t, userId) {
+  if (!t) return 'other';
+  if (t.from === userId) return 'out';
+  if (t.to === userId) return 'in';
+  return 'other';
+}
+var ROLE_META = {
+  out: { label: '待转出', en: 'TO PAY', act: '标记已转出', undo: '撤销已转出', done: '已转出', icon: '💸' },
+  in: { label: '待收到', en: 'TO RECEIVE', act: '标记已收到', undo: '撤销已收到', done: '已收到', icon: '💰' },
+  other: { label: '与我无关', en: 'OTHERS', act: '', undo: '', done: '已结清', icon: '·' }
+};
+/* 「我」这次要转出 / 要收到各几笔、多少钱（结清进度按人算，不再只报一个总数） */
+function mySettlePart(room, transfers, userId) {
+  var marks = (room && room.settled) || {};
+  var pick = function (role, done) {
+    return transfers.filter(function (t) {
+      return transferRole(t, userId) === role && (!!marks[transferKey(t)] === done);
+    });
+  };
+  var sum = function (list) { return Math.round(list.reduce(function (s, t) { return s + (Number(t.amount) || 0); }, 0) * 100) / 100; };
+  var outOpen = pick('out', false), outDone = pick('out', true);
+  var inOpen = pick('in', false), inDone = pick('in', true);
+  return {
+    outOpen: outOpen, outDone: outDone, outOpenSum: sum(outOpen), outDoneSum: sum(outDone),
+    inOpen: inOpen, inDone: inDone, inOpenSum: sum(inOpen), inDoneSum: sum(inDone),
+    total: outOpen.length + outDone.length + inOpen.length + inDone.length,
+    allMineDone: (outOpen.length + inOpen.length) === 0 && (outDone.length + inDone.length) > 0
+  };
+}
+
 function toggleSettled(userId, roomId, from, to){
   var room = State.rooms.find(function(r){ return r.id===roomId }); if(!room) return;
   if(!room.settled) room.settled = {};
   var k = from + '>' + to;
-  var who = '';
-  var m = room.members.filter(function(x){ return x.id===from })[0];
-  if(m) who = m.name;
-  if(room.settled[k]) { delete room.settled[k]; showToast(userId, '↩️ 已撤销「' + who + ' 已转账」标记'); }
-  else { room.settled[k] = new Date().toISOString(); showToast(userId, '✅ 已标记「' + who + ' 已转账」'); }
+  var role = transferRole({ from: from, to: to }, userId);
+  var meta = ROLE_META[role] || ROLE_META.other;
+  var otherName = '';
+  var otherId = (role === 'in') ? from : to;
+  var m = room.members.filter(function(x){ return x.id===otherId })[0];
+  if(m) otherName = m.name;
+  if(room.settled[k]) { delete room.settled[k]; showToast(userId, '↩️ 已撤销「' + meta.done + '」'); }
+  else {
+    room.settled[k] = new Date().toISOString();
+    showToast(userId, role === 'in'
+      ? ('✅ 已标记「收到 ' + otherName + ' 的钱」')
+      : (role === 'out' ? ('✅ 已标记「已转给 ' + otherName + '」') : ('✅ 已标记「' + otherName + ' 已结清」')));
+  }
   syncAll();
 }
 
@@ -1910,18 +2063,43 @@ function renderSettle(userId,roomId){
     var label=b.amount>=0?'应收到此金额':'需支付此金额';
     html+='<div class="brm"><div class="bin2"><div class="bnn">'+esc(b.name)+'</div><div class="bnt">'+label+'</div></div><div class="bam '+(b.amount>=0?'pos':'neg')+'">'+sign+'¥'+money(Math.abs(b.amount))+'</div></div>';
   });
-  html+='<div class="sh" style="margin-top:16px;" data-feat="settle-transfers"><div class="st">最简转账</div><div class="sc">'+settlement.transfers.length+' 步 / STEPS</div></div>';
+  html+='<div class="sh" style="margin-top:16px;" data-feat="settle-transfers"><div class="st">最简转账 / TRANSFERS</div><div class="sc">'+settlement.transfers.length+' 步 / STEPS</div></div>';
   var sInfo=settledInfo(room,settlement.transfers);
+  var mine=mySettlePart(room,settlement.transfers,userId);
   if(settlement.transfers.length){
-    /* 结清进度：一眼看出"还剩谁没给" —— 现实里最常问的就是这一句 */
-    html+='<div class="bal '+(sInfo.allDone?'safe':'warn')+'" data-feat="settle-progress">'+(sInfo.allDone
-      ? '🎉 全部结清（'+sInfo.total+' 笔）'
-      : '💸 已结清 '+sInfo.doneCount+' / '+sInfo.total+' 笔 · 还剩 ¥'+money(sInfo.remainAmount)+' 未转')+'</div>';
+    /* 结清进度：**先按"我"的角色说清**（用户反馈：以前只报一个总数，
+       看不出"我到底还要不要给钱、别人欠我的到没到"）。 */
+    if(mine.total===0){
+      html+='<div class="bal safe" data-feat="settle-progress">🙌 这次结算没有你要付或要收的（转账都在别人之间）</div>';
+    } else if(mine.allMineDone){
+      html+='<div class="bal safe" data-feat="settle-progress">🎉 你的部分已结清（转出 '+mine.outDone.length+' 笔 · 收到 '+mine.inDone.length+' 笔）</div>';
+    } else {
+      var partsTxt=[];
+      if(mine.outOpen.length) partsTxt.push('<b>待转出 '+mine.outOpen.length+' 笔 · ¥'+money(mine.outOpenSum)+'</b>');
+      if(mine.inOpen.length) partsTxt.push('<b>待收到 '+mine.inOpen.length+' 笔 · ¥'+money(mine.inOpenSum)+'</b>');
+      if(mine.outDone.length||mine.inDone.length) partsTxt.push('已完成 '+(mine.outDone.length+mine.inDone.length)+' 笔');
+      html+='<div class="bal warn" data-feat="settle-progress">💸 你的部分：'+partsTxt.join('　·　')+'</div>';
+    }
+    /* 全局进度单独一行，避免和"我的部分"混在一起看不懂 */
+    html+='<div class="os" data-feat="settle-progress-all" style="margin:-4px 0 10px;"><span>'+(sInfo.allDone?'🎉':'👥')+'</span><span>'+(sInfo.allDone
+      ? ('全队 '+sInfo.total+' 笔转账已全部结清')
+      : ('全队进度：已结清 '+sInfo.doneCount+' / '+sInfo.total+' 笔 · 还有 ¥'+money(sInfo.remainAmount)+' 在路上'))+'</span></div>';
   }
   settlement.transfers.forEach(function(t,i){
     var k=transferKey(t), done=!!sInfo.done.filter(function(x){return transferKey(x)===k}).length;
-    html+='<div class="trm" style="'+(done?'opacity:.55;':'')+'"><div class="tsm">'+(done?'✓':(i+1))+'</div><div class="ttm"><div class="tnm">'+esc(t.fromName)+'</div><div class="tam">→ ¥'+money(t.amount)+' →</div><div class="tnm">'+esc(t.toName)+'</div></div>'
-      +'<button class="btn '+(done?'lt':'dk')+'" style="flex:0 0 auto;padding:7px 12px;font-size:11px;" onclick="toggleSettled(\''+userId+'\',\''+roomId+'\',\''+t.from+'\',\''+t.to+'\')">'+(done?'↩️ 撤销':'我转了')+'</button></div>';
+    var role=transferRole(t,userId);
+    var meta=ROLE_META[role];
+    /* 每行用箭头说清方向 + 用角色徽标说清"这笔跟我什么关系" */
+    var badge='<span class="trole '+role+'">'+meta.icon+' '+meta.label+'</span>';
+    var action=role==='other'
+      ? '<span class="tother">'+(done?'已结清':'他们之间')+'</span>'
+      : '<button class="btn '+(done?'lt':'dk')+'" style="flex:0 0 auto;padding:7px 10px;font-size:11px;" onclick="toggleSettled(\''+userId+'\',\''+roomId+'\',\''+t.from+'\',\''+t.to+'\')">'+(done?('↩️ '+meta.undo):meta.act)+'</button>';
+    html+='<div class="trm '+(done?'done':'')+(role==='other'?' silent':'')+'"><div class="tsm">'+(done?'✓':(i+1))+'</div>'
+      +'<div class="ttm"><div class="troleline">'+badge+'</div>'
+      +'<div class="tflow"><span class="tnm">'+esc(t.fromName)+(t.from===userId?' （我）':'')+'</span>'
+      +'<span class="tarrow">→ ¥'+money(t.amount)+' →</span>'
+      +'<span class="tnm">'+esc(t.toName)+(t.to===userId?' （我）':'')+'</span></div></div>'
+      +action+'</div>';
   });
   if(settlement.transfers.length>0)html+='<div style="margin-top:16px;display:flex;gap:8px;"><button class="btn lt" style="flex:1;" onclick="copySettle(\''+userId+'\',\''+roomId+'\')">📋 复制方案</button><button class="btn dk" style="flex:1;" onclick="copyReport(\''+userId+'\',\''+roomId+'\')">📄 旅行报告</button></div>';
 
@@ -2298,8 +2476,14 @@ function syncAll(){USERS.slice(0,State.phoneCount).forEach(function(u){renderApp
 
 function askDeleteBill(userId,billId,desc){
   pendingDelete[userId]={userId:userId,billId:billId};
+  var bill=State.bills.filter(function(b){return b.id===billId})[0];
+  var byMe=!!(bill&&bill.payer===userId);
+  var byName=bill?(byMe?'你':(bill.payerName||'其他成员')):'';
   var title=document.getElementById('confirmTitle-'+userId);var d=document.getElementById('confirmDesc-'+userId);
-  if(title)title.textContent='删除账单？';if(d)d.textContent='「'+desc+'」将被永久删除';
+  if(title)title.textContent='删除账单？';
+  /* 文案里说清"这是谁记的" —— 同一本账里的账单人人都能删（谁记错都能改），
+     但要让人知道自己在删谁记的那笔，不能一点就没了别人的东西。 */
+  if(d)d.textContent='「'+desc+'」'+(bill?('（'+byName+'记的）'):'')+'将被永久删除，4 台手机会同步消失';
   var overlay=document.getElementById('confirm-'+userId);if(overlay)overlay.classList.add('show');
   a11yOpen(overlay);
 }
@@ -2443,6 +2627,7 @@ function resetAll(opts){
     u._narr=null;u._narrLoading=false;u._listening=false;u._sampleIdx=null;u._visionResult=null;
     /* 这两个以前漏了：关闭的"更多选项"、打开的"这笔谁该摊"面板会留到下一位观众 */
     u._adv=false;u._bd=null;
+    u._renderedPage=null;      // 手机内滚动位置还原用（见 renderApp）
   });
   ocrState={};pendingDelete={};
   if(typeof clearCaptions==='function')clearCaptions();
@@ -2471,88 +2656,71 @@ function resetAll(opts){
         解说栏在导览模式下会更矮）。
    量不到宽度时（无头环境 / 布局未就绪）整体跳过，不做任何缩放。
    ============================================================ */
+/* ---- ⑵ 手机比例：**只做等比缩放** ----
+   用户反馈原话：「修改功能演示的手机比例，很奇怪」。
+   根因：以前横向用 transform 等比缩、纵向却单独改 --phone-h（396~680），
+   宽永远是 320 → 屏幕矮的时候手机被压成 320×400 的"方砖"，完全不像手机。
+   现在改成：手机固定设计尺寸（宽 320 / 高 660，比例 1:2.06 与真机接近），
+   整体用一个 scale 同时适配横竖两个方向 —— 比例永远不变，只是"整体大小"变。
+   好处还有：手机内部的排版永远按 320 宽度排版，不会因为窗口变矮而重排错位。 */
 function fitPhones() {
   var stage = document.getElementById('phonesStage');
   if (!stage) return 1;
   var wrap = document.querySelector('.wrap');
   var bar = document.getElementById('presentBar');
   var root = document.documentElement;
+  var units = stage.children;
   var reset = function () {
     stage.style.transform = '';
     stage.style.transformOrigin = '';
     stage.style.flexWrap = '';
+    stage.style.height = '';
     root.style.removeProperty('--phone-h');
     if (wrap) wrap.style.paddingTop = '';
   };
-  if (!stage.clientWidth) return 1;           // 量不到宽度就别猜（jsdom 等无头环境）
+  if (!stage.clientWidth || !units.length) return 1;   // 量不到宽度就别猜（jsdom 等无头环境）
 
   reset();
   var present = document.body.classList.contains('present');
-  /* ---- ① 纵向：把手机高度设成"刚好填满剩余的视口高度" ----
-     这是网页版最要紧的一条：评委打开网页时**不该看到半截手机**。
-     顶部（标题/解说条/工具条）与字幕条的高度都是实测的，不写死 calc —— 它们会随
-     模式（演示/常规）、内容（解说几行）变化。 */
+  var DESIGN_H = 660;                     // 设计高度；宽度在 CSS 里定死 320px
+  root.style.setProperty('--phone-h', DESIGN_H + 'px');
+
+  /* ---- ① 纵向的可用高度：顶部（标题/解说条/工具条）与字幕条都按实测算，不写死 calc ---- */
   var top = stage.getBoundingClientRect().top;
   if (present && bar) { top = bar.offsetHeight + 12; if (wrap) wrap.style.paddingTop = top + 'px'; }
-  var unit = stage.children[0];
-  var below = 0;
-  if (unit) {
-    var cap = unit.querySelector('.cap');
-    if (cap && cap.offsetHeight) below += cap.offsetHeight + 10;
-    var pl = unit.querySelector('.pl');
-    if (pl && pl.offsetHeight) below += pl.offsetHeight + 10;
-  }
   var vh = window.innerHeight;
-  var want = vh - top - below - 10;
-  /* 手机高度上下限：下限是"再矮就不像手机了"的底线（网页版首屏装得下比比例好看更重要），
-     上限是"窗口很高时也不必把手机拉长"。
-     ⚠️ 这两个常量必须和下面自校正循环用的是同一份，否则循环会被下限卡住、
-        明明还超出 20px 却怎么也收不下去（实测踩过）。 */
-  var PHONE_MIN = 396, PHONE_MAX = 680;
-  var phoneH = Math.max(PHONE_MIN, Math.min(PHONE_MAX, Math.round(want)));
-  root.style.setProperty('--phone-h', phoneH + 'px');
 
-  /* ---- ② 横向：装不下就整体等比缩小（4 台永远同一行、不裁边） ----
-     在演示模式下由 CSS 强制 nowrap；常规模式下如果缩得太多（<0.8，字就看不清了）
-     就干脆允许换行、让页面横向滚动，而不是把字缩成蚂蚁。 */
-  var units = stage.children;
-  var scale = 1;
-  if (units && units.length >= 2) {
-    stage.style.flexWrap = 'nowrap';
-    var first = units[0].getBoundingClientRect();
-    var last = units[units.length - 1].getBoundingClientRect();
-    var need = last.right - first.left;
-    var avail = stage.clientWidth;
-    if (need > 0 && avail > 0) {
-      var s = Math.min(1, (avail - 4) / need);
-      if (s >= 0.995) {
-        stage.style.flexWrap = '';
-      } else if (!present && s < 0.8) {
-        stage.style.flexWrap = '';                                    // 宁可换行，也不把字缩小
-      } else {
-        stage.style.transformOrigin = 'top left';
-        stage.style.transform = 'translateX(' + (avail * (1 - s) / 2).toFixed(1) + 'px) scale(' + s.toFixed(4) + ')';
-        scale = s;
-      }
-    } else {
-      stage.style.flexWrap = '';
-    }
+  /* ---- ② 量出**自然尺寸**（一行 nowrap、设计高度），再算一个同时满足横竖的 scale ---- */
+  stage.style.flexWrap = 'nowrap';
+  var first = units[0].getBoundingClientRect();
+  var last = units[units.length - 1].getBoundingClientRect();
+  var needW = last.right - first.left;
+  var needH = 0;
+  for (var i = 0; i < units.length; i++) {
+    var h = units[i].getBoundingClientRect().height;
+    if (h > needH) needH = h;
   }
+  var availW = stage.clientWidth;
+  var availH = vh - top - 8;
+  var s = 1;
+  if (needW > 0 && availW > 0) s = Math.min(s, (availW - 4) / needW);
+  if (needH > 0 && availH > 0) s = Math.min(s, availH / needH);
 
-  /* ---- ③ 自校正：量**真实渲染出来的底边**，超了就收、空着就放 ----
-     上面算的 want 只是估算（顶部高度、字幕条行数、缩放都会影响最终结果），
-     与其把公式凑准，不如量一次再修 —— 这样任何模式/任何窗口都稳。 */
-  if (units && units.length) {
-    for (var pass = 0; pass < 4; pass++) {
-      var over = units[0].getBoundingClientRect().bottom - (vh - 8);
-      if (Math.abs(over) < 3) break;
-      var next = Math.max(PHONE_MIN, Math.min(PHONE_MAX, phoneH - Math.round(over / scale)));
-      if (next === phoneH) break;
-      phoneH = next;
-      root.style.setProperty('--phone-h', phoneH + 'px');
-    }
+  /* 缩得太小字就看不清了：
+       演示模式要"一屏装下"，所以给一个更低的兜底（宁可留点边也不翻天）；
+       常规模式本来就允许页面滚动，所以低于下限就干脆不缩、交给滚动。 */
+  var FLOOR = present ? 0.5 : 0.75;
+  if (s < FLOOR) {
+    if (present) s = FLOOR;
+    else { s = 1; stage.style.flexWrap = ''; }
   }
-  return scale;
+  if (s < 0.995) {
+    stage.style.transformOrigin = 'top left';
+    stage.style.transform = 'translateX(' + Math.max(0, (availW - needW * s) / 2).toFixed(1) + 'px) scale(' + s.toFixed(4) + ')';
+    /* 缩放只是视觉变换，布局高度还是原来的 —— 不收掉就会出现"明明看得见却还能滚"的假滚动条 */
+    stage.style.height = Math.round(needH * s) + 'px';
+  }
+  return s;
 }
 window.addEventListener('resize', function () { fitPhones(); });
 
@@ -2736,7 +2904,7 @@ async function autoDemo() {
   var myGen = autoGen;
   /* 每个 await 都是一个检查点：① 被取消（重置/重开）立刻退出；② 暂停时原地等；
      ③ 单步模式下，新分镜的第一处 await 会设闸，等人点「下一步」。
-     这样脚本里 24 个分镜不用逐个改。 */
+     这样脚本里 25 个分镜不用逐个改。 */
   var sleep = function (ms) {
     var deadline = Date.now() + ms * AUTO_SPEEDS[autoSpeed];
     /* 本处 await 是否要设闸：只有"新分镜刚被 say() announce 过"的第一个 await 才算，
@@ -3031,20 +3199,88 @@ async function autoDemo() {
     goPhone('u1', 'settle');
     await sleep(2000);
 
-    /* ⑳ u4 标记「我转了」→ 结清闭环（新增功能） */
-    say('⑳ 结清闭环：u4 点「我转了」打勾 → 进度变成"已结清 N / M 笔 · 还剩 ¥xxx"，两个窗口都看得见，也能撤销');
-    setCaption('u4', '⑳ 结清闭环：标记已转账');
-    goPhone('u4', 'settle');
-    await sleep(1400);
+    /* ⑳ 结清闭环：**每个人从自己的角度看**——他要转出、我要收到，两边都看得见（新增：分角色） */
     var st4s = calcSettlement(rm, State.bills.filter(function (b) { return b.roomId === demoRoomId; }));
+    var payer4 = null, payee4 = null;
     if (st4s.transfers.length) {
-      var t0 = st4s.transfers[0];
-      toggleSettled('u4', demoRoomId, t0.from, t0.to);
-      await sleep(1400);
-      hold(20, 'u4', '⑳ 结清闭环：' + t0.fromName + ' → ' + t0.toName + ' 已标为已转账');
+      payee4 = st4s.transfers[0].to;                       // 收钱的那位（通常是小明，他垫得最多）
+      payer4 = st4s.transfers.filter(function (t) { return t.from === 'u2'; })[0];
+      if (!payer4) payer4 = st4s.transfers[0];
     }
-    goPhone('u4', 'settle');
+    if (payee4) {
+      var payeeName = (rm.members.filter(function (m) { return m.id === payee4; })[0] || {}).name || '收款人';
+      var mineIn = mySettlePart(rm, st4s.transfers, payee4);
+      say('⑳ 结清闭环（收钱方视角）：' + payeeName + ' 的结算页写的是「待收到 ' + mineIn.inOpen.length +
+        ' 笔 · ¥' + money(mineIn.inOpenSum) + '」—— 不是笼统的"我转了"，谁该给谁、给了没给，一台手机说清');
+      setCaption(payee4, '⑳ 待收到 ' + mineIn.inOpen.length + ' 笔');
+      goPhone(payee4, 'settle');
+      await sleep(2200);
+    }
+    if (payer4) {
+      var mineOut = mySettlePart(rm, st4s.transfers, payer4.from);
+      say('⑳ 结清闭环（付钱方视角）：' + payer4.fromName + ' 那边写的是「待转出 ' + mineOut.outOpen.length +
+        ' 笔 · ¥' + money(mineOut.outOpenSum) + '」→ 点「标记已转出」');
+      setCaption(payer4.from, '⑳ 待转出：' + payer4.fromName + ' → ' + payer4.toName);
+      goPhone(payer4.from, 'settle');
+      await sleep(1600);
+      toggleSettled(payer4.from, demoRoomId, payer4.from, payer4.to);
+      await sleep(1600);
+      /* 打勾之后：两边看到的进度必须一致（一台标、另一台同步） */
+      if (payee4) goPhone(payee4, 'settle');
+      var stAfter = calcSettlement(rm, State.bills.filter(function (b) { return b.roomId === demoRoomId; }));
+      var si = settledInfo(rm, stAfter.transfers);
+      hold(20, payer4.from, '⑳ 已标记转出 → 全队 ' + si.doneCount + ' / ' + si.total + ' 笔，收钱那台同步看得到');
+      await sleep(1600);
+      /* 剩下几笔各自在自己的手机上确认 —— 一台标、其它手机同步，最后**全部结清**收尾。
+         以前演示只标了一笔就结束，评委看不出"到底结没结"（用户原话：
+         「大家不是一起结算的，而且还有一个人没结算，搞不清楚是大家钱都算好了还是有人先走了」）。 */
+      var rest = stAfter.transfers.filter(function (t) { return !rm.settled || !rm.settled[transferKey(t)]; });
+      for (var ri = 0; ri < rest.length; ri++) {
+        var rr = rest[ri];
+        var hasPhone = USERS.slice(0, State.phoneCount).some(function (u) { return u.id === rr.from; });
+        if (!hasPhone) continue;
+        goPhone(rr.from, 'settle');
+        await sleep(1200);
+        toggleSettled(rr.from, demoRoomId, rr.from, rr.to);
+        await sleep(1200);
+      }
+      if (payee4) goPhone(payee4, 'settle');
+      await sleep(1400);
+      var si2 = settledInfo(rm, calcSettlement(rm, State.bills.filter(function (b) { return b.roomId === demoRoomId; })).transfers);
+      hold(20, payee4 || payer4.from, '⑳ 全队 ' + si2.doneCount + ' / ' + si2.total + ' 笔已结清（每笔都是各自在自己手机上确认的）');
+      await sleep(1600);
+      say('⑳ 结算不再有悬念：收款方看到「待收到」、付款方看到「待转出」，标错可撤销 —— 每笔谁确认的一目了然');
+      await sleep(1800);
+    }
+
+    /* ㉕ 有人先走，剩下的人继续 AA（本轮新增场景） */
+    say('㉕ 有人先走：小王第 3 天先飞回去 → 在成员区点一下他的名字标「已离队」');
+    setCaption('u1', '㉕ 有人先走：小王先离队');
+    goPhone('u1', 'room');
     await sleep(1400);
+    toggleMemberLeave('u1', 'u4');
+    await sleep(1800);
+    say('㉕ 之后记的账**只分摊给还在队里的 3 个人**；小王之前的账照旧留痕，一分不少');
+    goPhone('u1', 'add');
+    var fL = USERS[0]._form || (USERS[0]._form = { amount: '', desc: '', category: 'food', payer: 'u1', splitType: 'equal', currency: 'CNY' });
+    fL.amount = '600'; fL.desc = '剩下 3 人的晚餐'; fL.category = 'food';
+    fL.payer = 'u1'; fL.splitType = 'equal'; fL.currency = 'CNY'; fL.rounded = false;
+    renderApp(USERS[0]);
+    await sleep(1400);
+    submitBill('u1', demoRoomId);
+    await sleep(1400);
+    goPhone('u1', 'room');
+    await sleep(1600);
+    var newBillL = State.bills[State.bills.length - 1];
+    var sharersL = (newBillL && newBillL.splits ? newBillL.splits.length : 0);
+    hold(25, 'u1', '㉕ 新账只算 ' + sharersL + ' 人（小王不在里面），老账没动');
+    await sleep(1800);
+    say('㉕ 结算时小王仍然在名单里（他之前该摊的照算）—— 不会有人"先走了账就凭空消失"');
+    goPhone('u4', 'settle');
+    await sleep(1800);
+
+    clearCaptions();
+    say('演示结束 · 25 个分镜讲完：从记一笔到清账，再到复盘与导出');
 
     /* ㉑ 结清卡片 + 礼貌催账话术 */
     setCaption('u1', '㉑ 结清卡片 + 催账话术');
@@ -3071,7 +3307,7 @@ async function autoDemo() {
     await sleep(2000);
 
     clearCaptions();
-    say('演示结束 · 24 个分镜讲完：从记一笔到清账，再到复盘与导出');
+    say('演示结束 · ' + AUTO_STORYBOARDS + ' 个分镜讲完：从记一笔到清账，再到复盘与导出');
     showToast('u1', '🎬 自动演示完成');
     await sleep(2000);
     /* 收官：给评委一屏能读完的结论（也是最好的一张截图） */
@@ -3106,7 +3342,7 @@ async function autoDemo() {
 /* ============================================================
    收官总结：演示结束后给评委一屏能读完的结论
    ------------------------------------------------------------
-   为什么需要：24 个分镜看完，评委记住的往往是"4 台手机在动"，
+   为什么需要：25 个分镜看完，评委记住的往往是"4 台手机在动"，
    却记不住"到底解决了什么、算得准不准"。这里把**真实算出来的数字**
    （不是写死的文案）摆在一屏里：总消费 / 人均 / 最少转账笔数 / 账恒平，
    再列一遍五层能力，最后给一句定位。
@@ -3143,7 +3379,7 @@ function showFinale() {
       '<div class="finale-n"><div class="finale-l">账恒平</div><div class="finale-v ' + (st.balanced ? 'ok' : 'bad') + '">' + (st.balanced ? '✅ 净余额合计 0' : '⚠️ 待核对') + '</div></div>' +
     '</div>' +
     '<div class="finale-chips">' + caps.map(function (c) { return '<span class="finale-chip"><b>' + c[0] + '</b>' + c[1] + '</span>'; }).join('') + '</div>' +
-    /* 收官一句差异化：评委看完 24 个分镜，最容易记住的是"它和别家到底差在哪"。 */
+    /* 收官一句差异化：评委看完 25 个分镜，最容易记住的是"它和别家到底差在哪"。 */
     '<div class="finale-cmp">和市面上的做法比：<b>收款工具</b>只解决"把钱收上来"，<b>通用分账</b>只解决"算得平"；' +
       'TravelAA 多解决两件 —— <b>记不烦</b>（说一句 / 截图 / 携程订单直接入账）和<b>有交代</b>（账恒平 + 最简转账 + 复盘报告）。</div>' +
     '<div class="finale-note">另计：' + personalCount + ' 笔私账（人情账）不进 AA、只有本人可见；' + adjCount + ' 笔调整单承载「多退少补 / 暂估改价」，原账全部留痕。' +
@@ -3174,7 +3410,7 @@ var NARR_IDLE = '4 台手机 = 4 位同行成员，共用同一本账、操作�
 /* 给评委看的验收数字。**只有一个地方要维护**（`node tests/run-all.js` 的实际输出），
    每次加测试后改这里；`tests/demo.check.js` 会检查这三个数还在、没被写成占位符。
    页内自检/交互验收的数字不写死 —— 点「🩺 自检」后会用**真实跑出来的结果**覆盖。 */
-var SUITE_STATS = { suites: 9, items: 875 };
+var SUITE_STATS = { suites: 9, items: 884 };
 function fillJudgeStats() {
   var set = function (id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
   set('jnSuite', String(SUITE_STATS.suites));
@@ -3206,6 +3442,7 @@ var FEATURES = [
   { id: 'room-create-join', name: '创建房旅行房间 + 6 位房间号加入' },
   { id: 'budget', name: '人均预算 · 燃烧率 · 超支预测' },
   { id: 'members', name: '成员管理（未结清不能移除）' },
+  { id: 'early-leave', name: '有人先走：之后记的账不再分摊给他，已发生的账留痕' },
   { id: 'ai-parse', name: '会听①：一句话记账（口语数字归一化）' },
   { id: 'voice', name: '会听②：语音输入' },
   { id: 'manual', name: '手动填表记账（金额是唯一必填）' },
@@ -3230,7 +3467,7 @@ var FEATURES = [
   { id: 'settle-total', name: '会算账：一键清账 + 账恒平' },
   { id: 'balances', name: '各人应收应付' },
   { id: 'settle-transfers', name: '最简转账（贪心，笔数最少）' },
-  { id: 'settle-progress', name: '结清闭环：标记「已转账 / 撤销」' },
+  { id: 'settle-progress', name: '结清闭环：待转出 / 待收到 分角色标记 + 撤销' },
   { id: 'settle-readiness', name: '结算前置校验（占位/调整单提示）' },
   { id: 'share-card', name: '结清卡片（可复制发群里）' },
   { id: 'reminder', name: '礼貌催账话术' },
@@ -3332,12 +3569,12 @@ function tourSetup(uid, page) {
 }
 
 /* ============================================================
-   一键导览（演讲者模式）：**15 步**，覆盖全部 40 项功能
+   一键导览（演讲者模式）：**16 步**，覆盖全部 41 项功能
    ------------------------------------------------------------
    两条设计原则（都是被反馈逼出来的）：
      ① **同类功能合并**成一步。29 步一屏一个功能太碎，讲的人累、听的人散；
         把"币种/分类/分摊"并在一步、"改分摊/调整单/占位"并在一步，
-        步数减半而功能一项不少（40/40 仍由 tourCoverage() 强制校验）。
+        步数减半而功能一项不少（41/41 仍由 tourCoverage() 强制校验）。
      ② 每步都要有一个人在做这件事。4 台手机各有 3~4 个环节，
         不允许出现"第 4 个人啥都不干"。
    高亮走 data-feat 语义锚点而不是样式类名，排版重构不会让高亮失效。
@@ -3354,6 +3591,15 @@ var TOUR_STEPS = [
   { sel: '#app-u1 [data-feat="room-header"]', covers: ['room-create-join', 'budget', 'members'], title: '房间首页：房间号 · 预算 · 成员',
     script: '小明创建「国庆东京行」拿到 6 位房间号 888666，小红、小李、小王各自输房间号加入，全员共享一本账。往下依次是：人均预算 × 人数 = 总预算的燃烧率与"日均还能花多少"，以及成员区（未结清前不能把成员移出，否则那笔钱会凭空消失）。',
     before: function () { tourSetup('u1', 'room'); } },
+
+  { sel: '#app-u1 [data-feat="early-leave"]', covers: ['early-leave'], title: '有人先走：剩下的人继续 AA',
+    script: '旅行里最常见的一幕：小王第 3 天先飞回去。点一下他的名字标「已离队」—— 之后记的账默认只分摊给还在队里的 3 个人，**已经发生的账照旧留痕**（他之前该摊的一分不少）；结算时他仍然在名单里，不会出现"钱凭空消失"。点第二下就归队。',
+    before: function () {
+      var u = tourSetup('u1', 'room');
+      var room = State.rooms.filter(function (r) { return r.id === u._roomId; })[0];
+      if (room) room.members.forEach(function (m) { delete m.leftAt; });   // 幂等：每次讲到这里都是"未离队"状态
+      renderApp(u);
+    } },
 
   { sel: '#app-u1 [data-feat="ai-parse"]', covers: ['ai-parse', 'manual', 'payer'], title: '会听：一句话记账（也可以手填）',
     script: '「打车去机场86块，我垫的，和小红小李平分」—— 口语数字自动归一化，金额、分类、付款人、分摊对象一次填好。不想说话就直接填：金额是唯一必填项，付款人默认自己，点一下就能改成"这顿是他垫的"。',
@@ -3623,7 +3869,7 @@ function tourTeardown() {
   var card = document.getElementById('tourCard');
   if (card) { card.style.display = 'none'; card.classList.remove('up'); }
   /* 只有"真的在导览"时才把解说条复位。否则演示刚结束那句
-     「演示结束 · 24 个分镜讲完…」会被顺手抹掉。 */
+     「演示结束 · N 个分镜讲完…」会被顺手抹掉。 */
   if (was) { presentStep = 0; updatePresentBar(0, NARR_IDLE); }
   a11yClosed();
   syncModeUi();
@@ -4430,23 +4676,51 @@ function runUITest() {
       var room = ensureDemoRoom();
       var bills = State.bills.filter(function (b) { return b.roomId === room.id; });
       var st = calcSettlement(room, bills);
-      if (!st.transfers.length) { add('★ 结算闭环：标记已转账 → 进度更新 → 可撤销', false, '当前没有转账方案可标'); return; }
+      if (!st.transfers.length) { add('★ 结算闭环：标记已结清 → 进度更新 → 可撤销', false, '当前没有转账方案可标'); return; }
       var t = st.transfers[0];
       var before = settledInfo(room, st.transfers).doneCount;
       goPhone('u1', 'settle');
       toggleSettled('u1', room.id, t.from, t.to);
       var mid = settledInfo(room, st.transfers);
-      var line = document.querySelector('#app-u1 [data-feat="settle-progress"]');
-      var txt = line ? line.textContent.trim() : '';
+      goPhone('u1', 'settle');
+      var allLine = document.querySelector('#app-u1 [data-feat="settle-progress-all"]');
+      var allTxt = allLine ? allLine.textContent.trim() : '';
       var marked = !!(room.settled && room.settled[t.from + '>' + t.to]);
       toggleSettled('u1', room.id, t.from, t.to);
       var after = settledInfo(room, st.transfers).doneCount;
-      add('★ 结算闭环：标记已转账 → 进度更新 → 可撤销',
-        marked && mid.doneCount === before + 1 && after === before && /已结清\s*1\s*\//.test(txt),
-        before + ' → ' + mid.doneCount + ' → ' + after + ' · 「' + txt + '」');
+      add('★ 结算闭环：标记已结清 → 进度更新 → 可撤销',
+        marked && mid.doneCount === before + 1 && after === before && /已结清\s*1\s*\//.test(allTxt),
+        before + ' → ' + mid.doneCount + ' → ' + after + ' · 全队「' + allTxt.slice(0, 28) + '」');
       /* 撤销后必须真的清掉，否则"已转"会永远留着 */
       add('★ 结算闭环：撤销后房间状态里不留痕迹',
         !room.settled || !room.settled[t.from + '>' + t.to], JSON.stringify(room.settled || {}));
+
+      /* ---- 18b. 结算端必须**分角色**：我要给的是"待转出"，别人要给我的是"待收到" ----
+         用户原话：「确认端不能都是要转给谁，别人转给我的要改成待收到，转给别人的是待转出」。 */
+      (function () {
+        var mineOut = st.transfers.filter(function (x) { return x.from === 'u1'; }).length;
+        var mineIn = st.transfers.filter(function (x) { return x.to === 'u1'; }).length;
+        var others = st.transfers.length - mineOut - mineIn;
+        goPhone('u1', 'settle');
+        var appU1 = document.querySelector('#app-u1');
+        var domOut = appU1.querySelectorAll('.trm .trole.out').length;
+        var domIn = appU1.querySelectorAll('.trm .trole.in').length;
+        var domOther = appU1.querySelectorAll('.trm .trole.other').length;
+        var abTxt = appU1.querySelector('.ab').textContent;
+        var btnOut = mineOut === 0 || /标记已转出/.test(abTxt);
+        var btnIn = mineIn === 0 || /标记已收到/.test(abTxt);
+        /* 换个人看：别人那台手机里"我"的角色也应该跟着换 */
+        var otherOK = ['u2', 'u3', 'u4'].every(function (uid) {
+          goPhone(uid, 'settle');
+          var n = st.transfers.filter(function (x) { return x.from === uid; }).length;
+          return document.querySelectorAll('#app-' + uid + ' .trm .trole.out').length === n;
+        });
+        add('★ 结算端分角色：待转出 / 待收到 / 与我无关 与"我"的实际关系一致',
+          domOut === mineOut && domIn === mineIn && domOther === others && btnOut && btnIn && otherOK,
+          'u1 待转出 ' + domOut + '/' + mineOut + ' · 待收到 ' + domIn + '/' + mineIn +
+          ' · 与我无关 ' + domOther + '/' + others + ' · 各手机角色跟随 ' + otherOK);
+        goPhone('u1', 'settle');
+      })();
     })();
 
     /* 19. 导出 CSV：纯函数可校验；无头环境没有 Blob 时也不能抛 */
@@ -4584,7 +4858,8 @@ function runUITest() {
       var stepTxt = (document.getElementById('presentStep') || {}).textContent || '';
       var narrTxt = (document.getElementById('presentNarr') || {}).textContent || '';
       var progW = (document.getElementById('presentProg') || {}).style.width || '';
-      add('★ 解说栏显示分镜进度（第 N / 24）', /分镜\s*\d+\s*\/\s*24/.test(stepTxt), '「' + stepTxt + '」');
+      add('★ 解说栏显示分镜进度（第 N / ' + AUTO_STORYBOARDS + '）',
+        new RegExp('分镜\\s*\\d+\\s*/\\s*' + AUTO_STORYBOARDS).test(stepTxt), '「' + stepTxt + '」');
       add('★ 解说栏显示解说正文（评委读得到这一步在演什么）',
         narrTxt.length > 8 && narrTxt !== NARR_IDLE, '「' + narrTxt.slice(0, 34) + '…」');
       add('★ 进度条随分镜推进', /%$/.test(progW) && parseFloat(progW) > 0, progW);
@@ -4745,7 +5020,7 @@ function runUITest() {
       (State.bills.filter(function (b) { return /格拉斯丽|大床房/.test(String(b.description || '')); })[0] || {}).description || '未出现截图入账');
     add('★ 自动演示：演到「我的私账」（人情账）', State.bills.some(function (b) { return (b.scope || '') === 'personal' || b.splitType === 'sole'; }),
       State.bills.filter(function (b) { return (b.scope || '') === 'personal' || b.splitType === 'sole'; }).length + ' 笔私账/不摊');
-    add('自动演示：演到「结清闭环」（标记已转账）',
+    add('自动演示：演到「结清闭环」（分角色标记，最后全队结清）',
       State.rooms.some(function (r) { return r.settled && Object.keys(r.settled).length > 0; }),
       Object.keys((State.rooms[0] || {}).settled || {}).length + ' 笔已标记');
     add('自动演示：分镜字幕 ≥ 20 条（功能都排得进去）', Object.keys(seenCaptions).length >= 20,
@@ -4956,6 +5231,60 @@ function runUITest() {
         noRoomBefore && !!room0 && State.bills.length >= 4 && inRoom,
         '房间=' + (!!room0) + ' · 账单 ' + State.bills.length + ' 笔 · 全员在房间=' + inRoom);
 
+      /* ⑫ 有人先走：之后的账不算他，之前的账留痕；结算仍算他（不能"钱凭空消失"） */
+      (function () {
+        resetAll();
+        var room = ensureAllPhones();
+        var m4 = room.members.filter(function (m) { return m.id === 'u4'; })[0];
+        delete m4.leftAt;
+        var oldCount = State.bills.length;
+        var oldSum = roomTotalCNY(room.id);
+        toggleMemberLeave('u1', 'u4');
+        var marked = !!m4.leftAt;
+        var oldIntact = State.bills.length === oldCount &&
+          Math.abs(roomTotalCNY(room.id) - oldSum) < 0.011;
+        /* 离队之后记一笔新账：分摊里不该再有 u4 */
+        var nb = makeBill(room, { payer: 'u1', payerName: '小明', amount: 600,
+          description: '剩下 3 人的晚餐', category: 'food', source: 'manual' });
+        var hasU4 = nb.splits.some(function (s) { return s.memberId === 'u4' && Math.abs(s.amount) > 0.004; });
+        var sumOK = Math.abs(nb.splits.reduce(function (s, x) { return s + x.amount; }, 0) - 600) < 0.011;
+        add('★ 有人先走：之后的账不再分摊给他、之前的账留痕、账仍然恒平',
+          marked && oldIntact && !hasU4 && nb.splits.length === 3 && sumOK,
+          '标记=' + marked + ' · 老账未动=' + oldIntact + ' · 新账分摊 ' + nb.splits.length + ' 人（含小王=' + hasU4 + '）· 合计=' + sumOK);
+        State.bills.push(nb);
+        var st = calcSettlement(room, roomBills(room.id));
+        var stillThere = st.balances.some(function (b) { return (b.memberId || b.id) === 'u4'; });
+        add('★ 有人先走：结算里他仍然在名单上（之前该摊的照算，不会凭空消失）', stillThere,
+          '结算成员 ' + st.balances.length + ' 人');
+        /* 归队后恢复：再记一笔要重新算他 */
+        toggleMemberLeave('u1', 'u4');
+        var nb2 = makeBill(room, { payer: 'u1', payerName: '小明', amount: 400,
+          description: '归队后的一餐', category: 'food', source: 'manual' });
+        add('★ 有人先走：点第二下归队，之后的账重新算他',
+          !m4.leftAt && nb2.splits.some(function (s) { return s.memberId === 'u4' && s.amount > 0; }),
+          '分摊 ' + nb2.splits.length + ' 人');
+        resetAll();
+      })();
+
+      /* ⑬ 私账隐私：别人的「我的私账」不能出现在我的账单列表里 */
+      (function () {
+        var room = ensureAllPhones();
+        var mine = makeBill(room, { payer: 'u1', payerName: '小明', amount: 88, splitType: 'sole',
+          scope: 'personal', description: '我的私账样本', category: 'shopping', source: 'manual' });
+        var others = makeBill(room, { payer: 'u4', payerName: '小王', amount: 1280, splitType: 'sole',
+          scope: 'personal', description: '小王的私账样本', category: 'shopping', source: 'manual' });
+        State.bills.push(mine); State.bills.push(others);
+        goPhone('u1', 'room');
+        var txt = document.querySelector('#app-u1 .ab').textContent;
+        var vis = visibleBills(room.id, 'u1');
+        add('★ 私账只给本人看：我的列表里没有别人的私账，但有自己的',
+          /我的私账样本/.test(txt) && !/小王的私账样本/.test(txt) &&
+          vis.some(function (b) { return b.id === mine.id; }) && !vis.some(function (b) { return b.id === others.id; }),
+          '可见 ' + vis.length + ' / 全部 ' + roomBills(room.id).length + ' 笔');
+        State.bills = State.bills.filter(function (b) { return b.id !== mine.id && b.id !== others.id; });
+        syncAll();
+      })();
+
       /* ⑪ 自检不能"看状态脸色"：以前「外币账单已按快照折算」是查"房间里有没有外币账单"，
             评委看完演示中途按 Esc（房间已建、还没演到那笔日元）再点自检就红一项（实测 21/22，
             评委区那面数字墙会显示 21/22）。自检要验的是能力，不是某个样例数据在不在。 */
@@ -4995,6 +5324,10 @@ renderPhones();
 a11yEnhance(document);
 probeEngine();
 syncModeUi();     // 首屏 = 待机态：解说栏显示「▶ 播放演示 / 逐步导览 / 自己上手」入口
+/* 导览步数只有一个维护点（TOUR_STEPS.length）：按钮文案里的数字从它来，避免加了一步却忘改文案 */
+Array.prototype.forEach.call(document.querySelectorAll('[data-tour-count]'), function (el) {
+  el.textContent = String(TOUR_STEPS.length);
+});
 
 /* ============================================================
    V3 旅行专属记账语义 · 一键演示（#v3demo）

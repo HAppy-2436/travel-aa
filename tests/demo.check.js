@@ -208,10 +208,12 @@ report('★ 网页版：手机高度由 --phone-h 决定，且 renderPhones 后�
   /height:var\(--phone-h,660px\)/.test(html) &&
   /renderPhones\(\);\s*\n\s*fitPhones\(\)/.test(html) &&
   /setProperty\('--phone-h'/.test(html));
-report('★ 网页版：高度自校正（量真实底边再收/放，不是靠公式凑）',
-  /for \(var pass = 0; pass < 4; pass\+\+\)/.test(html) &&
-  /getBoundingClientRect\(\)\.bottom - \(vh - 8\)/.test(html) &&
-  /PHONE_MIN/.test(html) && /PHONE_MAX/.test(html));
+report('★ 网页版：手机**等比缩放**（宽高同一个 scale，比例永远是手机；不再单独压扁高度）',
+  /var DESIGN_H = 660;/.test(html) &&
+  /root\.style\.setProperty\('--phone-h', DESIGN_H \+ 'px'\)/.test(html) &&
+  /s = Math\.min\(s, availH \/ needH\)/.test(html) &&
+  /s = Math\.min\(s, \(availW - 4\) \/ needW\)/.test(html) &&
+  !/PHONE_MIN/.test(html));
 report('★ 网页版：常驻解说条（普通模式也看得到"这一步在做什么"）',
   /<div class="narr" id="narrBar"/.test(html) && /id="shellNarr"/.test(html) &&
   /body\.present \.narr\{display:none\}/.test(html));
@@ -353,6 +355,38 @@ report('★ 首屏自动铺一桌样例数据（评委打开就看得到真东�
   /State\.rooms\.length === 0 && !\/\^#\(auto\|v3demo\|selftest\|tourtest\|uitest\)\//.test(html) &&
   /\[\?&\]stage=\\d/.test(html) &&
   /seedForJudge\(\);/.test(html) && /首屏已铺好一桌样例数据/.test(html));
+
+// ============ 10+++++. 第十五轮：四个实测问题 + "有人先走"场景 ============
+report('★ 手机比例：整体等比缩放（不再单独压扁高度成"方砖"）',
+  /function fitPhones/.test(html) && /var DESIGN_H = 660;/.test(html) &&
+  /s = Math\.min\(s, availH \/ needH\)/.test(html) && !/PHONE_MIN/.test(html));
+report('★ 点手机里的按钮不再被弹回顶部（重渲染保住内屏滚动位置）',
+  /var keepTop = samePage && oldAb \? oldAb\.scrollTop : 0;/.test(html) &&
+  /newAb\.scrollTop = keepTop;/.test(html) && /user\._renderedPage = pageNow;/.test(html));
+report('★ 删除账单：谁的都能删，且详情页里也有第二条入口',
+  /function askDeleteBill/.test(html) && /4 台手机会同步消失/.test(html) &&
+  /🗑️ 删除这笔账单/.test(html) && /title="删除「/.test(html));
+report('★ 私账只给本人看（别人的「我的私账」不进我的账单列表）',
+  /function isPersonalBill/.test(html) && /function visibleBills/.test(html) &&
+  /var listBills=visibleBills\(roomId,userId\)/.test(html) && /只有本人可见，不在这儿显示/.test(html));
+report('★ 结算端分角色：待转出（我付）/ 待收到（我收）/ 与我无关（别人之间）',
+  /function transferRole/.test(html) && /var ROLE_META = \{/.test(html) &&
+  /function mySettlePart/.test(html) &&
+  /trole '\+role/.test(html) &&
+  /待转出/.test(html) && /待收到/.test(html) && /与我无关/.test(html));
+report('★ 有人先走：之后的账不算他、之前的账留痕（makeBill 按离队时间过滤分摊对象）',
+  /function activeMembersFor/.test(html) && /function toggleMemberLeave/.test(html) &&
+  /var sharers = opts\.splits \? members : activeMembersFor\(room, opts\.createdAt\);/.test(html) &&
+  /data-feat="early-leave"/.test(html) &&
+  /\{ id: 'early-leave', name: /.test(html) && /covers: \['early-leave'\]/.test(html));
+report('★ 导览步数只有一个维护点（按钮文案里的数字从 TOUR_STEPS.length 来）',
+  /data-tour-count/.test(html) && /querySelectorAll\('\[data-tour-count\]'\)/.test(html) &&
+  !/15 步/.test(html));
+report('★ 自动演示把"到底结没结清"说清楚：分角色标记 → 全队结清收尾',
+  /var AUTO_STORYBOARDS = 25;/.test(html) &&
+  /待收到 ' \+ mineIn\.inOpen\.length/.test(html) && /待转出 ' \+ mineOut\.outOpen\.length/.test(html) &&
+  /笔已结清（每笔都是各自在自己手机上确认的）/.test(html) &&
+  /㉕ 有人先走/.test(html));
 
 // ============ 11. 共享 AI 引擎浏览器形态冒烟 ============
 const aiSrc = fs.readFileSync(path.join(__dirname, '..', 'apps', 'miniprogram', 'utils', 'ai.js'), 'utf8');
