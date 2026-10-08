@@ -120,7 +120,7 @@ function buildProjectZip() {
 
 const README_TXT = `# TravelAA · 旅行 AA 记账 —— 演示包
 
-携程高校 AI HACKATHON · Team 爆能器
+携程高校 AI HACKATHON · 队名：爆能器已部署
 
 ## 怎么打开
 
